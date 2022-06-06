@@ -338,7 +338,7 @@ def main():
                             start_x=start_x+1
 
                             if pixel_found:
-                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, newJoint) )
+                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False) )
                                 pixel_found = False
                                 primitive_width = 0
                                 Total_Primitives += 1
@@ -358,7 +358,7 @@ def main():
                             #fp_obj.write(  create_primitive(start_x, start_y) )
                         else:
                             if pixel_found:
-                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, newJoint) )
+                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False) )
                                 pixel_found = False
                                 primitive_width = 0
                                 Total_Primitives += 1
@@ -380,7 +380,7 @@ def main():
 
                     # Update to the next Y Postion and check if we have an unwritted primitive to complete
                     if pixel_found:
-                        fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, newJoint) )
+                        fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False) )
                         pixel_found = False
                         primitive_width = 0
                         primitive_x = 0
