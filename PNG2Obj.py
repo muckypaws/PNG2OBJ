@@ -263,6 +263,10 @@ def main():
 
     # Load the PNG File, Check if Valid
     pattern, pattern_w, pattern_h, pattern_meta = load_pattern(sys.argv[1])
+
+    # If File Wasn't Found Time to Quit
+    if pattern == None:
+        exit(1)
     
     # Check we're dealing with 8 Bits per channel.
     if pattern_meta['planes'] < 3:
@@ -310,7 +314,7 @@ def main():
                     # Get Next Row for Jointer Block Processing.
                     # We're cheating by MOD by the PNG Height
                     # But will set the Last row flag so we don't 
-                    # Process the rules for this.
+                    # Process the rules for this. 
                     nextRow = pattern[int((y+1) % pattern_h)]
 
                     fp_txt.write('\n')
@@ -422,6 +426,7 @@ def load_pattern(pattern_name):
 # Default Logging Code
 #
 def log(msg):
+    sys.stdout.write("\n")
     sys.stdout.write(str(datetime.now()))
     sys.stdout.write(": ")
     sys.stdout.write(msg)
