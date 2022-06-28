@@ -13,6 +13,8 @@
 # V1.01 - 5th June 2022 - The Platty Pudding Edition ;)
 #                         Add Jointer Cubes for diagonal pixels without support
 #                         Only needed if you're using a printer.
+# V1.02 - 28th June 2022- Over the Rainbow Edition
+#                         Added Option to Add Material File for Coloured Pixels
 #
 # Usage :-
 #   PNG2OBJ.py Filename
@@ -27,6 +29,7 @@
 #       Filename.txt    <-- Used for debugging, showing an ASCII representation 
 #                           Of what pixels were processed.
 
+#from glob import glob
 import os
 import sys
 import png
@@ -47,10 +50,13 @@ CUBE_X = 10
 CUBE_Y = -10
 
 # Define the Alpha Value as Cut Off For the Pixel
-ALPHACUTOFF = 200
+ALPHACUTOFF = 254
 
 # Define TRUE if Printing, FALSE if anything else as not required
-JOINTS_REQUIRED = True
+JOINTS_REQUIRED = False
+
+# Define TRUE if a corresponding MTL File is to be created for Colour Cubes
+CREATE_MTL_FILE = True
 
 # Used to define the Current Face Counter
 # Needed to ensure Vertices are correctly defined.
@@ -139,6 +145,26 @@ joint_faces = ( [  1,  2,  4],
                 [ 21, 22, 24],
                 [ 24, 22, 23])
 
+#
+# Define the default Parameters for each new Material
+#   See: https://www.loc.gov/preservation/digital/formats/fdd/fdd000508.shtml
+#
+default_mtl_params =    "\nKs 0.000000 0.000000 0.000000\n" \
+                        "Tf 0.000000 0.000000 0.000000\n" \
+                        "illum 4 \n" \
+                        "d 1.0 \n" \
+                        "Ns 100 \n" \
+                        "sharpness 100 \n" \
+                        "Ni 1\n" 
+
+#
+# Define the Colour Dictionary
+#
+mtl_colour_dict   = {"#000000":0}
+mtl_current_index = 1
+mtl_filename = ""
+mtl_lib_filename = ""
+
 # Update Verticies depending on position (0 or non 0)
 def update_vert(val,r1,r2):
     if val > 0.0:
@@ -149,7 +175,7 @@ def update_vert(val,r1,r2):
 # Create a Primitive, in this example a Cube, but could be swapped for 
 #   Any primitive type
 #
-def create_primitive(primitive_x, primitive_y, width, primitive_vert, primitive_face, jointFlag):
+def create_primitive(primitive_x, primitive_y, width, primitive_vert, primitive_face, jointFlag, material_index):
     global Current_Face
 
     strVertices = f"o Pixel_{primitive_x}_{primitive_y}\n"
@@ -185,7 +211,11 @@ def create_primitive(primitive_x, primitive_y, width, primitive_vert, primitive_
 
         strVertices = strVertices + "v " + str(myFormatter.format(v1)) + " " + str(myFormatter.format(v2)) + " " + str(myFormatter.format(v3)) + "\n"
 
-    strVertices = strVertices + "# "+str(vert_len)+f" Vertices\ng Extrude_{primitive_x}_{primitive_y}\n"
+    strVertices = strVertices + "# "+str(vert_len)+f" Vertices\ng Pixel_{primitive_x}_{primitive_y}_F\n"
+
+    if CREATE_MTL_FILE:
+        strVertices += "mtllib "+os.path.basename(mtl_filename) + "\n" + \
+            f"usemtl {material_index}\n"
 
     for index in range(face_len):
         f1 = primitive_face[index][0] + Current_Face
@@ -208,6 +238,11 @@ def getPixelFromRow(x, row, channels, rowWidth):
     # Calculate the offset into the ROW for pixel information
     offset_x = (x * channels) % (rowWidth * channels)
     pixel = 0
+    ColourCode = "#000000"
+
+
+    # Need the current Index of Colour or do we? Could use dict len?
+    global mtl_current_index
 
     # If Indexed PNG, we're only interested in the index value
     if channels == 1:
@@ -227,8 +262,35 @@ def getPixelFromRow(x, row, channels, rowWidth):
         # If below the cutoff we set the pixel to 0 (No Colour Data)
         if a < ALPHACUTOFF:
             pixel = 0
+            r = 0
+            g = 0
+            b = 0
 
-    return pixel
+    # Check to see if we already have this material.
+    ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
+
+    if pixel and CREATE_MTL_FILE == True:
+        if not ColourCode in mtl_colour_dict:
+            mtl_colour_dict[ColourCode] = mtl_current_index
+
+            myFormatter = "{0:.6f}"
+
+            mult = 1.0/255.0
+
+            Material = f"\nnewmtl {mtl_current_index}\n" + \
+                    f"Kd " + str(myFormatter.format(mult * r)) + " " + \
+                    str(myFormatter.format(mult * g)) + " " + \
+                    str(myFormatter.format(mult * b)) + " " + \
+                    default_mtl_params + "\n"
+
+            WriteToMTLFile(Material)
+            mtl_current_index += 1
+    
+    material_index = 0
+    if pixel:
+        material_index = mtl_colour_dict[ColourCode]
+
+    return pixel, material_index
 
 #
 # Process a simple set of rules to determine if a Jointer Block is required.
@@ -241,15 +303,27 @@ def CheckJointRequired(x ,row, nextRow, channels, pattern_w):
     if x >= (pattern_w-1): 
         return isJointRequired
 
-    a = getPixelFromRow(x,   row,     channels, pattern_w)
-    b = getPixelFromRow(x+1, row,     channels, pattern_w)
-    c = getPixelFromRow(x,   nextRow, channels, pattern_w)
-    d = getPixelFromRow(x+1, nextRow, channels, pattern_w)
+    a,mi = getPixelFromRow(x,   row,     channels, pattern_w)
+    b,mi = getPixelFromRow(x+1, row,     channels, pattern_w)
+    c,mi = getPixelFromRow(x,   nextRow, channels, pattern_w)
+    d,mi = getPixelFromRow(x+1, nextRow, channels, pattern_w)
 
     if (a > 0 and d > 0 and b == 0 and c == 0) or (b > 0 and c > 0 and a == 0 and d == 0):
         isJointRequired = True
 
     return isJointRequired
+
+#
+# Write to the MTL File Appending
+#
+def WriteToMTLFile(text):
+    global mtl_filename
+    with open(mtl_filename,'a') as fp_mtl:
+        fp_mtl.write(text)
+        fp_mtl.write("\n")
+        fp_mtl.flush()
+        fp_mtl.close()
+
 #
 # And this is where all that magic happens.
 #   A real Python Programmer can probably optimise this using some Python Magic.
@@ -260,6 +334,8 @@ def main():
 
     # Define RGB Colours as 0
     r, g, b, a = 0, 0, 0, 255
+
+    global mtl_filename
 
     # Load the PNG File, Check if Valid
     pattern, pattern_w, pattern_h, pattern_meta = load_pattern(sys.argv[1])
@@ -287,6 +363,9 @@ def main():
     #       TXT file with pixel data as seen
     obj_file = os.path.join(PATTERNS, "{}.obj".format(sys.argv[1]))
     txt_file = os.path.join(PATTERNS, "{}.txt".format(sys.argv[1]))
+    mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(sys.argv[1]))
+
+    
 
     # If we're adding Jointer Blocks this will be required.
     LastRow = False
@@ -294,13 +373,22 @@ def main():
     # open files for Writing, Note we're not checking their presence as we're overwriting/creating
     #   from scratch each time.
     try:
-        # TODO: Ass some error checking here, rather than relay on TRY/CATCH Scenarios.
+        # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
         with open(obj_file,'w') as fp_obj:
             with open(txt_file,'w') as fp_txt:
                 # Create Header for OBJ File
-                header = "# Creator PNG2OBJ.py - Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
+                header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
                 header = header + f"# Original File: {sys.argv[1]}.png, Width: {pattern_w}, Height: {pattern_h}\n"
                 fp_obj.write( header )
+
+                if CREATE_MTL_FILE:
+                    with open(mtl_filename,'w') as fp_mtl:
+                        fp_mtl.write("# Created with PNG2OBJ.PY (C) Jason Brooks\n")
+                        fp_mtl.write("# See www.muckypaws.com\n")
+                        fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
+                        fp_mtl.flush()
+                        fp_mtl.close()
+
 
                 # Set Current Y Position, we're only using this for situations where sprite files
                 #   make it difficult to seperate the blocks post conversion, so we add a space
@@ -332,8 +420,10 @@ def main():
                     # Iterate through the data with 
                     start_x = 0
                     pixel_found = False
+                    pixel_found_colour_index = 0
                     primitive_width = 0
                     primitive_x = 0
+
                     for x in range(pattern_w):
                         # Check if We're Adding extra space between each sprite based
                         #   on fixed pixel width per sprite.
@@ -341,14 +431,15 @@ def main():
                             fp_txt.write("|")
                             start_x=start_x+1
 
-                            if pixel_found:
-                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False) )
-                                pixel_found = False
-                                primitive_width = 0
-                                Total_Primitives += 1
+                            #if pixel_found:
+                                #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False, pixel_found_colour_index) )
+                            #    pixel_found = False
+                            #    primitive_width = 0
+                             #   pixel_found_colour_index = 0
+                            #    Total_Primitives += 1
 
                         # Get Pixel from Row
-                        pixel = getPixelFromRow(x, row, channels, pattern_w)
+                        pixel,mi = getPixelFromRow(x, row, channels, pattern_w)
 
                         # If Pixel present then add to TXT File and create primitive.
                         if pixel > 0:
@@ -356,13 +447,22 @@ def main():
                             if not pixel_found:
                                 pixel_found = True
                                 primitive_x = start_x
+                                pixel_found_colour_index = mi
+                            else:
+                                # Check we're on the same colour
+                                if mi != pixel_found_colour_index:
+                                    fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                                    primitive_width = 0
+                                    Total_Primitives += 1
+                                    pixel_found_colour_index = mi
+                                    primitive_x = start_x
 
                             # Update Primitive Width
                             primitive_width = primitive_width + 1
                             #fp_obj.write(  create_primitive(start_x, start_y) )
                         else:
                             if pixel_found:
-                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False) )
+                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                                 pixel_found = False
                                 primitive_width = 0
                                 Total_Primitives += 1
@@ -374,7 +474,7 @@ def main():
                             newJoint = CheckJointRequired(x,row, nextRow, channels, pattern_w)
 
                             if newJoint:
-                                fp_obj.write(  create_primitive(start_x, start_y + 1, 1, joint_verticies, joint_faces, newJoint) )
+                                fp_obj.write(  create_primitive(start_x, start_y + 1, 1, joint_verticies, joint_faces, newJoint, mi) )
                                 newJoint = False
 
 
@@ -382,9 +482,9 @@ def main():
                         # Update X Position (Taking into account an offset if we're adding space between sprites)
                         start_x = start_x + 1
 
-                    # Update to the next Y Postion and check if we have an unwritted primitive to complete
+                    # Update to the next Y Postion and check if we have an unwritten primitive to complete
                     if pixel_found:
-                        fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False) )
+                        fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False, pixel_found_colour_index) )
                         pixel_found = False
                         primitive_width = 0
                         primitive_x = 0
@@ -394,6 +494,8 @@ def main():
 
                 # Write and Flush the Object File
                 fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
+                if CREATE_MTL_FILE:
+                    fp_obj.write(f"#\n# Total Material Colours Created: {len(mtl_colour_dict)-1}\n#\n")
                 fp_obj.flush()
                 fp_obj.close()
 
@@ -403,8 +505,8 @@ def main():
                 fp_txt.close()
 
     except:
-        # Bad Practice I know...
-        print("Failed to write file: ",obj_file)
+    # Bad Practice I know...
+       print("Failed to write file: ",obj_file)
 
 
 #
