@@ -53,7 +53,7 @@ CUBE_Y = -10
 ALPHACUTOFF = 254
 
 # Define TRUE if Printing, FALSE if anything else as not required
-JOINTS_REQUIRED = False
+JOINTS_REQUIRED = True
 
 # Define TRUE if a corresponding MTL File is to be created for Colour Cubes
 CREATE_MTL_FILE = True
