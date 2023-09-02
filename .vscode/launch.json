@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["Test/MireMare/Mire2"],
+            "args": ["Test/Dizzy"],
             "justMyCode": true
         }
     ]
