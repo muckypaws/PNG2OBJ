@@ -9,13 +9,15 @@
 # This will force a gap between sprites
 # There's much that can be done to optimise the code
 #
-# V1.00 - 3rd June 2022 - The Platty Joobs Edition ;)
-# V1.01 - 5th June 2022 - The Platty Pudding Edition ;)
-#                         Add Jointer Cubes for diagonal pixels without support
-#                         Only needed if you're using a printer.
-# V1.02 - 28th June 2022- Over the Rainbow Edition
-#                         Added Option to Add Material File for Coloured Pixels
-#
+# V1.00 - 3rd June 2022      - The Platty Joobs Edition ;)
+# V1.01 - 5th June 2022      - The Platty Pudding Edition ;)
+#                              Add Jointer Cubes for diagonal pixels without support
+#                              Only needed if you're using a printer.
+# V1.02 - 28th June 2022     - Over the Rainbow Edition
+#                              Added Option to Add Material File for Coloured Pixels
+# V1.03 - 4th September 2023 - Welcome to the Layer Cake Edition
+#                              Added Processing for Multiple Layers
+#                       
 # Usage :-
 #   PNG2OBJ.py Filename
 #
@@ -29,16 +31,17 @@
 #       Filename.txt    <-- Used for debugging, showing an ASCII representation 
 #                           Of what pixels were processed.
 
-#from glob import glob
 import os
 import sys
 import png
+import argparse         # 'bout time I added Parsing...
 from datetime import datetime
 
 # Application Defaults
 
 # Default location for File
-PATTERNS = "./"
+#PATTERNS = "./"
+PATTERNS=""
 
 # Set Pixel Width and Height if Sprites are fixed width within the sheet, otherwise 
 # use a high number.
@@ -52,6 +55,8 @@ pattern_h = 0
 pattern_meta = 0
 channels = 0
 
+CurrentZOffset = 0.0
+
 # X is positive, Y is negative unless you want to flip the image.
 CUBE_X = 10
 CUBE_Y = -10
@@ -64,6 +69,9 @@ JOINTS_REQUIRED = False
 
 # Define TRUE if a corresponding MTL File is to be created for Colour Cubes
 CREATE_MTL_FILE = False
+
+# Define the Working Filename
+WORKING_FILENAME = ""
 
 # Used to define the Current Face Counter
 # Needed to ensure Vertices are correctly defined.
@@ -184,6 +192,7 @@ def update_vert(val,r1,r2):
 #
 def create_primitive(primitive_x, primitive_y, width, height, primitive_vert, primitive_face, jointFlag, material_index):
     global Current_Face
+    global CurrentZOffset
 
     strVertices = f"o Pixel_{primitive_x}_{primitive_y}\n"
     strFaces = ""
@@ -207,6 +216,8 @@ def create_primitive(primitive_x, primitive_y, width, height, primitive_vert, pr
         v1 = primitive_vert[index][0]
         v2 = primitive_vert[index][1]
         v3 = primitive_vert[index][2]
+
+        v3 += CurrentZOffset
 
         # Yeah, quick and dirty, I need to think this through
         if not jointFlag:
@@ -276,31 +287,28 @@ def getPixelFromRow(x, row, channels, rowWidth):
     # Check to see if we already have this material.
     ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
 
-    if pixel > 0:
-        if not ColourCode in mtl_colour_dict:
-            mtl_colour_dict[ColourCode] = 0
-            
-            
-            
-            
-            if CREATE_MTL_FILE == True:
-                myFormatter = "{0:.6f}"
+    if not ColourCode in mtl_colour_dict:
+        mtl_colour_dict[ColourCode] = 0
+        
+        if CREATE_MTL_FILE == True:
+            myFormatter = "{0:.6f}"
 
-                mult = 1.0/255.0
+            mult = 1.0/255.0
 
-                Material = f"\nnewmtl {mtl_current_index}\n" + \
-                        f"Kd " + str(myFormatter.format(mult * r)) + " " + \
-                        str(myFormatter.format(mult * g)) + " " + \
-                        str(myFormatter.format(mult * b)) + " " + \
-                        default_mtl_params + "\n"
+            Material = f"\nnewmtl {mtl_current_index}\n" + \
+                    f"Kd " + str(myFormatter.format(mult * r)) + " " + \
+                    str(myFormatter.format(mult * g)) + " " + \
+                    str(myFormatter.format(mult * b)) + " " + \
+                    default_mtl_params + "\n"
 
-                WriteToMTLFile(Material)
-                mtl_current_index += 1
+            WriteToMTLFile(Material)
+            mtl_current_index += 1
 
     material_index = 0
-    if pixel:
-        material_index = mtl_colour_dict[ColourCode]
-        mtl_colour_dict[ColourCode] += 1
+    
+    # Retrieve the index of the Colour Code from the Dictionary
+    material_index = list(mtl_colour_dict).index(ColourCode)
+    mtl_colour_dict[ColourCode] += 1
 
     return pixel, material_index, ColourCode
 
@@ -341,22 +349,11 @@ def WriteToMTLFile(text):
 #   A real Python Programmer can probably optimise this using some Python Magic.
 #
 def main():
-    # Reset the file counter, though should be zero on start up
-    # Used for debugging purposes.
-
-    fileCounter = 0
-
-    # Load the PNG to memory if possible.
-    if loadPNGToMemory() == False:
-        print(f"Unable to process file: {sys.argv[1]}")
-        exit (0)
-
-    # Calculate the Different Coloured Pixels
-    discoverPixelLayers()
+    global WORKING_FILENAME
 
     # Create the Background Object File 
     # Flat Structure width and height of PNG Image.
-    obj_file = os.path.join(PATTERNS, "{}.obj".format(sys.argv[1]))
+    obj_file = os.path.join(PATTERNS, "{}.obj".format(WORKING_FILENAME))
     try:
         # TODO: Add some error checking here, rather than rely on TRY/CATCH Scenarios.
         with open(obj_file,'w') as fp_obj:
@@ -369,10 +366,9 @@ def main():
        exit(0)
 
 
-    SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[0], reverse=True)}
+    SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
     
-    # Remove Background Colour of 000000 
-    del SortedColours["#000000"]
+    # Background Colour Will be the one with the most pixels.
 
     print("Layer Order:")
     for nextLayer in SortedColours:
@@ -380,6 +376,11 @@ def main():
 
     print(f"Found : {len(mtl_colour_dict)} Colours")
 
+    # Remove the First Layer
+    del SortedColours[list(SortedColours.keys())[0]]
+
+
+    #SortedColours = {"#ff0000":0,"#ffffff":1}
     while len(SortedColours) > 0:
         nextLayer = list(SortedColours.keys())[0]
         print(f"Processing Colour: {nextLayer}")
@@ -392,10 +393,11 @@ def main():
 
 
 def loadPNGToMemory():
+    global WORKING_FILENAME
     # Load the PNG File, Check if Valid
     global pattern, pattern_w, pattern_h, pattern_meta, channels
 
-    pattern, pattern_w, pattern_h, pattern_meta = load_pattern(sys.argv[1])
+    pattern, pattern_w, pattern_h, pattern_meta = load_pattern(WORKING_FILENAME)
 
     # If File Wasn't Found Time to Quit
     if pattern == None:
@@ -408,12 +410,14 @@ def loadPNGToMemory():
 
     # Check if We've loaded a Valid PNG File
     if pattern is None:
-        log(f"File: {sys.argv[1]} is not a valid PNG File")
+        log(f"File: {WORKING_FILENAME} is not a valid PNG File")
         return False
 
     # Check to see if Alpha Byte Present and set number of channels accordingly
     alpha = pattern_meta['alpha']
     channels = 4 if alpha else 3
+
+    discoverPixelLayers()
 
     return True
 
@@ -427,10 +431,28 @@ def discoverPixelLayers():
             # Get Pixel from Row
             getPixelFromRow(x, row, channels, pattern_w)
 
+def displayColourInformation():
+    SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
+    
+    print("         Layer Order :")
+    print("         -------------")
+    print()
+    print("         Colour Code : Number of Pixels")
+    print("         -----------   ----------------\n")   
+    for nextLayer in SortedColours:
+        print(f"             {nextLayer} : {SortedColours[nextLayer]}")
+
+    print(f"\n               Found : {len(mtl_colour_dict)} Colours")
+
     
 def processFile(colourMatch, allowedDictionary):
+    global WORKING_FILENAME
     CUBE_X = 10
     CUBE_Y = -10
+
+    global CurrentZOffset
+
+    CurrentZOffset += 10    # Shift Vertices Up a Layer...
 
     # Used to define the Current Face Counter
     # Needed to ensure Vertices are correctly defined.
@@ -447,9 +469,9 @@ def processFile(colourMatch, allowedDictionary):
     # Define output Filenames based on Input, creating 
     #   an  OBJ file with 3D Mesh Details
     #       TXT file with pixel data as seen
-    obj_file = os.path.join(PATTERNS, "{}{}.obj".format(sys.argv[1],str(colourMatch)))
-    txt_file = os.path.join(PATTERNS, "{}{}.txt".format(sys.argv[1],str(colourMatch)))
-    mtl_filename = os.path.join(PATTERNS, "{}{}.mtl".format(sys.argv[1],str(colourMatch)))
+    obj_file = os.path.join(PATTERNS, "{}{}.obj".format(WORKING_FILENAME,str(colourMatch)))
+    txt_file = os.path.join(PATTERNS, "{}{}.txt".format(WORKING_FILENAME,str(colourMatch)))
+    mtl_filename = os.path.join(PATTERNS, "{}{}.mtl".format(WORKING_FILENAME,str(colourMatch)))
 
     # If we're adding Jointer Blocks this will be required.
     LastRow = False
@@ -462,7 +484,7 @@ def processFile(colourMatch, allowedDictionary):
             with open(txt_file,'w') as fp_txt:
                 # Create Header for OBJ File
                 header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
-                header = header + f"# Original File: {sys.argv[1]}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+                header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
                 fp_obj.write( header )
 
                 if CREATE_MTL_FILE:
@@ -583,7 +605,8 @@ def processFile(colourMatch, allowedDictionary):
                     start_y = start_y + 1
 
                 # Write and Flush the Object File
-                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , 0) )
+                if primitive_width > 0:
+                    fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , 0) )
 
                 fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
                 if CREATE_MTL_FILE:
@@ -633,11 +656,49 @@ def log(msg):
 # The actual start of Python Code.
 #
 if __name__ == "__main__":
-    if(len(sys.argv) > 1):
-        print (sys.argv[1])
-    else:
-        print (len(sys.argv))
-        print("\nProvide PNG Filename to convert")
-        exit(0)
+    # Add user options to the code
+    parser = argparse.ArgumentParser(description="Convert PNG Images to OBJ",
+                                     epilog='https://github.com/muckypaws/PNG2OBJ')
+    #group  = parser.add_mutually_exclusive_group()
+    parser.add_argument("-j","--joints", help="Create small joining blocks where cubes are only attached via their corners", action="store_true")
+    parser.add_argument("-m","--mtl",help="Create a Material File with the OBJECT", action="store_true")
+    parser.add_argument("-lc","--listColours",help="List the colours discovered and quantity of pixels",action="store_true")
+    parser.add_argument("filename",help="Include the PNG File to convert without the PNG Extension, i.e. art.png just pass art")
+
+    # Get arguments from the Command Line
+    args=parser.parse_args()
+
+    # Check for Jointer Cubes required.
+    if args.joints:
+        JOINTS_REQUIRED = True
+
+    # Check if We're creating the Material File.
+    if args.mtl:
+        CREATE_MTL_FILE = True
+
+    WORKING_FILENAME = args.filename
+    mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
+
+    # Does the user want to display the colour table and count?
+
+    print(f"Joints: {JOINTS_REQUIRED}, Material:{CREATE_MTL_FILE}")
     
-    main()
+    # Attempt to Load the PNG to memory.
+    if loadPNGToMemory() == False:
+        print(f"Unable to open file: {WORKING_FILENAME}")
+        exit (0)
+
+    print("")
+    print(f"    Image Information :")
+    print("    -------------------\n")
+    print(f"           Image File : {WORKING_FILENAME}")
+    print(f"       PNG Image Size : {pattern_w} (width), {pattern_h} (height)")
+    print(f"   Number of Channels : {channels}")
+    print("")
+    print(f"     Joints Requested : {JOINTS_REQUIRED}\n Create Material File : {CREATE_MTL_FILE}\n\n")
+    
+    if args.listColours:
+        displayColourInformation()
+    else:
+        main()
+

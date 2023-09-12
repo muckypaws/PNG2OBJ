@@ -33,6 +33,8 @@
 import os
 import sys
 import png
+import argparse         # 'bout time I included command line options
+
 from datetime import datetime
 
 # Application Defaults
@@ -53,7 +55,7 @@ CUBE_Y = -10
 ALPHACUTOFF = 254
 
 # Define TRUE if Printing, FALSE if anything else as not required
-JOINTS_REQUIRED = True
+JOINTS_REQUIRED = False
 
 # Define TRUE if a corresponding MTL File is to be created for Colour Cubes
 CREATE_MTL_FILE = True
@@ -540,6 +542,12 @@ def log(msg):
 # The actual start of Python Code.
 #
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Convert PNG Images to OBJ")
+    parser.parse_args()
+
+    exit(0)
+
     if(len(sys.argv) > 1):
         print (sys.argv[1])
     else:
