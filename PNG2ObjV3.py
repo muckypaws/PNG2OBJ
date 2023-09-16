@@ -30,6 +30,7 @@
 #       Filename.obj    <-- Contains the WaveFront OBJ 3D Vertices information
 #       Filename.txt    <-- Used for debugging, showing an ASCII representation 
 #                           Of what pixels were processed.
+#       Filename.mtl    <-- Contains the Wavefront Material File information.
 
 import os
 import sys
@@ -175,10 +176,35 @@ default_mtl_params =    "\nKs 0.000000 0.000000 0.000000\n" \
 #
 # Define the Colour Dictionary
 #
-mtl_colour_dict   = {"#000000":0}
-mtl_current_index = 1
+mtl_colour_dict   = {}
+mtl_current_index = 0
 mtl_filename = ""
 mtl_lib_filename = ""
+
+#
+# Colour Exclusion List
+# 
+Colour_Exclusion_List = []
+
+#
+# Colours Require Sorting?
+#
+Sort_Colours_Flag = False
+
+#
+# Which type of Object File to Create?
+#
+Create_Layered_File = False
+
+#
+# Last coloured Pixel Found
+#
+lastPixelFound = 0
+
+#
+# Debug TXT File Required?
+#
+Debug_Txt_File = False
 
 # Update Verticies depending on position (0 or non 0)
 def update_vert(val,r1,r2):
@@ -190,7 +216,8 @@ def update_vert(val,r1,r2):
 # Create a Primitive, in this example a Cube, but could be swapped for 
 #   Any primitive type
 #
-def create_primitive(primitive_x, primitive_y, width, height, primitive_vert, primitive_face, jointFlag, material_index):
+def create_primitive(primitive_x, 
+                     primitive_y, width, height, primitive_vert, primitive_face, jointFlag, material_index):
     global Current_Face
     global CurrentZOffset
 
@@ -258,7 +285,6 @@ def getPixelFromRow(x, row, channels, rowWidth):
     pixel = 0
     ColourCode = "#000000"
 
-
     # Need the current Index of Colour or do we? Could use dict len?
     global mtl_current_index
 
@@ -278,7 +304,7 @@ def getPixelFromRow(x, row, channels, rowWidth):
         #Check Alpha
         a = row[offset_x+3]
         # If below the cutoff we set the pixel to 0 (No Colour Data)
-        if a < ALPHACUTOFF:
+        if a <= ALPHACUTOFF:
             pixel = 0
             r = 0
             g = 0
@@ -350,6 +376,9 @@ def WriteToMTLFile(text):
 #
 def main():
     global WORKING_FILENAME
+    global Colour_Exclusion_List
+    global Debug_Txt_File
+    global Sort_Colours_Flag
 
     # Create the Background Object File 
     # Flat Structure width and height of PNG Image.
@@ -362,33 +391,40 @@ def main():
             fp_obj.close()
     except:
     # Bad Practice I know...
-       print("Failed to write Initial file: ",obj_file)
+       print("Failed to create Initial file: ",obj_file)
        exit(0)
 
+    # Set the Sorted Colours Dictionary to Default
+    SortedColours = mtl_colour_dict
 
-    SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
+    # Check if we want to sort by Highest Colour Count First
+    if Sort_Colours_Flag:
+        SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
     
-    # Background Colour Will be the one with the most pixels.
+    # Remove Colours from Excluded List 
+    for excluded in Colour_Exclusion_List:
+        if excluded in SortedColours:
+            del SortedColours[excluded]
 
     print("Layer Order:")
     for nextLayer in SortedColours:
         print(f"{nextLayer}")
 
-    print(f"Found : {len(mtl_colour_dict)} Colours")
+    print(f"       Found : {len(mtl_colour_dict)} Colours")
+    print(f"Working with : {len(SortedColours)} Colours\n")
 
-    # Remove the First Layer
-    del SortedColours[list(SortedColours.keys())[0]]
-
-
-    #SortedColours = {"#ff0000":0,"#ffffff":1}
-    while len(SortedColours) > 0:
-        nextLayer = list(SortedColours.keys())[0]
-        print(f"Processing Colour: {nextLayer}")
-        resp = processFile(nextLayer, SortedColours)
-        if resp == False:
-            print("Failed to process file:")
-            exit (0)
-        del SortedColours[nextLayer]
+    if Create_Layered_File:
+        while len(SortedColours) > 0:
+            nextLayer = list(SortedColours.keys())[0]
+            print(f"Processing Colour: {nextLayer}")
+            resp = processFile(nextLayer, SortedColours)
+            if resp == False:
+                print("Failed to process file:")
+                exit (0)
+            del SortedColours[nextLayer]
+    else:
+        resp = processFile(list(SortedColours.keys())[0], SortedColours)
+    
 
 
 
@@ -447,17 +483,20 @@ def displayColourInformation():
     
 def processFile(colourMatch, allowedDictionary):
     global WORKING_FILENAME
+    global Debug_Txt_File
+
     CUBE_X = 10
     CUBE_Y = -10
 
     global CurrentZOffset
 
-    CurrentZOffset += 10    # Shift Vertices Up a Layer...
+    CurrentZOffset += 10.0      # Shift Vertices Up a Layer...
 
     # Used to define the Current Face Counter
     # Needed to ensure Vertices are correctly defined.
     global Current_Face
     Current_Face = 0
+
     # Total Number of Primitives Created
     Total_Primitives = 0
 
@@ -469,9 +508,13 @@ def processFile(colourMatch, allowedDictionary):
     # Define output Filenames based on Input, creating 
     #   an  OBJ file with 3D Mesh Details
     #       TXT file with pixel data as seen
-    obj_file = os.path.join(PATTERNS, "{}{}.obj".format(WORKING_FILENAME,str(colourMatch)))
-    txt_file = os.path.join(PATTERNS, "{}{}.txt".format(WORKING_FILENAME,str(colourMatch)))
-    mtl_filename = os.path.join(PATTERNS, "{}{}.mtl".format(WORKING_FILENAME,str(colourMatch)))
+
+    if Create_Layered_File:
+        obj_file = os.path.join(PATTERNS, "{}{}.obj".format(WORKING_FILENAME,str(colourMatch)))
+    else:
+        obj_file = os.path.join(PATTERNS, "{}.obj".format(WORKING_FILENAME))
+    if Debug_Txt_File:
+        txt_file = os.path.join(PATTERNS, "{}{}.txt".format(WORKING_FILENAME,str(colourMatch)))
 
     # If we're adding Jointer Blocks this will be required.
     LastRow = False
@@ -479,151 +522,197 @@ def processFile(colourMatch, allowedDictionary):
     # open files for Writing, Note we're not checking their presence as we're overwriting/creating
     #   from scratch each time.
     try:
+        if Debug_Txt_File:
+           fp_txt=open(txt_file,'w')
+    except:
+        print(f"Failed to Create file {txt_file}\n")
+        exit(0)
+
+    try:
         # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
         with open(obj_file,'w') as fp_obj:
-            with open(txt_file,'w') as fp_txt:
+
                 # Create Header for OBJ File
-                header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
-                header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
-                fp_obj.write( header )
+            header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
+            header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+            fp_obj.write( header )
 
-                if CREATE_MTL_FILE:
-                    with open(mtl_filename,'w') as fp_mtl:
-                        fp_mtl.write("# Created with PNG2OBJ.PY (C) Jason Brooks\n")
-                        fp_mtl.write("# See www.muckypaws.com\n")
-                        fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
-                        fp_mtl.flush()
-                        fp_mtl.close()
+            # Set Current Y Position, we're only using this for situations where sprite files
+            #   make it difficult to seperate the blocks post conversion, so we add a space
+            #   between the primitives on the 3D OBJ File
+            start_y = 0
 
+            # Create Top Corner for Alignment
+            #fp_obj.write(  create_primitive(-1, -1, 1, 1, cube_vertices, cube_faces, False , 0) )
 
-                # Set Current Y Position, we're only using this for situations where sprite files
-                #   make it difficult to seperate the blocks post conversion, so we add a space
-                #   between the primitives on the 3D OBJ File
-                start_y = 0
+            # Work our way through each row of the PNG File.
+            for y in range(pattern_h):
+                row = pattern[int(y % pattern_h)]
+                
+                # Get Next Row for Jointer Block Processing.
+                # We're cheating by MOD by the PNG Height
+                # But will set the Last row flag so we don't 
+                # Process the rules for this. 
+                nextRow = pattern[int((y+1) % pattern_h)]
 
-                # Create Top Corner for Alignment
-                #fp_obj.write(  create_primitive(-1, -1, 1, 1, cube_vertices, cube_faces, False , 0) )
-
-                # Work our way through each row of the PNG File.
-                for y in range(pattern_h):
-                    row = pattern[int(y % pattern_h)]
-                    
-                    # Get Next Row for Jointer Block Processing.
-                    # We're cheating by MOD by the PNG Height
-                    # But will set the Last row flag so we don't 
-                    # Process the rules for this. 
-                    nextRow = pattern[int((y+1) % pattern_h)]
-
+                if Debug_Txt_File:
                     fp_txt.write('\n')
 
-                    # Check If We're processing the last row of Pixels
-                    if y == (pattern_h-1):
-                        LastRow = True
+                # Check If We're processing the last row of Pixels
+                if y == (pattern_h-1):
+                    LastRow = True
 
-                    # If we're splitting models based on pixel width and height add and extra line
-                    #   And ensure we start the next primitive further down to enforce a gap in the model
-                    if not(y % Pixel_H):
+                # If we're splitting models based on pixel width and height add and extra line
+                #   And ensure we start the next primitive further down to enforce a gap in the model
+                if not(y % Pixel_H):
+                    start_y = start_y + 1
+                    if Debug_Txt_File:
                         fp_txt.write('\n')
-                        start_y = start_y + 1
-                    
-                    # Iterate through the data with 
-                    start_x = 0
-                    pixel_found = False
-                    pixel_found_colour_index = 0
-                    primitive_width = 0
-                    primitive_x = 0
+                
+                # Iterate through the data with 
+                start_x = 0
+                pixel_found = False
+                pixel_found_colour_index = 0
+                primitive_width = 0
+                primitive_x = 0
 
-                    for x in range(pattern_w):
-                        # Check if We're Adding extra space between each sprite based
-                        #   on fixed pixel width per sprite.
-                        if not(x % Pixel_W):
+                for x in range(pattern_w):
+                    # Check if We're Adding extra space between each sprite based
+                    #   on fixed pixel width per sprite.
+                    if not(x % Pixel_W):
+                        if Debug_Txt_File:
                             fp_txt.write("|")
-                            start_x=start_x+1
+                        start_x=start_x+1
 
-                            #if pixel_found:
-                                #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, cube_vertices, cube_faces, False, pixel_found_colour_index) )
-                            #    pixel_found = False
-                            #    primitive_width = 0
-                             #   pixel_found_colour_index = 0
-                            #    Total_Primitives += 1
+                    # Get Pixel from Row
+                    pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
 
-                        # Get Pixel from Row
-                        pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
+                    # If Pixel present then add to TXT File and create primitive.
+                    # if pixel > 0 and mi==colourIndex:
+                    # if mi==colourIndex:
+                    #if mm in allowedDictionary:
 
-                        # If Pixel present then add to TXT File and create primitive.
-                        #if pixel > 0 and mi==colourIndex:
-                        #if mi==colourIndex:
-                        if mm in allowedDictionary:
+                    if checkProcessingRules(allowedDictionary, mm):
+                        if Debug_Txt_File:
                             fp_txt.write("*")
-                            if not pixel_found:
-                                pixel_found = True
-                                primitive_x = start_x
-                                pixel_found_colour_index = mi
-                            else:
-                                # Check we're on the same colour
-                                #if mi != pixel_found_colour_index:
-                                if mm not in allowedDictionary:
-                                    fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
-                                    primitive_width = 0
-                                    Total_Primitives += 1
-                                    pixel_found_colour_index = mi
-                                    primitive_x = start_x
 
-                            # Update Primitive Width
-                            primitive_width = primitive_width + 1
-                            #fp_obj.write(  create_primitive(start_x, start_y) )
-                        else:
-                            if pixel_found:
-                                fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
-                                pixel_found = False
-                                primitive_width = 0
-                                Total_Primitives += 1
+                        if not pixel_found:
+                            pixel_found = True
+                            primitive_x = start_x
+                            pixel_found_colour_index = mi
+                        #else:
+                            # Check we're on the same colour
+                            #if mi != pixel_found_colour_index:
+                            #if mm not in allowedDictionary:
+
+                        if not checkNextPixelProcessingRules(allowedDictionary, mm):
+                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                            primitive_width = 0
+                            Total_Primitives += 1
+                            pixel_found_colour_index = mi
+                            primitive_x = start_x
+
+                        # Update Primitive Width
+                        primitive_width = primitive_width + 1
+
+                    else:
+                        if mm != "#000000":
+                            print("Here")
+                        if not checkNextPixelProcessingRules(allowedDictionary, mm):
+                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                            primitive_width = 0
+                            Total_Primitives += 1
+                            pixel_found_colour_index = mi
+                            primitive_x = start_x
+
+                        if pixel_found:
+                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                            pixel_found = False
+                            primitive_width = 0
+                            Total_Primitives += 1
+
+                        if Debug_Txt_File:
                             fp_txt.write(" ")
 
-                        # Check if we're to add Jointer Blocks
-                        if JOINTS_REQUIRED and not LastRow:
-                            # Check if Blocks meet the Jointer rule
-                            newJoint = CheckJointRequired(x,row, nextRow, channels, pattern_w)
+                    # Check if we're to add Jointer Blocks
+                    if JOINTS_REQUIRED and not LastRow:
+                        # Check if Blocks meet the Jointer rule
+                        newJoint = CheckJointRequired(x,row, nextRow, channels, pattern_w)
 
-                            if newJoint:
-                                fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, newJoint, mi) )
-                                newJoint = False
+                        if newJoint:
+                            fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, newJoint, mi) )
+                            newJoint = False
 
 
 
-                        # Update X Position (Taking into account an offset if we're adding space between sprites)
-                        start_x = start_x + 1
+                    # Update X Position (Taking into account an offset if we're adding space between sprites)
+                    start_x = start_x + 1
 
-                    # Update to the next Y Postion and check if we have an unwritten primitive to complete
-                    if pixel_found:
-                        fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, pixel_found_colour_index) )
-                        pixel_found = False
-                        primitive_width = 0
-                        primitive_x = 0
-                        Total_Primitives += 1
+                # Update to the next Y Postion and check if we have an unwritten primitive to complete
+                if pixel_found:
+                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, pixel_found_colour_index) )
+                    pixel_found = False
+                    primitive_width = 0
+                    primitive_x = 0
+                    Total_Primitives += 1
 
-                    start_y = start_y + 1
+                start_y = start_y + 1
 
-                # Write and Flush the Object File
-                if primitive_width > 0:
-                    fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , 0) )
+            # Write and Flush the Object File
+            if primitive_width > 0:
+                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , 0) )
 
-                fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
-                if CREATE_MTL_FILE:
-                    fp_obj.write(f"#\n# Total Material Colours Created: {len(mtl_colour_dict)-1}\n#\n")
-                fp_obj.flush()
-                fp_obj.close()
+            fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
 
-                # Write and Flush the TXT File
-                fp_txt.write('\n')
-                fp_txt.flush()
-                fp_txt.close()
+
 
     except:
     # Bad Practice I know...
        print("Failed to write file: ",obj_file)
        return False
+    
+    # Write and Flush the TXT File
+    if Debug_Txt_File:
+        fp_txt.write('\n')
+        fp_txt.flush()
+        fp_txt.close()
+
+    if CREATE_MTL_FILE:
+        FinaliseMasterMaterialFile(mtl_filename)
     return True
+
+#
+# Check Processing Rule to Create Objects
+#
+def checkProcessingRules(allowedColours, currentColour):
+    global lastPixelFound
+
+    if Create_Layered_File:
+        if currentColour in allowedColours:
+            lastPixelFound = currentColour
+            return True
+        return False
+
+    if lastPixelFound == currentColour:
+        return True
+
+    return False
+
+def checkNextPixelProcessingRules(allowedColours, currentColour):
+    global lastPixelFound
+
+    if Create_Layered_File:
+        if currentColour not in allowedColours:
+            return False
+        else:
+            return True
+    
+    if currentColour != lastPixelFound:
+        lastPixelFound = currentColour
+        return False
+    
+    return True
+
 
 #
 # Load a PNG File
@@ -640,6 +729,38 @@ def load_pattern(pattern_name):
         log("Invalid PNG file: {}".format(pattern_file))
         return None, 0, 0, None
 
+#
+# Create the Master Material File
+#
+def CreateMasterMaterialFile(filename):
+    try:
+        with open(filename,'w') as fp_mtl:
+            fp_mtl.write("# Created with PNG2OBJ.PY (C) Jason Brooks\n")
+            fp_mtl.write("# See www.muckypaws.com\n")
+            fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
+            fp_mtl.flush()
+            fp_mtl.close()
+    except:
+        print(f"Failed to created Material File: {filename}")
+        exit(0)
+
+#
+# Finalise the MTL File
+#
+def FinaliseMasterMaterialFile(filename):
+    global mtl_colour_dict
+    global CREATE_MTL_FILE
+    try:
+        with open(filename,'a') as fp_mtl:
+            fp_mtl.write(f"#\n# Total Material Colours Created: {len(mtl_colour_dict)}\n#\n")
+            fp_mtl.flush()
+            fp_mtl.close()
+            # Switch off flag as MTL File has been created and finalised.
+            CREATE_MTL_FILE = False
+    except:
+        print(f"Failed to append to Material File: {filename}")
+        exit(0)
+                    
 #
 # Default Logging Code
 #
@@ -660,11 +781,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert PNG Images to OBJ",
                                      epilog='https://github.com/muckypaws/PNG2OBJ')
     #group  = parser.add_mutually_exclusive_group()
-    parser.add_argument("-j","--joints", help="Create small joining blocks where cubes are only attached via their corners", action="store_true")
-    parser.add_argument("-m","--mtl",help="Create a Material File with the OBJECT", action="store_true")
+    parser.add_argument("-j","--joints", help="Create small joining blocks where cubes are only attached via their corners", action="store_true", default=False)
+    parser.add_argument("-m","--mtl",help="Create a Material File with the OBJECT", action="store_true", default=False)
     parser.add_argument("-lc","--listColours",help="List the colours discovered and quantity of pixels",action="store_true")
     parser.add_argument("filename",help="Include the PNG File to convert without the PNG Extension, i.e. art.png just pass art")
-
+    parser.add_argument("-el","--excludelist",nargs="*",type=str, default=[])
+    parser.add_argument("-ac","--alphacutoff",help="Cutoff Value for Alpha Byte (0-255), anything equal or below will be treated as fully transparent, above will be treated as fully opaque",type=int,default=254)
+    parser.add_argument("-db","--debug",help="Create a Debug Text File with Pixels identified",action="store_true", default=False)
+    parser.add_argument("-s","--sort",help="Sort the colours in order of most colour to least",action="store_true", default=False)
+    # First Mutually Excluded Group of Flags
+    group=parser.add_mutually_exclusive_group()
+    group.add_argument("-fl","--flat",help="Create a Single OBJ File with all colour information",action="store_true", default=True)
+    group.add_argument("--layered",help="Create a Multi Layer Set of files for each colour code",action="store_true",default=False)
     # Get arguments from the Command Line
     args=parser.parse_args()
 
@@ -676,12 +804,22 @@ if __name__ == "__main__":
     if args.mtl:
         CREATE_MTL_FILE = True
 
+    if args.flat:
+        Create_Layered_File = False
+    
+    if args.layered:
+        Create_Layered_File = True
+
+    ALPHACUTOFF = args.alphacutoff
+
+    Sort_Colours_Flag = args.sort
+
     WORKING_FILENAME = args.filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
-
-    # Does the user want to display the colour table and count?
-
-    print(f"Joints: {JOINTS_REQUIRED}, Material:{CREATE_MTL_FILE}")
+    
+    # Create the Material File if required.
+    if args.mtl:
+        CreateMasterMaterialFile(mtl_filename)
     
     # Attempt to Load the PNG to memory.
     if loadPNGToMemory() == False:
@@ -692,11 +830,15 @@ if __name__ == "__main__":
     print(f"    Image Information :")
     print("    -------------------\n")
     print(f"           Image File : {WORKING_FILENAME}")
-    print(f"       PNG Image Size : {pattern_w} (width), {pattern_h} (height)")
+    print(f"       PNG Image Size : {pattern_w}px (width), {pattern_h}px (height)")
     print(f"   Number of Channels : {channels}")
     print("")
     print(f"     Joints Requested : {JOINTS_REQUIRED}\n Create Material File : {CREATE_MTL_FILE}\n\n")
     
+    if args.excludelist:
+        print(f"Excluding the following colours: {args.excludelist}\n")
+        Colour_Exclusion_List = args.excludelist
+
     if args.listColours:
         displayColourInformation()
     else:

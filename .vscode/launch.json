@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--joints","--mtl","./Test/QRCodes/NathanSmithArtist.com"],
+            "args": ["-ac"," 128","--sort","--layered","-el","#ff0000","#fffff","--mtl","./Test/QRCodes/Dizzy"],
             "justMyCode": true
         }
     ]
