@@ -329,7 +329,8 @@ def create_primitive(primitive_x, primitive_y,
     if CREATE_MTL_FILE:
         mtl_string = "mtllib "+os.path.basename(mtl_filename) + "\n" + \
             f"usemtl {material_index}\n"
-    
+    mtl_string = "mtllib "+os.path.basename(mtl_filename) + "\n" + \
+            f"usemtl {material_index}\n"
     strFaces=f"g ACIS Pixel_{primitive_x}_{primitive_y}_F\n"
     for index in range(face_len):
         f1 = primitive_face[index][0] + Current_Face
@@ -669,7 +670,11 @@ def processFile(colourMatch, allowedDictionary):
                             if mi != pixel_found_colour_index:
                             #if mm not in allowedDictionary:
                                 if not checkNextPixelProcessingRules(allowedDictionary, mm):
-                                    fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                                    thisColour = pixel_found_colour_index
+                                    if Create_Layered_File:
+                                        thisColour = list(mtl_colour_dict).index(colourMatch)
+                                    #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                                    fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour) )
                                     primitive_width = 0
                                     Total_Primitives += 1
                                     pixel_found_colour_index = mi
@@ -689,7 +694,11 @@ def processFile(colourMatch, allowedDictionary):
                         #    primitive_x = start_x
 
                         if pixel_found:
-                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                            thisColour = pixel_found_colour_index
+                            if Create_Layered_File:
+                                thisColour = list(mtl_colour_dict).index(colourMatch)
+                            #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
+                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour) )
                             pixel_found = False
                             primitive_width = 0
                             Total_Primitives += 1
@@ -713,7 +722,11 @@ def processFile(colourMatch, allowedDictionary):
 
                 # Update to the next Y Postion and check if we have an unwritten primitive to complete
                 if pixel_found:
-                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, pixel_found_colour_index) )
+                    thisColour = pixel_found_colour_index
+                    if Create_Layered_File:
+                        thisColour = list(mtl_colour_dict).index(colourMatch)
+                    #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, pixel_found_colour_index) )
+                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, thisColour) )
                     pixel_found = False
                     primitive_width = 0
                     primitive_x = 0
