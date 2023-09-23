@@ -237,6 +237,10 @@ mtl_lib_filename = ""
 Colour_Exclusion_List = []
 
 #
+# Colour Process List
+#
+Colour_Process_Only_list = []
+#
 # Colours Require Sorting?
 #
 Sort_Colours_Flag = False
@@ -245,6 +249,12 @@ Sort_Colours_Flag = False
 # Which type of Object File to Create?
 #
 Create_Layered_File = False
+
+#
+# Direction to sort the colour list for processing
+#   False = Low to High, True = High to Low...
+#
+Sort_Direction = False
 
 #
 # Last coloured Pixel Found
@@ -384,7 +394,7 @@ def getPixelFromRow(x, row, channels, rowWidth):
     # Check to see if we already have this material.
     ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
 
-    if not ColourCode in mtl_colour_dict:
+    if not ColourCode in mtl_colour_dict: # and not ColourCode in Colour_Exclusion_List:
         mtl_colour_dict[ColourCode] = 0
         
         if CREATE_MTL_FILE == True:
@@ -450,6 +460,7 @@ def main():
     global Colour_Exclusion_List
     global Debug_Txt_File
     global Sort_Colours_Flag
+    global Sort_Direction
 
     # Create the Background Object File 
     # Flat Structure width and height of PNG Image.
@@ -465,13 +476,24 @@ def main():
        print("Failed to create Initial file: ",obj_file)
        exit(0)
 
-    # Set the Sorted Colours Dictionary to Default
-    SortedColours = mtl_colour_dict
+
+    ToSort = {}
+
+    if len(Colour_Process_Only_list) > 0:
+        SortedColours = list(Colour_Process_Only_list)
+        for x in range(0,len(Colour_Process_Only_list)):
+            ToSort[Colour_Process_Only_list[x]] = x
+    else:
+        # Set the Sorted Colours Dictionary to Default
+        ToSort = dict(mtl_colour_dict)
 
     # Check if we want to sort by Highest Colour Count First
     if Sort_Colours_Flag:
-        SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
-    
+        #SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=Sort_Direction)}
+        SortedColours = {key: val for key, val in sorted(ToSort.items(), key = lambda ele: ele[1], reverse=Sort_Direction)}
+    else:
+        SortedColours = dict(ToSort)
+
     # Remove Colours from Excluded List 
     for excluded in Colour_Exclusion_List:
         if excluded in SortedColours:
@@ -488,13 +510,20 @@ def main():
         while len(SortedColours) > 0:
             nextLayer = list(SortedColours.keys())[0]
             print(f"Processing Colour: {nextLayer}")
-            resp = processFile(nextLayer, SortedColours)
-            if resp == False:
-                print("Failed to process file:")
-                exit (0)
+            if nextLayer in mtl_colour_dict:
+                resp = processFile(nextLayer, SortedColours, Colour_Exclusion_List)
+                if resp == False:
+                    print("Failed to process file:")
+                    exit (0)
+            else:
+                print(f"Colour: {nextLayer} is not present, skipping...")
+            # Add colour to excluded list to avoid repeat processing
+            Colour_Exclusion_List+=[nextLayer]
             del SortedColours[nextLayer]
+
+
     else:
-        resp = processFile(list(SortedColours.keys())[0], SortedColours)
+        resp = processFile(list(SortedColours.keys())[0], SortedColours, Colour_Exclusion_List)
     
 
 
@@ -552,7 +581,7 @@ def displayColourInformation():
     print(f"\n               Found : {len(mtl_colour_dict)} Colours")
 
     
-def processFile(colourMatch, allowedDictionary):
+def processFile(colourMatch, allowedDictionary, excludedColours):
     global WORKING_FILENAME
     global Debug_Txt_File
     global CurrentZOffset
@@ -657,7 +686,7 @@ def processFile(colourMatch, allowedDictionary):
                     # if mi==colourIndex:
                     #if mm in allowedDictionary:
 
-                    if checkProcessingRules(allowedDictionary, mm):
+                    if checkProcessingRules(allowedDictionary, mm, excludedColours):
                         if Debug_Txt_File:
                             fp_txt.write("*")
 
@@ -760,11 +789,11 @@ def processFile(colourMatch, allowedDictionary):
 #
 # Check Processing Rule to Create Objects
 #
-def checkProcessingRules(allowedColours, currentColour):
+def checkProcessingRules(allowedColours, currentColour, excludedColours):
     global lastPixelFound
 
     if Create_Layered_File:
-        if currentColour in allowedColours:
+        if currentColour in allowedColours and currentColour not in excludedColours:
             lastPixelFound = currentColour
             return True
         return False
@@ -866,6 +895,8 @@ if __name__ == "__main__":
     parser.add_argument("-ac","--alphacutoff",help="Cutoff Value for Alpha Byte (0-255), anything equal or below will be treated as fully transparent, above will be treated as fully opaque",type=int,default=254)
     parser.add_argument("-db","--debug",help="Create a Debug Text File with Pixels identified",action="store_true", default=False)
     parser.add_argument("-s","--sort",help="Sort the colours in order of most colour to least",action="store_true", default=False)
+    parser.add_argument("-rs","--reversesort",help="Reverse the order of colours to process with most first",action="store_true",default=False)
+    parser.add_argument("-pc","--processcolours",help="Process this colour list only",nargs="*",type=str, default=[])
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
     group.add_argument("-fl","--flat",help="Create a Single OBJ File with all colour information",action="store_true", default=True)
@@ -891,6 +922,10 @@ if __name__ == "__main__":
 
     Sort_Colours_Flag = args.sort
 
+    # Ensure we're sorting if only one of the sort flags provided.
+    if args.reversesort:
+        Sort_Colours_Flag=True
+
     WORKING_FILENAME = args.filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
     
@@ -915,6 +950,12 @@ if __name__ == "__main__":
     if args.excludelist:
         print(f"Excluding the following colours: {args.excludelist}\n")
         Colour_Exclusion_List = args.excludelist
+
+    if args.processcolours:
+        print(f"Only Processing the following colours: {args.processcolours}")
+        Colour_Process_Only_list = args.processcolours
+
+    displayColourInformation()
 
     if args.listColours:
         displayColourInformation()

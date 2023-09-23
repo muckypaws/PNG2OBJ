@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["-el","#000000","--layered","-ac"," 128","--sort","--mtl","./Test/3dStarFighter/3dStarFighter"],
+            "args": ["-pc","#ff0000","#bdbdbd","#bd0000","#bdbf00","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque/CentralCavern"],
             "justMyCode": true
         }
     ]
