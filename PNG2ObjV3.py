@@ -44,11 +44,13 @@ from datetime import datetime
 #PATTERNS = "./"
 PATTERNS=""
 
+DEFAULT_PIXEL_WIDTH  = 4096
+DEFAULT_PIXEL_HEIGHT = 4096
+
 # Set Pixel Width and Height if Sprites are fixed width within the sheet, otherwise 
 # use a high number.
-Pixel_W = 1024
-Pixel_H = 1024
-
+Pixel_W = DEFAULT_PIXEL_WIDTH
+Pixel_H = DEFAULT_PIXEL_HEIGHT
 
 pattern = 0
 pattern_w = 0
@@ -74,9 +76,29 @@ CREATE_MTL_FILE = False
 # Define the Working Filename
 WORKING_FILENAME = ""
 
+# define the File Counter
+FILE_COUNTER = 0
+
 # Used to define the Current Face Counter
 # Needed to ensure Vertices are correctly defined.
 Current_Face = 0
+Current_Opposite_Face = 0
+
+#
+# The multiplier to use when creating the background object
+#
+Primitive_Multiplier_Background = 1.0
+
+#
+# The multiplier to use when creating the background object
+#
+Primitive_Multiplier_Layers = 1.0
+
+
+#
+# When processing colours, only on height above background object
+#
+ColoursOnSingleLayerHeight = False
 
 # Basic Definition of cube with 24 Vertices (4 Sets of Co-Ords per face)
 #cube_vertices = (   [  0.000000, 10.000000, 10.000000],
@@ -95,7 +117,7 @@ Current_Face = 0
 #                    [  0.000000, 10.000000, 10.000000],
 #                    [  0.000000, 10.000000,  0.000000],
 #                    [  0.000000,  0.000000,  0.000000],
-#                    [ 10.000000, 10.000000, 10.000000],
+#                   [ 10.000000, 10.000000, 10.000000],
 #                    [  0.000000, 10.000000, 10.000000],
 #                    [  0.000000,  0.000000, 10.000000],
 #                    [ 10.000000,  0.000000, 10.000000],
@@ -104,70 +126,127 @@ Current_Face = 0
 #                    [ 10.000000, 10.000000,  0.000000],
 #                    [ 10.000000,  0.000000,  0.000000])
 
-cube_vertices = (   [  0.000000,  0.000000,  10.000000],
-                    [ 10.000000,  0.000000,  10.000000],
-                    [ 10.000000,  0.000000,   0.000000],
-                    [  0.000000,  0.000000,   0.000000],
-                    [ 10.000000,  0.000000,  10.000000],
-                    [ 10.000000,  10.000000, 10.000000],
-                    [ 10.000000,  10.000000,  0.000000],
-                    [ 10.000000,  0.000000,   0.000000],
-                    [ 10.000000,  10.000000, 10.000000],
-                    [  0.000000,  10.000000, 10.000000],
-                    [  0.000000,  10.000000,  0.000000],
-                    [ 10.000000,  10.000000,  0.000000],
-                    [  0.000000,  10.000000, 10.000000],
-                    [  0.000000,  0.000000,  10.000000],
-                    [  0.000000,  0.000000,   0.000000],
-                    [  0.000000,  10.000000,  0.000000],
-                    [ 10.000000,  0.000000,  10.000000],
-                    [  0.000000,  0.000000,  10.000000],
-                    [  0.000000,  10.000000, 10.000000],
-                    [ 10.000000,  10.000000, 10.000000],
-                    [  0.000000,  10.000000,  0.000000],
-                    [  0.000000,  0.000000,   0.000000],
-                    [ 10.000000,  0.000000,   0.000000],
-                    [ 10.000000,  10.000000,  0.000000])
+#cube_vertices = (   [  0.000000,  0.000000,  10.000000],
+#                    [ 10.000000,  0.000000,  10.000000],
+#                    [ 10.000000,  0.000000,   0.000000],
+#                    [  0.000000,  0.000000,   0.000000],
+#                    [ 10.000000,  0.000000,  10.000000],
+#                    [ 10.000000,  10.000000, 10.000000],
+#                    [ 10.000000,  10.000000,  0.000000],
+#                    [ 10.000000,  0.000000,   0.000000],
+#                    [ 10.000000,  10.000000, 10.000000],
+#                    [  0.000000,  10.000000, 10.000000],
+#                    [  0.000000,  10.000000,  0.000000],
+#                    [ 10.000000,  10.000000,  0.000000],
+#                    [  0.000000,  10.000000, 10.000000],
+#                    [  0.000000,  0.000000,  10.000000],
+#                    [  0.000000,  0.000000,   0.000000],
+#                    [  0.000000,  10.000000,  0.000000],
+#                    [ 10.000000,  0.000000,  10.000000],
+#                    [  0.000000,  0.000000,  10.000000],
+#                    [  0.000000,  10.000000, 10.000000],
+#                    [ 10.000000,  10.000000, 10.000000],
+#                    [  0.000000,  10.000000,  0.000000],
+#                    [  0.000000,  0.000000,   0.000000],
+#                    [ 10.000000,  0.000000,   0.000000],
+#                    [ 10.000000,  10.000000,  0.000000])
 
-cube_normals = (    [0.000000,  1.000000,  0.000000],
-                    [0.000000,  1.000000,  0.000000],
-                    [0.000000,  1.000000,  0.000000],
-                    [0.000000,  1.000000,  0.000000],
-                    [1.000000,  0.000000,  0.000000],
-                    [1.000000,  0.000000,  0.000000],
-                    [1.000000,  0.000000,  0.000000],
-                    [1.000000,  0.000000,  0.000000],
-                    [0.000000, -1.000000,  0.000000],
-                    [0.000000, -1.000000,  0.000000],
-                    [0.000000, -1.000000,  0.000000],
-                    [0.000000, -1.000000,  0.000000],
-                    [-1.000000, 0.000000,  0.000000],
-                    [-1.000000, 0.000000,  0.000000],
-                    [-1.000000, 0.000000,  0.000000],
-                    [-1.000000, 0.000000,  0.000000],
-                    [0.000000,  0.000000,  1.000000],
-                    [0.000000,  0.000000,  1.000000],
-                    [0.000000,  0.000000,  1.000000],
-                    [0.000000,  0.000000,  1.000000],
-                    [0.000000,  0.000000, -1.000000],
-                    [0.000000,  0.000000, -1.000000],
-                    [0.000000,  0.000000, -1.000000],
-                    [0.000000,  0.000000, -1.000000])
+cube_vertices = (   [ 0.000000 , 10.000000,  0.000000],
+                    [ 10.000000, 10.000000, 10.000000],
+                    [ 10.000000, 10.000000,  0.000000],
+                    [ 10.000000,  0.000000,  0.000000],
+                    [ 0.000000 ,  0.000000, 10.000000],
+                    [ 0.000000 , 10.000000, 10.000000],
+                    [ 10.000000,  0.000000, 10.000000],
+                    [ 0.000000 ,  0.000000,  0.000000]
+)
+#cube_normals = (    [0.000000,  1.000000,  0.000000],
+#                    [0.000000,  1.000000,  0.000000],
+#                    [0.000000,  1.000000,  0.000000],
+#                    [0.000000,  1.000000,  0.000000],
+#                    [1.000000,  0.000000,  0.000000],
+#                    [1.000000,  0.000000,  0.000000],
+#                    [1.000000,  0.000000,  0.000000],
+#                    [1.000000,  0.000000,  0.000000],
+#                    [0.000000, -1.000000,  0.000000],
+#                    [0.000000, -1.000000,  0.000000],
+#                    [0.000000, -1.000000,  0.000000],
+#                    [0.000000, -1.000000,  0.000000],
+#                    [-1.000000, 0.000000,  0.000000],
+#                    [-1.000000, 0.000000,  0.000000],
+#                    [-1.000000, 0.000000,  0.000000],
+#                    [-1.000000, 0.000000,  0.000000],
+#                    [0.000000,  0.000000,  1.000000],
+#                    [0.000000,  0.000000,  1.000000],
+#                    [0.000000,  0.000000,  1.000000],
+#                    [0.000000,  0.000000,  1.000000],
+#                    [0.000000,  0.000000, -1.000000],
+#                    [0.000000,  0.000000, -1.000000],
+#                    [0.000000,  0.000000, -1.000000],
+#                    [0.000000,  0.000000, -1.000000])
 
+cube_normals = (    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000])
 #Basic Definition of a Primitives connecting faces 
-cube_faces = (  [ 1,  2,  4],
-                [ 4,  2,  3],
-                [ 5,  6,  8],
-                [ 8,  6,  7],
-                [ 9, 10, 12],
-                [12, 10, 11],
-                [13, 14, 16],
-                [16, 14, 15],
-                [17, 18, 20],
-                [20, 18, 19],
-                [22, 23, 21],
-                [21, 23, 24])
-
+#cube_faces = (  [ 1,  2,  4],
+#                [ 4,  2,  3],
+#                [ 5,  6,  8],
+#                [ 8,  6,  7],
+#                [ 9, 10, 12],
+#                [12, 10, 11],
+#                [13, 14, 16],
+#                [16, 14, 15],
+#                [17, 18, 20],
+#                [20, 18, 19],
+#                [22, 23, 21],
+#                [21, 23, 24])
+cube_faces = (  [ 6, 2, 1],
+                [ 1, 2, 3],
+                [ 2, 7, 3],
+                [ 3, 7, 4],
+                [ 7, 5, 4],
+                [ 4, 5, 8],
+                [ 5, 6, 8],
+                [ 8, 6, 1],
+                [ 2, 6, 7],
+                [ 7, 6, 5],
+                [ 1, 3, 8],
+                [ 8, 3, 4]
+              )
 
 # Basic Definition for a Jointer Cube Where Pixels are connected by Corners Only
 # This is needed if there's no overlap on your printer and want to ensure a 
@@ -280,9 +359,11 @@ def create_primitive(primitive_x, primitive_y,
                      width, height, 
                      primitive_vert, 
                      primitive_face, 
-                     jointFlag, material_index):
+                     jointFlag, material_index,
+                     primitive_y_multiplier=1.0):
     
     global Current_Face
+    global Current_Opposite_Face
     global CurrentZOffset
 
     strVertices = f"o Pixel_{primitive_x}_{primitive_y}\n"
@@ -308,7 +389,11 @@ def create_primitive(primitive_x, primitive_y,
         v2 = primitive_vert[index][1]
         v3 = primitive_vert[index][2]
 
-        v3 += CurrentZOffset
+        if v3 != 0.0 and primitive_y_multiplier != 1.0:
+            v4 = primitive_y_multiplier * v3
+            v3 = v4 + CurrentZOffset
+        else:
+            v3 += CurrentZOffset
 
         # Yeah, quick and dirty, I need to think this through
         if not jointFlag:
@@ -347,14 +432,16 @@ def create_primitive(primitive_x, primitive_y,
         f2 = primitive_face[index][1] + Current_Face
         f3 = primitive_face[index][2] + Current_Face
 
-        strFaces = strFaces + "f " + f"{f1}//{f1} {f2}//{f2} {f3}//{f3}\n"
+        #strFaces = strFaces + "f " + f"{f1}//{f1} {f2}//{f2} {f3}//{f3}\n"
+        strFaces = strFaces + "f " + f"{f1}//{(index*3)+1+ Current_Opposite_Face} {f2}//{(index*3)+2+ Current_Opposite_Face} {f3}//{(index*3)+3+ Current_Opposite_Face}\n"
 
     Primitive_String = strVertices + strNormals + mtl_string + strFaces + "# "+str(face_len)+" Faces\n\n"
 
 
     # update face Index Counter to next set 
-    Current_Face = Current_Face + (face_len * 2)
-
+    #Current_Face += (face_len * 2)
+    Current_Face += 8
+    Current_Opposite_Face += (len(cube_normals))
     return Primitive_String
 
 #
@@ -461,6 +548,10 @@ def main():
     global Debug_Txt_File
     global Sort_Colours_Flag
     global Sort_Direction
+    global FILE_COUNTER
+    global Primitive_Multiplier_Background
+    global Primitive_Multiplier_Layers
+    global CurrentZOffset
 
     # Create the Background Object File 
     # Flat Structure width and height of PNG Image.
@@ -468,9 +559,11 @@ def main():
     try:
         # TODO: Add some error checking here, rather than rely on TRY/CATCH Scenarios.
         with open(obj_file,'w') as fp_obj:
-            fp_obj.write(create_primitive(0, 0, pattern_w, pattern_h, cube_vertices, joint_faces, 0, 0))
+            fp_obj.write(create_primitive(0, 0, pattern_w, pattern_h, cube_vertices, cube_faces, 0, 0, Primitive_Multiplier_Background))
             fp_obj.flush()
             fp_obj.close()
+            # Update Current Offset with multiplier requested
+            CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background)) # Shift Vertices Up a Layer...
     except:
     # Bad Practice I know...
        print("Failed to create Initial file: ",obj_file)
@@ -506,12 +599,20 @@ def main():
     print(f"       Found : {len(mtl_colour_dict)} Colours")
     print(f"Working with : {len(SortedColours)} Colours\n")
 
+    FILE_COUNTER +=1
+
     if Create_Layered_File:
         while len(SortedColours) > 0:
             nextLayer = list(SortedColours.keys())[0]
             print(f"Processing Colour: {nextLayer}")
+
+
             if nextLayer in mtl_colour_dict:
-                resp = processFile(nextLayer, SortedColours, Colour_Exclusion_List)
+                if ColoursOnSingleLayerHeight:
+                    resp = processFile(nextLayer, nextLayer, Colour_Exclusion_List, Primitive_Multiplier_Layers)
+                else:
+                    resp = processFile(nextLayer, SortedColours, Colour_Exclusion_List, Primitive_Multiplier_Layers)
+                
                 if resp == False:
                     print("Failed to process file:")
                     exit (0)
@@ -520,14 +621,15 @@ def main():
             # Add colour to excluded list to avoid repeat processing
             Colour_Exclusion_List+=[nextLayer]
             del SortedColours[nextLayer]
-
-
     else:
         resp = processFile(list(SortedColours.keys())[0], SortedColours, Colour_Exclusion_List)
     
 
 
-
+#
+# Load PNG File to Memory and perform some initial processing
+#   Check number of Channels, is Alpha Available, discover all colours in image
+#
 def loadPNGToMemory():
     global WORKING_FILENAME
     # Load the PNG File, Check if Valid
@@ -581,17 +683,19 @@ def displayColourInformation():
     print(f"\n               Found : {len(mtl_colour_dict)} Colours")
 
     
-def processFile(colourMatch, allowedDictionary, excludedColours):
+def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_multiplier=1.0):
     global WORKING_FILENAME
     global Debug_Txt_File
     global CurrentZOffset
-
-    CurrentZOffset += 10.0      # Shift Vertices Up a Layer...
-
+    global Primitive_Multiplier_Layers
+ 
     # Used to define the Current Face Counter
     # Needed to ensure Vertices are correctly defined.
     global Current_Face
+    global Current_Opposite_Face
+    
     Current_Face = 0
+    Current_Opposite_Face = 0
 
     # Total Number of Primitives Created
     Total_Primitives = 0
@@ -600,18 +704,21 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
     r, g, b, a = 0, 0, 0, 255
 
     global mtl_filename
+    global FILE_COUNTER
+
+    global lastPixelFound
 
     # Define output Filenames based on Input, creating 
     #   an  OBJ file with 3D Mesh Details
     #       TXT file with pixel data as seen
 
     if Create_Layered_File:
-        obj_file = os.path.join(PATTERNS, "{}{}.obj".format(WORKING_FILENAME,str(colourMatch)))
+        obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
     else:
-        obj_file = os.path.join(PATTERNS, "{}.obj".format(WORKING_FILENAME))
+        obj_file = os.path.join(PATTERNS, "{}_Y{}.obj".format(WORKING_FILENAME,FILE_COUNTER))
 
     if Debug_Txt_File:
-        txt_file = os.path.join(PATTERNS, "{}{}.txt".format(WORKING_FILENAME,str(colourMatch)))
+        txt_file = os.path.join(PATTERNS, "{}_Y{}{}.txt".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
 
     # If we're adding Jointer Blocks this will be required.
     LastRow = False
@@ -669,6 +776,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
                 pixel_found_colour_index = 0
                 primitive_width = 0
                 primitive_x = 0
+                lastPixelFound = -1
 
                 for x in range(pattern_w):
                     # Check if We're Adding extra space between each sprite based
@@ -676,7 +784,20 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
                     if x > 0 and not(x % Pixel_W):
                         if Debug_Txt_File:
                             fp_txt.write("|")
+
+                        # Close off this sprite.
+                        if pixel_found:
+                            thisColour = pixel_found_colour_index
+                            if Create_Layered_File:
+                                thisColour = list(mtl_colour_dict).index(colourMatch)
+                            pixel_found = False
+                            fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, thisColour, primitive_y_multiplier) )
+                            Total_Primitives += 1
+                        # Reset Start Position of next Sprite 
                         start_x=start_x+1
+                        primitive_width = 0
+                        primitive_x = start_x
+                        lastPixelFound = -1
 
                     # Get Pixel from Row
                     pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
@@ -703,7 +824,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
                                     if Create_Layered_File:
                                         thisColour = list(mtl_colour_dict).index(colourMatch)
                                     #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
-                                    fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour) )
+                                    #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier, Primitive_Multiplier_Layers) )
+                                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier))
                                     primitive_width = 0
                                     Total_Primitives += 1
                                     pixel_found_colour_index = mi
@@ -713,21 +835,13 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
                         primitive_width = primitive_width + 1
 
                     else:
-                        #if mm != "#000000":
-                           # print("Here")
-                        #if not checkNextPixelProcessingRules(allowedDictionary, mm):
-                        #    fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
-                        #    primitive_width = 0
-                        #    Total_Primitives += 1
-                        #    pixel_found_colour_index = mi
-                        #    primitive_x = start_x
 
                         if pixel_found:
                             thisColour = pixel_found_colour_index
                             if Create_Layered_File:
                                 thisColour = list(mtl_colour_dict).index(colourMatch)
                             #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
-                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour) )
+                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier) )
                             pixel_found = False
                             primitive_width = 0
                             Total_Primitives += 1
@@ -741,7 +855,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
                         newJoint = CheckJointRequired(x,row, nextRow, channels, pattern_w)
 
                         if newJoint:
-                            fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, newJoint, mi) )
+                            fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, newJoint, mi, primitive_y_multiplier) )
                             newJoint = False
 
 
@@ -754,8 +868,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
                     thisColour = pixel_found_colour_index
                     if Create_Layered_File:
                         thisColour = list(mtl_colour_dict).index(colourMatch)
-                    #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, pixel_found_colour_index) )
-                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, thisColour) )
+                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, thisColour, primitive_y_multiplier) )
                     pixel_found = False
                     primitive_width = 0
                     primitive_x = 0
@@ -765,7 +878,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
 
             # Write and Flush the Object File
             if primitive_width > 0:
-                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , 0) )
+                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , 0, primitive_y_multiplier) )
 
             fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
 
@@ -776,6 +889,14 @@ def processFile(colourMatch, allowedDictionary, excludedColours):
        print("Failed to write file: ",obj_file)
        return False
     
+
+    # Update Current Offset with multiplier requested
+
+    if not ColoursOnSingleLayerHeight:
+        #CurrentZOffset = (abs(CUBE_Y*primitive_y_multiplier)) # Shift Vertices Up a Layer...    
+    #else:
+        CurrentZOffset += (abs(CUBE_Y*primitive_y_multiplier)) # Shift Vertices Up a Layer...
+
     # Write and Flush the TXT File
     if Debug_Txt_File:
         fp_txt.write('\n')
@@ -897,6 +1018,12 @@ if __name__ == "__main__":
     parser.add_argument("-s","--sort",help="Sort the colours in order of most colour to least",action="store_true", default=False)
     parser.add_argument("-rs","--reversesort",help="Reverse the order of colours to process with most first",action="store_true",default=False)
     parser.add_argument("-pc","--processcolours",help="Process this colour list only",nargs="*",type=str, default=[])
+    parser.add_argument("-bgh","--backgroundheight",help="Height multiplier for the initial background.  Default = 1.0",type=float, default=1.0)
+    parser.add_argument("-lm","--layermultiplier",help="The Layer Multiplier to use, default 1.0",type=float,default=1.0)
+    parser.add_argument("-nl","--nextlayeronly",help="Process none background colours on next height only",action="store_true", default=False)
+    parser.add_argument("-sw","--spriteWidth",help="Width of Fixed Sprites in Sprite Sheet",type=int,default=DEFAULT_PIXEL_WIDTH)
+    parser.add_argument("-sh","--spriteHeight",help="Height of Fixed Sprites in a Sprite Sheet",type=int,default=DEFAULT_PIXEL_HEIGHT)
+    
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
     group.add_argument("-fl","--flat",help="Create a Single OBJ File with all colour information",action="store_true", default=True)
@@ -922,6 +1049,9 @@ if __name__ == "__main__":
 
     Sort_Colours_Flag = args.sort
 
+    Primitive_Multiplier_Background = args.backgroundheight
+    Primitive_Multiplier_Layers = args.layermultiplier
+
     # Ensure we're sorting if only one of the sort flags provided.
     if args.reversesort:
         Sort_Colours_Flag=True
@@ -932,7 +1062,23 @@ if __name__ == "__main__":
     # Create the Material File if required.
     if args.mtl:
         CreateMasterMaterialFile(mtl_filename)
-    
+
+    if args.excludelist:
+        print(f"Excluding the following colours: {args.excludelist}\n")
+        Colour_Exclusion_List = args.excludelist
+
+    if args.processcolours:
+        print(f"Only Processing the following colours: {args.processcolours}")
+        Colour_Process_Only_list = args.processcolours
+
+    Debug_Txt_File = args.debug
+
+    Pixel_W = args.spriteWidth
+    Pixel_H = args.spriteHeight
+
+
+    ColoursOnSingleLayerHeight = args.nextlayeronly
+
     # Attempt to Load the PNG to memory.
     if loadPNGToMemory() == False:
         print(f"Unable to open file: {WORKING_FILENAME}")
@@ -945,15 +1091,30 @@ if __name__ == "__main__":
     print(f"       PNG Image Size : {pattern_w}px (width), {pattern_h}px (height)")
     print(f"   Number of Channels : {channels}")
     print("")
-    print(f"     Joints Requested : {JOINTS_REQUIRED}\n Create Material File : {CREATE_MTL_FILE}\n\n")
-    
-    if args.excludelist:
-        print(f"Excluding the following colours: {args.excludelist}\n")
-        Colour_Exclusion_List = args.excludelist
+    print(f"     Joints Requested : {JOINTS_REQUIRED}\n Create Material File : {CREATE_MTL_FILE}")
+    print(f" Reverse Sort Colours : {Sort_Colours_Flag}")
+    print(f"Create Flat File Only : {not Create_Layered_File}" )
+    print(f"         Alpha Cutoff : {ALPHACUTOFF}")
+    print(f"Background Multiplier : {Primitive_Multiplier_Background}")
+    print(f"     Layer Multiplier : {Primitive_Multiplier_Layers}")
 
-    if args.processcolours:
-        print(f"Only Processing the following colours: {args.processcolours}")
-        Colour_Process_Only_list = args.processcolours
+    if Pixel_W != DEFAULT_PIXEL_WIDTH:
+        print(f"   Sprite Sheet Width : {Pixel_W}")
+    if Pixel_H != DEFAULT_PIXEL_HEIGHT:    
+        print(f"  Sprite Sheet Height : {Pixel_H}")
+
+    if Debug_Txt_File:
+        print(f"\n      Debug Text File : {Debug_Txt_File}\n")
+
+    if ColoursOnSingleLayerHeight:
+        print(f"\n **** Seperate Colours On Single Layer Selected ****")
+
+    if len(Colour_Exclusion_List) > 0:
+        print(f"Colour list to exclude: {Colour_Exclusion_List}")
+    if len(Colour_Process_Only_list) > 0:
+        print(f"   Colours to process : {Colour_Process_Only_list}")
+
+    print("\n")
 
     displayColourInformation()
 

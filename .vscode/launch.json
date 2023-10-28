@@ -11,7 +11,25 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["-pc","#ff0000","#bdbdbd","#bd0000","#bdbf00","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque/CentralCavern"],
+            //"args": ["-pc","#ff0000","#ffff00","-bgh","2.0","-lm","2.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#858600","#0000c0","-bgh","2.0","-lm","2.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#858600","#7aeeef","-bgh","2.0","-lm","2.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#00ff00","-bgh","2.0","-lm","2.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#00bf00","-bgh","2.0","-lm","3.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#ffffff","-bgh","2.0","-lm","3.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#00ffff","-bgh","2.0","-lm","4.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#bf00bf","-bgh","2.0","-lm","4.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-pc","#acaf35","-bgh","2.0","-lm","4.0","--layered","--sort","--reversesort","--mtl","./Test/MMPlaque2/CentralCavern2"],
+            //"args": ["-bgh","3.0","-lm","4.0","--sort","--reversesort","--mtl","-nl","--layered","./Test/MM40/MM40Edition-assets/Layer1"],
+            //"args": ["-bgh","3.0","-lm","2.0","--sort","--reversesort","--mtl","-nl","--layered","./Test/MM40/MM40Edition-assets/Layer2"],
+            //"args": ["-bgh","3.0","-lm","4.0","--sort","--reversesort","--mtl","-nl","--layered","./Test/MM40/MM40Edition-assets/Layer3"],
+            //"args": ["-bgh","3.0","-lm","3.0","--sort","-el","#000000","--mtl","--layered","./Test/MM40/MM40Edition-assets/Layer5"],
+            //"args": ["-bgh","7.0","-lm","2.0","--sort","-el","#000000","--mtl","--layered","-nl","./Test/MM40/MM40Edition-assets/Layer6"],
+            //"args": ["-el","#000000","--mtl","./Test/ManicMinor/MinorWilly"],
+            //"args": ["-el","#000000","--mtl","-nl","--layered","./Test/Darren/joust_4Colour"],
+            //"args": ["-el","#000000","-bgh","2.0","-lm","2.0","--mtl","./Test/MMBlock/Block"],
+            "args": ["-el","#000000","-bgh","2.0","-lm","2.0","--mtl","--debug","./2023/MMSprites"],
+            
             "justMyCode": true
         }
     ]
