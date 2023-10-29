@@ -100,56 +100,7 @@ Primitive_Multiplier_Layers = 1.0
 #
 ColoursOnSingleLayerHeight = False
 
-# Basic Definition of cube with 24 Vertices (4 Sets of Co-Ords per face)
-#cube_vertices = (   [  0.000000, 10.000000, 10.000000],
-#                    [ 10.000000, 10.000000, 10.000000],
-#                    [ 10.000000, 10.000000,  0.000000],
-#                    [  0.000000, 10.000000,  0.000000],
-#                    [ 10.000000, 10.000000, 10.000000],
-#                    [ 10.000000,  0.000000, 10.000000],
-#                    [ 10.000000,  0.000000,  0.000000],
-#                    [ 10.000000, 10.000000,  0.000000],
-#                    [ 10.000000,  0.000000, 10.000000],
-#                    [  0.000000,  0.000000, 10.000000],
-#                    [  0.000000,  0.000000,  0.000000],
-#                    [ 10.000000,  0.000000,  0.000000],
-#                    [  0.000000,  0.000000, 10.000000],
-#                    [  0.000000, 10.000000, 10.000000],
-#                    [  0.000000, 10.000000,  0.000000],
-#                    [  0.000000,  0.000000,  0.000000],
-#                   [ 10.000000, 10.000000, 10.000000],
-#                    [  0.000000, 10.000000, 10.000000],
-#                    [  0.000000,  0.000000, 10.000000],
-#                    [ 10.000000,  0.000000, 10.000000],
-#                    [  0.000000,  0.000000,  0.000000],
-#                    [  0.000000, 10.000000,  0.000000],
-#                    [ 10.000000, 10.000000,  0.000000],
-#                    [ 10.000000,  0.000000,  0.000000])
-
-#cube_vertices = (   [  0.000000,  0.000000,  10.000000],
-#                    [ 10.000000,  0.000000,  10.000000],
-#                    [ 10.000000,  0.000000,   0.000000],
-#                    [  0.000000,  0.000000,   0.000000],
-#                    [ 10.000000,  0.000000,  10.000000],
-#                    [ 10.000000,  10.000000, 10.000000],
-#                    [ 10.000000,  10.000000,  0.000000],
-#                    [ 10.000000,  0.000000,   0.000000],
-#                    [ 10.000000,  10.000000, 10.000000],
-#                    [  0.000000,  10.000000, 10.000000],
-#                    [  0.000000,  10.000000,  0.000000],
-#                    [ 10.000000,  10.000000,  0.000000],
-#                    [  0.000000,  10.000000, 10.000000],
-#                    [  0.000000,  0.000000,  10.000000],
-#                    [  0.000000,  0.000000,   0.000000],
-#                    [  0.000000,  10.000000,  0.000000],
-#                    [ 10.000000,  0.000000,  10.000000],
-#                    [  0.000000,  0.000000,  10.000000],
-#                    [  0.000000,  10.000000, 10.000000],
-#                    [ 10.000000,  10.000000, 10.000000],
-#                    [  0.000000,  10.000000,  0.000000],
-#                    [  0.000000,  0.000000,   0.000000],
-#                    [ 10.000000,  0.000000,   0.000000],
-#                    [ 10.000000,  10.000000,  0.000000])
+# Basic Definition of cube with 8 Vertices (4 Sets of Co-Ords per face)
 
 cube_vertices = (   [ 0.000000 , 10.000000,  0.000000],
                     [ 10.000000, 10.000000, 10.000000],
@@ -160,30 +111,6 @@ cube_vertices = (   [ 0.000000 , 10.000000,  0.000000],
                     [ 10.000000,  0.000000, 10.000000],
                     [ 0.000000 ,  0.000000,  0.000000]
 )
-#cube_normals = (    [0.000000,  1.000000,  0.000000],
-#                    [0.000000,  1.000000,  0.000000],
-#                    [0.000000,  1.000000,  0.000000],
-#                    [0.000000,  1.000000,  0.000000],
-#                    [1.000000,  0.000000,  0.000000],
-#                    [1.000000,  0.000000,  0.000000],
-#                    [1.000000,  0.000000,  0.000000],
-#                    [1.000000,  0.000000,  0.000000],
-#                    [0.000000, -1.000000,  0.000000],
-#                    [0.000000, -1.000000,  0.000000],
-#                    [0.000000, -1.000000,  0.000000],
-#                    [0.000000, -1.000000,  0.000000],
-#                    [-1.000000, 0.000000,  0.000000],
-#                    [-1.000000, 0.000000,  0.000000],
-#                    [-1.000000, 0.000000,  0.000000],
-#                    [-1.000000, 0.000000,  0.000000],
-#                    [0.000000,  0.000000,  1.000000],
-#                    [0.000000,  0.000000,  1.000000],
-#                    [0.000000,  0.000000,  1.000000],
-#                    [0.000000,  0.000000,  1.000000],
-#                    [0.000000,  0.000000, -1.000000],
-#                    [0.000000,  0.000000, -1.000000],
-#                    [0.000000,  0.000000, -1.000000],
-#                    [0.000000,  0.000000, -1.000000])
 
 cube_normals = (    [  0.000000,  1.000000,  0.000000],
                     [  0.000000,  1.000000,  0.000000],
@@ -221,19 +148,9 @@ cube_normals = (    [  0.000000,  1.000000,  0.000000],
                     [  0.000000,  0.000000, -1.000000],
                     [  0.000000,  0.000000, -1.000000],
                     [  0.000000,  0.000000, -1.000000])
-#Basic Definition of a Primitives connecting faces 
-#cube_faces = (  [ 1,  2,  4],
-#                [ 4,  2,  3],
-#                [ 5,  6,  8],
-#                [ 8,  6,  7],
-#                [ 9, 10, 12],
-#                [12, 10, 11],
-#                [13, 14, 16],
-#                [16, 14, 15],
-#                [17, 18, 20],
-#                [20, 18, 19],
-#                [22, 23, 21],
-#                [21, 23, 24])
+
+# Basic Definition of a Primitives connecting faces 
+
 cube_faces = (  [ 6, 2, 1],
                 [ 1, 2, 3],
                 [ 2, 7, 3],
@@ -252,45 +169,52 @@ cube_faces = (  [ 6, 2, 1],
 # This is needed if there's no overlap on your printer and want to ensure a 
 # a connection that should lift off the printer.
 
-joint_verticies = ( [  7.171573,  0.000000, 7.000000],
-                    [ 10.000000,  2.828427, 7.000000],
-                    [ 10.000000,  2.828427, 3.000000],
-                    [  7.171573,  0.000000, 3.000000],
-                    [ 10.000000,  2.828427, 7.000000],
-                    [ 12.828427, -0.000000, 7.000000],
-                    [ 12.828427, -0.000000, 3.000000],
-                    [ 10.000000,  2.828427, 3.000000],
-                    [ 12.828427, -0.000000, 7.000000],
-                    [ 10.000000, -2.828427, 7.000000],
-                    [ 10.000000, -2.828427, 3.000000],
-                    [ 12.828427, -0.000000, 3.000000],
-                    [ 10.000000, -2.828427, 7.000000],
-                    [  7.171573,  0.000000, 7.000000],
-                    [  7.171573,  0.000000, 3.000000],
-                    [ 10.000000, -2.828427, 3.000000],
-                    [ 10.000000,  2.828427, 7.000000],
-                    [  7.171573,  0.000000, 7.000000],
-                    [ 10.000000, -2.828427, 7.000000],
-                    [ 12.828427, -0.000000, 7.000000],
-                    [ 10.000000, -2.828427, 3.000000],
-                    [  7.171573,  0.000000, 3.000000],
-                    [ 10.000000,  2.828427, 3.000000],
-                    [ 12.828427, -0.000000, 3.000000])
 
-joint_faces = ( [  1,  2,  4],
-                [  4,  2,  3],
-                [  5,  6,  8],
-                [  8,  6,  7],
-                [  9, 10, 12],
-                [ 12, 10, 11],
-                [ 13, 14, 16],
-                [ 16, 14, 15],
-                [ 17, 18, 20],
-                [ 20, 18, 19],
-                [ 21, 22, 24],
-                [ 24, 22, 23])
+joint_verticies = ( [ -1.414213, -0.000000,  0.000000],
+                    [ -1.414213, -0.000000, 10.000000],
+                    [  0.000000, -0.000000,  0.000000],
+                    [  0.000000, -0.000000, 10.000000],
+                    [  0.000000,  1.414214, 10.000000],
+                    [  0.000000,  1.414214,  0.000000],
+                    [  1.414213, -0.000000,  0.000000],
+                    [  0.000000, -1.414214,  0.000000],
+                    [  0.000000, -1.414214, 10.000000],
+                    [  1.414213, -0.000000, 10.000000])
 
-#
+
+
+
+joint_normals = (   [ -1.110721,  0.460076, -0.785398],
+                    [ -1.110721,  0.460075,  0.785398],
+                    [  0.000000, -0.000000, -3.141593],
+                    [  0.000000,  0.000000,  3.141593],
+                    [ -0.460075,  1.110720,  0.785398],
+                    [ -0.460075,  1.110721, -0.785398],
+                    [  1.110721, -0.460076, -0.785398],
+                    [  0.460075, -1.110721, -0.785398],
+                    [  0.460075, -1.110720,  0.785398],
+                    [  1.110721, -0.460075,  0.785398])
+
+
+joint_faces = ( [1, 2, 3],
+                [3, 2, 4],
+                [5, 6, 4],
+                [4, 6, 3],
+                [3, 6, 7],
+                [1, 3, 8],
+                [4, 2, 9],
+                [5, 4, 10],
+                [7, 10, 3],
+                [3, 10, 4],
+                [9, 8, 4],
+                [4, 8, 3],
+                [2, 1, 9],
+                [9, 1, 8],
+                [10, 7 , 5],
+                [5, 7, 6])
+
+
+
 # Define the default Parameters for each new Material
 #   See: https://www.loc.gov/preservation/digital/formats/fdd/fdd000508.shtml
 #
@@ -358,13 +282,17 @@ def update_vert(val,r1,r2):
 def create_primitive(primitive_x, primitive_y, 
                      width, height, 
                      primitive_vert, 
-                     primitive_face, 
+                     primitive_face,
+                     primitive_normals, 
                      jointFlag, material_index,
                      primitive_y_multiplier=1.0):
     
     global Current_Face
     global Current_Opposite_Face
     global CurrentZOffset
+
+  #  if not jointFlag:
+  #      return ""
 
     strVertices = f"o Pixel_{primitive_x}_{primitive_y}\n"
     strFaces = ""
@@ -400,8 +328,9 @@ def create_primitive(primitive_x, primitive_y,
             v1 = update_vert(v1, rx, rx2)
             v2 = update_vert(v2, ry, ry2)
         else:
-            v1 = v1 + rx
-            v2 = v2 + ry
+            # Invert Jointer Piece Depending on Direction set
+            v1 = (jointFlag * v1) + rx + CUBE_X
+            v2 = v2 + ry 
 
         strVertices = strVertices + "v " + str(myFormatter.format(v1)) + " " + str(myFormatter.format(v2)) + " " + str(myFormatter.format(v3)) + "\n"
 
@@ -409,13 +338,13 @@ def create_primitive(primitive_x, primitive_y,
 
     strNormals = ""
     # Bit of a Bodge... 
-    for index in range(len(cube_normals)):
-        n1 = cube_normals[index][0]
-        n2 = cube_normals[index][1]
-        n3 = cube_normals[index][2]
+    for index in range(len(primitive_normals)):
+        n1 = primitive_normals[index][0]
+        n2 = primitive_normals[index][1]
+        n3 = primitive_normals[index][2]
         strNormals = strNormals + "vn " + str(myFormatter.format(n1)) + " " + str(myFormatter.format(n2)) + " " + str(myFormatter.format(n3)) + "\n"
     
-    strNormals = strNormals + "# "+str(len(cube_normals))+f" Normals\n"
+    strNormals = strNormals + "# "+str(len(primitive_normals))+f" Normals\n"
 
 
     #strFaces = "# "+str(vert_len)+f" Vertices\ng Pixel_{primitive_x}_{primitive_y}_F\n"
@@ -433,15 +362,19 @@ def create_primitive(primitive_x, primitive_y,
         f3 = primitive_face[index][2] + Current_Face
 
         #strFaces = strFaces + "f " + f"{f1}//{f1} {f2}//{f2} {f3}//{f3}\n"
-        strFaces = strFaces + "f " + f"{f1}//{(index*3)+1+ Current_Opposite_Face} {f2}//{(index*3)+2+ Current_Opposite_Face} {f3}//{(index*3)+3+ Current_Opposite_Face}\n"
+        if jointFlag:
+            strFaces = strFaces + "f " + f"{f1}//{Current_Opposite_Face + f1} {f2}//{Current_Opposite_Face + f2} {f3}//{Current_Opposite_Face + f3}\n"
+        else:
+            strFaces = strFaces + "f " + f"{f1}//{(index*3)+1+ Current_Opposite_Face} {f2}//{(index*3)+2+ Current_Opposite_Face} {f3}//{(index*3)+3+ Current_Opposite_Face}\n"
 
     Primitive_String = strVertices + strNormals + mtl_string + strFaces + "# "+str(face_len)+" Faces\n\n"
 
 
     # update face Index Counter to next set 
     #Current_Face += (face_len * 2)
-    Current_Face += 8
-    Current_Opposite_Face += (len(cube_normals))
+    #Current_Face += 8
+    Current_Face += len(primitive_vert)
+    Current_Opposite_Face += (len(primitive_normals))
     return Primitive_String
 
 #
@@ -510,8 +443,15 @@ def getPixelFromRow(x, row, channels, rowWidth):
 # Process a simple set of rules to determine if a Jointer Block is required.
 # That is missing diagonal pixes.  It's crude and needs refinement.
 #
-def CheckJointRequired(x ,row, nextRow, channels, pattern_w):
-    isJointRequired = False
+def CheckJointRequired(x ,y ,row, nextRow, channels, pattern_w):
+    isJointRequired = 0
+
+    # Check if we've Reached the boundary of the Sprite Sheet Sprite
+    if y > 0 and not (y+1) % Pixel_H:
+        return 0
+    
+    if x>0 and not (x+1) % Pixel_W:
+        return 0
 
     # Not Checking last pixel as this is covered 
     if x >= (pattern_w-1): 
@@ -522,8 +462,11 @@ def CheckJointRequired(x ,row, nextRow, channels, pattern_w):
     c, mi, mm = getPixelFromRow(x,   nextRow, channels, pattern_w)
     d, mi, mm = getPixelFromRow(x+1, nextRow, channels, pattern_w)
 
-    if (a > 0 and d > 0 and b == 0 and c == 0) or (b > 0 and c > 0 and a == 0 and d == 0):
-        isJointRequired = True
+    if (a > 0 and d > 0 and b == 0 and c == 0):
+        isJointRequired = 1
+
+    if (b > 0 and c > 0 and a == 0 and d == 0):
+        isJointRequired = -1
 
     return isJointRequired
 
@@ -559,7 +502,7 @@ def main():
     try:
         # TODO: Add some error checking here, rather than rely on TRY/CATCH Scenarios.
         with open(obj_file,'w') as fp_obj:
-            fp_obj.write(create_primitive(0, 0, pattern_w, pattern_h, cube_vertices, cube_faces, 0, 0, Primitive_Multiplier_Background))
+            fp_obj.write(create_primitive(0, 0, pattern_w, pattern_h, cube_vertices, cube_faces, cube_normals, 0, 0, Primitive_Multiplier_Background))
             fp_obj.flush()
             fp_obj.close()
             # Update Current Offset with multiplier requested
@@ -697,6 +640,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     Current_Face = 0
     Current_Opposite_Face = 0
 
+    thisColour = 1
+
     # Total Number of Primitives Created
     Total_Primitives = 0
 
@@ -791,7 +736,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                             if Create_Layered_File:
                                 thisColour = list(mtl_colour_dict).index(colourMatch)
                             pixel_found = False
-                            fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, thisColour, primitive_y_multiplier) )
+                            fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier) )
                             Total_Primitives += 1
                         # Reset Start Position of next Sprite 
                         start_x=start_x+1
@@ -825,7 +770,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                                         thisColour = list(mtl_colour_dict).index(colourMatch)
                                     #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                                     #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier, Primitive_Multiplier_Layers) )
-                                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier))
+                                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier))
                                     primitive_width = 0
                                     Total_Primitives += 1
                                     pixel_found_colour_index = mi
@@ -841,7 +786,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                             if Create_Layered_File:
                                 thisColour = list(mtl_colour_dict).index(colourMatch)
                             #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
-                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier) )
+                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier) )
                             pixel_found = False
                             primitive_width = 0
                             Total_Primitives += 1
@@ -852,10 +797,10 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                     # Check if we're to add Jointer Blocks
                     if JOINTS_REQUIRED and not LastRow:
                         # Check if Blocks meet the Jointer rule
-                        newJoint = CheckJointRequired(x,row, nextRow, channels, pattern_w)
+                        newJoint = CheckJointRequired(x, y, row, nextRow, channels, pattern_w)
 
                         if newJoint:
-                            fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, newJoint, mi, primitive_y_multiplier) )
+                            fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, joint_normals, newJoint, thisColour, primitive_y_multiplier) )
                             newJoint = False
 
 
@@ -868,7 +813,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                     thisColour = pixel_found_colour_index
                     if Create_Layered_File:
                         thisColour = list(mtl_colour_dict).index(colourMatch)
-                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False, thisColour, primitive_y_multiplier) )
+                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier) )
                     pixel_found = False
                     primitive_width = 0
                     primitive_x = 0
@@ -878,7 +823,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
             # Write and Flush the Object File
             if primitive_width > 0:
-                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , 0, primitive_y_multiplier) )
+                
+                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , 0, primitive_y_multiplier) )
 
             fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
 

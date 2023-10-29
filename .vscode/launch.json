@@ -28,7 +28,7 @@
             //"args": ["-el","#000000","--mtl","./Test/ManicMinor/MinorWilly"],
             //"args": ["-el","#000000","--mtl","-nl","--layered","./Test/Darren/joust_4Colour"],
             //"args": ["-el","#000000","-bgh","2.0","-lm","2.0","--mtl","./Test/MMBlock/Block"],
-            "args": ["-el","#000000","-bgh","2.0","-lm","2.0","--mtl","--debug","./2023/MMSprites"],
+            "args": ["-el","#000000","-bgh","2.0","-lm","2.0","--mtl","--debug","-sw","16","-sh","16","-j","./2023/MMSprites"],
             
             "justMyCode": true
         }
