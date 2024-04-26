@@ -17,7 +17,7 @@
 #                              Added Option to Add Material File for Coloured Pixels
 # V1.03 - 4th September 2023 - Welcome to the Layer Cake Edition
 #                              Added Processing for Multiple Layers
-#                       
+#
 # Usage :-
 #   PNG2OBJ.py Filename
 #
@@ -32,11 +32,11 @@
 #                           Of what pixels were processed.
 #       Filename.mtl    <-- Contains the Wavefront Material File information.
 
+import argparse         # 'bout time I added Parsing...
+from datetime import datetime
 import os
 import sys
 import png
-import argparse         # 'bout time I added Parsing...
-from datetime import datetime
 
 # Application Defaults
 
@@ -61,8 +61,8 @@ channels = 0
 CurrentZOffset = 0.0
 
 # X is positive, Y is negative unless you want to flip the image.
-CUBE_X = 10
-CUBE_Y = -10
+CUBE_X = 5
+CUBE_Y = -5
 
 # Define the Alpha Value as Cut Off For the Pixel
 ALPHACUTOFF = 254
@@ -406,7 +406,7 @@ def getPixelFromRow(x, row, channels, rowWidth):
         a = row[offset_x+3]
         # If below the cutoff we set the pixel to 0 (No Colour Data)
         if a <= ALPHACUTOFF:
-            pixel = 0
+            pixel = -1
             r = 0
             g = 0
             b = 0
@@ -507,7 +507,7 @@ def main():
             fp_obj.close()
             # Update Current Offset with multiplier requested
             CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background)) # Shift Vertices Up a Layer...
-    except:
+    except Exception as error:
     # Bad Practice I know...
        print("Failed to create Initial file: ",obj_file)
        exit(0)
@@ -673,7 +673,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     try:
         if Debug_Txt_File:
            fp_txt=open(txt_file,'w')
-    except:
+    except Exception as error:
         print(f"Failed to Create Debug file: {txt_file}\n")
         exit(0)
 
@@ -752,7 +752,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                     # if mi==colourIndex:
                     #if mm in allowedDictionary:
 
-                    if checkProcessingRules(allowedDictionary, mm, excludedColours):
+                    if checkProcessingRules(allowedDictionary, mm, excludedColours, pixel):
                         if Debug_Txt_File:
                             fp_txt.write("*")
 
@@ -762,7 +762,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                             pixel_found_colour_index = mi
                         else:
                             # Check we're on the same colour
-                            if mi != pixel_found_colour_index:
+                            if mi != pixel_found_colour_index and pixel >=0:
                             #if mm not in allowedDictionary:
                                 if not checkNextPixelProcessingRules(allowedDictionary, mm):
                                     thisColour = pixel_found_colour_index
@@ -781,7 +781,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
                     else:
 
-                        if pixel_found:
+                        if pixel_found and pixel>=0:
                             thisColour = pixel_found_colour_index
                             if Create_Layered_File:
                                 thisColour = list(mtl_colour_dict).index(colourMatch)
@@ -830,7 +830,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
 
 
-    except:
+    except Exception as error:
     # Bad Practice I know...
        print("Failed to write file: ",obj_file)
        return False
@@ -856,9 +856,12 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 #
 # Check Processing Rule to Create Objects
 #
-def checkProcessingRules(allowedColours, currentColour, excludedColours):
+def checkProcessingRules(allowedColours, currentColour, excludedColours, pixel):
     global lastPixelFound
 
+    if pixel <0:
+        return False
+    
     if Create_Layered_File:
         if currentColour in allowedColours and currentColour not in excludedColours:
             lastPixelFound = currentColour
@@ -913,8 +916,9 @@ def CreateMasterMaterialFile(filename):
             fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
             fp_mtl.flush()
             fp_mtl.close()
-    except:
-        print(f"Failed to created Material File: {filename}")
+    except Exception as error:
+        print(f"Failed to create Material File: {filename}")
+        print(f"Error: {error}")
         exit(0)
 
 #
@@ -930,7 +934,7 @@ def FinaliseMasterMaterialFile(filename):
             fp_mtl.close()
             # Switch off flag as MTL File has been created and finalised.
             CREATE_MTL_FILE = False
-    except:
+    except Exception as error:
         print(f"Failed to append to Material File: {filename}")
         exit(0)
                     
