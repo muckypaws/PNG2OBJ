@@ -17,18 +17,19 @@
 #                              Added Option to Add Material File for Coloured Pixels
 # V1.03 - 4th September 2023 - Welcome to the Layer Cake Edition
 #                              Added Processing for Multiple Layers
+#                              Added Option to Size Model in mm (-mw or -mh Maximum Width, Maximum Height)
 #
 # Usage :-
 #   PNG2OBJ.py Filename
 #
 #   i.e. ./PNG2OBJ SpriteSheet
 #
-#   Do not include the File Extension - Lazy I know... 
+#   Do not include the File Extension - Lazy I know...
 #
 #   Two output files are created
 #
 #       Filename.obj    <-- Contains the WaveFront OBJ 3D Vertices information
-#       Filename.txt    <-- Used for debugging, showing an ASCII representation 
+#       Filename.txt    <-- Used for debugging, showing an ASCII representation
 #                           Of what pixels were processed.
 #       Filename.mtl    <-- Contains the Wavefront Material File information.
 
@@ -61,8 +62,13 @@ channels = 0
 CurrentZOffset = 0.0
 
 # X is positive, Y is negative unless you want to flip the image.
-CUBE_X = 5
-CUBE_Y = -5
+# Leave these alone, my initial mistake carried over... represents the value of the 
+# Primitive Cube defined as a 10 x 10 x 10... You can change it but... well...
+# you really don't want to... trust me... 
+# unless you fix my code to handle this properly
+# so yeah... leave it alone :) 
+CUBE_X = 10
+CUBE_Y = -10
 
 # Define the Alpha Value as Cut Off For the Pixel
 ALPHACUTOFF = 254
@@ -269,6 +275,18 @@ lastPixelFound = 0
 #
 Debug_Txt_File = False
 
+#
+# Actual Pixels Found Details.
+#
+Image_MinX = 0
+Image_MaxX = 0
+Image_MinY = 0
+Image_MaxY = 0
+Image_Real_Width = 0
+Image_Real_Height = 0
+Primitive_Multipler = 1.0
+Primitive_Layer_Depth = 0.0
+
 # Update Verticies depending on position (0 or non 0)
 def update_vert(val,r1,r2):
     if val > 0.0:
@@ -276,20 +294,21 @@ def update_vert(val,r1,r2):
     return r1
 
 #
-# Create a Primitive, in this example a Cube, but could be swapped for 
+# Create a Primitive, in this example a Cube, but could be swapped for
 #   Any primitive type
 #
-def create_primitive(primitive_x, primitive_y, 
-                     width, height, 
-                     primitive_vert, 
+def create_primitive(primitive_x, primitive_y,
+                     width, height,
+                     primitive_vert,
                      primitive_face,
-                     primitive_normals, 
+                     primitive_normals,
                      jointFlag, material_index,
                      primitive_y_multiplier=1.0):
     
     global Current_Face
     global Current_Opposite_Face
     global CurrentZOffset
+    global Primitive_Multipler
 
   #  if not jointFlag:
   #      return ""
@@ -302,10 +321,15 @@ def create_primitive(primitive_x, primitive_y,
     vert_len = len(primitive_vert)
     face_len = len(primitive_face)
 
-    rx = primitive_x * CUBE_X
-    ry = primitive_y * CUBE_Y
-    rx2 = rx + (CUBE_X * width)
-    ry2 = ry + (CUBE_Y * height)
+    rx = primitive_x * CUBE_X * Primitive_Multipler
+    ry = primitive_y * CUBE_Y * Primitive_Multipler
+    rx2 = rx + (CUBE_X * width * Primitive_Multipler)
+    ry2 = ry + (CUBE_Y * height * Primitive_Multipler)
+
+    #rx = primitive_x  * Primitive_Multipler
+    #ry = primitive_y  * -Primitive_Multipler
+    #rx2 = rx + (width * Primitive_Multipler)
+    #ry2 = ry + (height * -Primitive_Multipler)
 
     myFormatter = "{0:.6f}"
 
@@ -313,9 +337,9 @@ def create_primitive(primitive_x, primitive_y,
     # Generate the Basic Primitive for the Model
     #
     for index in range(vert_len):
-        v1 = primitive_vert[index][0]
-        v2 = primitive_vert[index][1]
-        v3 = primitive_vert[index][2]
+        v1 = primitive_vert[index][0] * Primitive_Multipler
+        v2 = primitive_vert[index][1] * Primitive_Multipler
+        v3 = primitive_vert[index][2] * (Primitive_Layer_Depth/10)
 
         if v3 != 0.0 and primitive_y_multiplier != 1.0:
             v4 = primitive_y_multiplier * v3
@@ -330,9 +354,10 @@ def create_primitive(primitive_x, primitive_y,
         else:
             # Invert Jointer Piece Depending on Direction set
             v1 = (jointFlag * v1) + rx + CUBE_X
-            v2 = v2 + ry 
+            v2 = v2 + ry
 
-        strVertices = strVertices + "v " + str(myFormatter.format(v1)) + " " + str(myFormatter.format(v2)) + " " + str(myFormatter.format(v3)) + "\n"
+        strVertices = strVertices + "v " + str(myFormatter.format(v1)) + " " + \
+                        str(myFormatter.format(v2)) + " " + str(myFormatter.format(v3)) + "\n"
 
     strVertices = strVertices + "# "+str(vert_len)+f" Vertices\n"
 
@@ -343,9 +368,8 @@ def create_primitive(primitive_x, primitive_y,
         n2 = primitive_normals[index][1]
         n3 = primitive_normals[index][2]
         strNormals = strNormals + "vn " + str(myFormatter.format(n1)) + " " + str(myFormatter.format(n2)) + " " + str(myFormatter.format(n3)) + "\n"
-    
-    strNormals = strNormals + "# "+str(len(primitive_normals))+f" Normals\n"
 
+    strNormals = strNormals + "# "+str(len(primitive_normals))+f" Normals\n"
 
     #strFaces = "# "+str(vert_len)+f" Vertices\ng Pixel_{primitive_x}_{primitive_y}_F\n"
     mtl_string=""
@@ -506,7 +530,10 @@ def main():
             fp_obj.flush()
             fp_obj.close()
             # Update Current Offset with multiplier requested
-            CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background)) # Shift Vertices Up a Layer...
+            #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background)) # Shift Vertices Up a Layer...
+            #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background*Primitive_Multipler)) # Shift Vertices Up a Layer...
+            CurrentZOffset += Primitive_Layer_Depth*Primitive_Multiplier_Background # Shift Vertices Up a Layer...
+            
     except Exception as error:
     # Bad Practice I know...
        print("Failed to create Initial file: ",obj_file)
@@ -603,14 +630,44 @@ def loadPNGToMemory():
     return True
 
 # Work out the number of colours in the PNG
+# Also the True Width/Height taking out Pixels with Alpha Channels
 def discoverPixelLayers():
     # Work our way through each row of the PNG File.
+    global Image_MinX
+    global Image_MaxX
+    global Image_MinY
+    global Image_MaxY
+    global Image_Real_Width
+    global Image_Real_Height
+
+    minx = 999999999
+    maxx = 0
+    miny = 999999999
+    maxy = 0 
     for y in range(pattern_h):
         row = pattern[int(y % pattern_h)]
 
         for x in range(pattern_w):
             # Get Pixel from Row
-            getPixelFromRow(x, row, channels, pattern_w)
+            pixel = getPixelFromRow(x, row, channels, pattern_w)[0]
+
+            # Pixel set to -1 for Transperent Pixel (Based on ALPHA Cutoff)
+            if pixel >= 0:
+                if x < minx:
+                    minx = x
+                if x > maxx:
+                    maxx = x
+                if y < miny:
+                    miny = y
+                if y > maxy:
+                    maxy = y
+
+    Image_MinX = minx
+    Image_MaxX = maxx
+    Image_MinY = miny
+    Image_MaxY = maxy
+    Image_Real_Width = maxx - minx + 1
+    Image_Real_Height = maxy - miny + 1
 
 def displayColourInformation():
     SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
@@ -692,7 +749,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
             start_y = 0
 
             # Work our way through each row of the PNG File.
-            for y in range(pattern_h):
+            #for y in range(pattern_h):
+            for y in range(Image_MinY, Image_MaxY + 1):
                 row = pattern[int(y % pattern_h)]
                 
                 # Get Next Row for Jointer Block Processing.
@@ -723,7 +781,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                 primitive_x = 0
                 lastPixelFound = -1
 
-                for x in range(pattern_w):
+                #for x in range(pattern_w):
+                for x in range(Image_MinX,Image_MaxX + 1):
                     # Check if We're Adding extra space between each sprite based
                     #   on fixed pixel width per sprite.
                     if x > 0 and not(x % Pixel_W):
@@ -839,9 +898,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     # Update Current Offset with multiplier requested
 
     if not ColoursOnSingleLayerHeight:
-        #CurrentZOffset = (abs(CUBE_Y*primitive_y_multiplier)) # Shift Vertices Up a Layer...    
-    #else:
-        CurrentZOffset += (abs(CUBE_Y*primitive_y_multiplier)) # Shift Vertices Up a Layer...
+        #CurrentZOffset += (abs(Primitive_Multipler*primitive_y_multiplier*CUBE_Y)) # Shift Vertices Up a Layer...
+        CurrentZOffset += Primitive_Layer_Depth
 
     # Write and Flush the TXT File
     if Debug_Txt_File:
@@ -973,6 +1031,9 @@ if __name__ == "__main__":
     parser.add_argument("-nl","--nextlayeronly",help="Process none background colours on next height only",action="store_true", default=False)
     parser.add_argument("-sw","--spriteWidth",help="Width of Fixed Sprites in Sprite Sheet",type=int,default=DEFAULT_PIXEL_WIDTH)
     parser.add_argument("-sh","--spriteHeight",help="Height of Fixed Sprites in a Sprite Sheet",type=int,default=DEFAULT_PIXEL_HEIGHT)
+    parser.add_argument("-mw","--maxwidth",help="Maximum Width of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
+    parser.add_argument("-mh","--maxheight",help="Maximum Height of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
+    parser.add_argument("-md","--maxdepth",help="Maximum depth of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
     
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
@@ -1008,7 +1069,7 @@ if __name__ == "__main__":
 
     WORKING_FILENAME = args.filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
-    
+
     # Create the Material File if required.
     if args.mtl:
         CreateMasterMaterialFile(mtl_filename)
@@ -1053,6 +1114,40 @@ if __name__ == "__main__":
     if Pixel_H != DEFAULT_PIXEL_HEIGHT:    
         print(f"  Sprite Sheet Height : {Pixel_H}")
 
+    if args.maxheight != 0.0 or args.maxwidth != 0.0:
+        # Need to calculate the Multipliers...
+        widthMultiplier = args.maxwidth / Image_Real_Width
+        heightMultiplier = args.maxheight / Image_Real_Height
+
+        if widthMultiplier == 0.0:
+            widthMultiplier = heightMultiplier
+
+        if heightMultiplier == 0.0:
+            heightMultiplier = widthMultiplier
+
+        Primitive_Multipler = min(widthMultiplier, heightMultiplier) / 10.0
+
+    # Calculatute Layer Depths.
+    if args.maxdepth != 0.0:
+        if Colour_Process_Only_list.count:
+            Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+    else: 
+        Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
+
+
+    if pattern_w != Image_Real_Width or pattern_h != Image_Real_Height:
+        print(f"\n   Actual Image Width : {Image_Real_Width} Pixels")
+        print(f"  Actual Image Height : {Image_Real_Height} Pixels")
+        print(f"        Image Start X : {Image_MinX}")
+        print(f"        Image Start Y : {Image_MinY}")
+        print(f"         Bounding Box : ({Image_MinX},{Image_MinY},{Image_MaxX},{Image_MaxY}) ")
+
+    if Image_Real_Height < 1 or Image_Real_Width < 1:
+        print(f"No Image Data to Process, Quitting...")
+        exit(0)
+
+    print(f"\n  Object Width/Height : {widthMultiplier}mm x {heightMultiplier}mm")
+
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
 
@@ -1060,9 +1155,9 @@ if __name__ == "__main__":
         print(f"\n **** Seperate Colours On Single Layer Selected ****")
 
     if len(Colour_Exclusion_List) > 0:
-        print(f"Colour list to exclude: {Colour_Exclusion_List}")
+        print(f"\nColour list to exclude: {Colour_Exclusion_List}")
     if len(Colour_Process_Only_list) > 0:
-        print(f"   Colours to process : {Colour_Process_Only_list}")
+        print(f"\n   Colours to process : {Colour_Process_Only_list}")
 
     print("\n")
 
