@@ -36,13 +36,21 @@
             //"args": ["--layered","-pc","#000000","-el","#ffffff","-bgh","1.0","-lm","1.0","--mtl","./Matt/BigBarry2"],
             //"args": ["--layered","-pc","#000000","-el","#ffffff","-bgh","1.0","-lm","1.0","--mtl","./Test/SpectrumFont/ZXFont"],
             //"args": ["--layered","-pc","#000000","#0000ff","#ffffff","-bgh","1.0","-lm","1.0","--mtl","./ZXSpectrum/TrapDoor/TrapDoorCharacter"],
-            "args": ["--layered","-pc","#0000ff","#ff0000","#ffffff","-bgh","1.0","-lm","1.0","--mtl","-mh","120.0","-mw","120.0","-md","8.0","./ZXSpectrum/JSW/WillyOnABarrel"],
+            //"args": ["--layered","-pc","#0000ff","#ff0000","#ffffff","-bgh","1.0","-lm","1.0","--mtl","-mh","120.0","-mw","120.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/WillyOnABarrel"],
             //"args": ["--layered","-pc","#ffff00","-el","#000063","-bgh","1.0","-lm","1.0","--mtl","./Amstrad/AmstradDigits"],
             //"args": ["--layered","-pc","#fefefe","#3efc42","-el","#000000","-nl","--mtl","./Arcade/SpaceInvaders/Screen3"],
             //"args": ["--layered","-pc","#002fff","#ff0000","#ffffff","-el","#000000","--mtl","./ZXSpectrum/Dizzy/DizzyZX"],
             //"args": ["--layered","-pc","#00ffff","#ffffff","-el","#000000","--nextlayeronly","--mtl","./ZXSpectrum/JSW/JSWTemplate"],
             //"args": ["--layered","-pc","#000000","#ff0000","--mtl","-ac","1","./ZXSpectrum/JSW/NomenLumi"],
-            
+            //"args": ["--layered","-pc","#0000ff","#ff0000","#ffffff","-bgh","1.0","-lm","1.0","--mtl","-mh","120.0","-mw","120.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/WillyOnABarrel"],
+            //"args": ["--layered","-pc","#ffffff","-bgh","1.0","-lm","1.0","--mtl","-mh","120.0","-mw","120.0","-md","8.0","-nf","./ZXSpectrum/JSW/MMSprite"],
+            //"args": ["--layered","-pc","#ff0000","#bdbf00","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/Elite"],
+            //"args": ["--layered","-pc","#ffffff","#bdbf00","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/Elite"],
+            //"args": ["--layered","-pc","#ff0000","#ffffff","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/Exolon"],
+            //"args": ["-db","--layered","-pc","#ff0000","#ffffff","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/JetPac"],
+            //"args": ["--layered","-pc","#ff001d","#ffff00","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/Zub"],
+            "args": ["--layered","-pc","#ff001d","#ffffff","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/Monty"],
+             
             "justMyCode": true
         }
     ]

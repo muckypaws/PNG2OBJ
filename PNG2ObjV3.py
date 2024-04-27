@@ -282,10 +282,20 @@ Image_MinX = 0
 Image_MaxX = 0
 Image_MinY = 0
 Image_MaxY = 0
+#
+# Actual Image Found when removing Transparent Pixels
+#
 Image_Real_Width = 0
 Image_Real_Height = 0
+
+# Object X/Y Multiplier
 Primitive_Multipler = 1.0
+
+# Object Z Multiplier for each layer
 Primitive_Layer_Depth = 0.0
+
+# If we need a specific Initial Layer, this will override.
+Primitive_Initial_Layer_Depth = 0.0
 
 # Update Verticies depending on position (0 or non 0)
 def update_vert(val,r1,r2):
@@ -435,6 +445,7 @@ def getPixelFromRow(x, row, channels, rowWidth):
             g = 0
             b = 0
 
+
     # Check to see if we already have this material.
     ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
 
@@ -509,7 +520,7 @@ def WriteToMTLFile(text):
 # And this is where all that magic happens.
 #   A real Python Programmer can probably optimise this using some Python Magic.
 #
-def main():
+def main(noframeRequired):
     global WORKING_FILENAME
     global Colour_Exclusion_List
     global Debug_Txt_File
@@ -523,21 +534,23 @@ def main():
     # Create the Background Object File 
     # Flat Structure width and height of PNG Image.
     obj_file = os.path.join(PATTERNS, "{}.obj".format(WORKING_FILENAME))
-    try:
-        # TODO: Add some error checking here, rather than rely on TRY/CATCH Scenarios.
-        with open(obj_file,'w') as fp_obj:
-            fp_obj.write(create_primitive(0, 0, pattern_w, pattern_h, cube_vertices, cube_faces, cube_normals, 0, 0, Primitive_Multiplier_Background))
-            fp_obj.flush()
-            fp_obj.close()
-            # Update Current Offset with multiplier requested
-            #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background)) # Shift Vertices Up a Layer...
-            #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background*Primitive_Multipler)) # Shift Vertices Up a Layer...
-            CurrentZOffset += Primitive_Layer_Depth*Primitive_Multiplier_Background # Shift Vertices Up a Layer...
-            
-    except Exception as error:
-    # Bad Practice I know...
-       print("Failed to create Initial file: ",obj_file)
-       exit(0)
+
+    if not noframeRequired:
+        try:
+            # TODO: Add some error checking here, rather than rely on TRY/CATCH Scenarios.
+            with open(obj_file,'w') as fp_obj:
+                    fp_obj.write(create_primitive(0, 0, pattern_w, pattern_h, cube_vertices, cube_faces, cube_normals, 0, 0, Primitive_Multiplier_Background))
+                    fp_obj.flush()
+                    fp_obj.close()
+                    # Update Current Offset with multiplier requested
+                    #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background)) # Shift Vertices Up a Layer...
+                    #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background*Primitive_Multipler)) # Shift Vertices Up a Layer...
+                    CurrentZOffset += Primitive_Layer_Depth*Primitive_Multiplier_Background # Shift Vertices Up a Layer...
+                
+        except Exception as error:
+        # Bad Practice I know...
+            print(f"Failed to create Initial file: {obj_file}, error: {error}")
+            exit(0)
 
 
     ToSort = {}
@@ -593,8 +606,6 @@ def main():
             del SortedColours[nextLayer]
     else:
         resp = processFile(list(SortedColours.keys())[0], SortedColours, Colour_Exclusion_List)
-    
-
 
 #
 # Load PNG File to Memory and perform some initial processing
@@ -688,6 +699,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     global Debug_Txt_File
     global CurrentZOffset
     global Primitive_Multiplier_Layers
+    global Primitive_Layer_Depth
+    global Primitive_Initial_Layer_Depth
  
     # Used to define the Current Face Counter
     # Needed to ensure Vertices are correctly defined.
@@ -821,7 +834,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                             pixel_found_colour_index = mi
                         else:
                             # Check we're on the same colour
-                            if mi != pixel_found_colour_index and pixel >=0:
+                            if mi != pixel_found_colour_index:
                             #if mm not in allowedDictionary:
                                 if not checkNextPixelProcessingRules(allowedDictionary, mm):
                                     thisColour = pixel_found_colour_index
@@ -840,7 +853,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
                     else:
 
-                        if pixel_found and pixel>=0:
+                        if pixel_found:
                             thisColour = pixel_found_colour_index
                             if Create_Layered_File:
                                 thisColour = list(mtl_colour_dict).index(colourMatch)
@@ -900,6 +913,11 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     if not ColoursOnSingleLayerHeight:
         #CurrentZOffset += (abs(Primitive_Multipler*primitive_y_multiplier*CUBE_Y)) # Shift Vertices Up a Layer...
         CurrentZOffset += Primitive_Layer_Depth
+
+        # Bit of a bodge, but set the next layer height depth going forward.
+        if Primitive_Initial_Layer_Depth != 0.0:
+            Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+            Primitive_Initial_Layer_Depth = 0.0
 
     # Write and Flush the TXT File
     if Debug_Txt_File:
@@ -1034,6 +1052,8 @@ if __name__ == "__main__":
     parser.add_argument("-mw","--maxwidth",help="Maximum Width of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
     parser.add_argument("-mh","--maxheight",help="Maximum Height of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
     parser.add_argument("-md","--maxdepth",help="Maximum depth of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
+    parser.add_argument("-ild","--initialLayerDepth",help="First Layer depth of OBJ in mm (Affects Multipliers)",type=float,default=0.0)
+    parser.add_argument("-nf","--noframe",help="Don't Generate a Bounding Frame",action="store_true", default=False)
     
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
@@ -1106,8 +1126,8 @@ if __name__ == "__main__":
     print(f" Reverse Sort Colours : {Sort_Colours_Flag}")
     print(f"Create Flat File Only : {not Create_Layered_File}" )
     print(f"         Alpha Cutoff : {ALPHACUTOFF}")
-    print(f"Background Multiplier : {Primitive_Multiplier_Background}")
-    print(f"     Layer Multiplier : {Primitive_Multiplier_Layers}")
+    print(f"Background Multiplier : {Primitive_Multiplier_Background:.2f}")
+    print(f"     Layer Multiplier : {Primitive_Multiplier_Layers:.2f}")
 
     if Pixel_W != DEFAULT_PIXEL_WIDTH:
         print(f"   Sprite Sheet Width : {Pixel_W}")
@@ -1127,13 +1147,28 @@ if __name__ == "__main__":
 
         Primitive_Multipler = min(widthMultiplier, heightMultiplier) / 10.0
 
-    # Calculatute Layer Depths.
+    # Calculate Layer Depths.
     if args.maxdepth != 0.0:
-        if Colour_Process_Only_list.count:
-            Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+        # Do we need a fixed First Layer Depth?
+        if args.initialLayerDepth != 0.0 and len(Colour_Process_Only_list) > 1:
+            # Set height of initial layer depth
+            Primitive_Layer_Depth = args.initialLayerDepth
+            Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(Colour_Process_Only_list) - 1)
+        else:
+            if Colour_Process_Only_list.count:
+                Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
     else: 
         Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
 
+    print(f" Object Max Depth (Z) : {args.maxdepth:.2f}mm")
+    if Primitive_Initial_Layer_Depth != 0.0:
+        print(f"      First Layer Depth : {Primitive_Layer_Depth:.2f}mm")
+        print(f"      Next Layer Depths : {Primitive_Initial_Layer_Depth:.2f}mm")
+        
+    else:
+        print(f"     Each Layer Depth : {Primitive_Layer_Depth:.2f}mm")
+    print(f"     Requested Layers : {len(Colour_Process_Only_list)}")
+    
 
     if pattern_w != Image_Real_Width or pattern_h != Image_Real_Height:
         print(f"\n   Actual Image Width : {Image_Real_Width} Pixels")
@@ -1142,11 +1177,12 @@ if __name__ == "__main__":
         print(f"        Image Start Y : {Image_MinY}")
         print(f"         Bounding Box : ({Image_MinX},{Image_MinY},{Image_MaxX},{Image_MaxY}) ")
 
+    print(f"     Background Frame : {not args.noframe}")
     if Image_Real_Height < 1 or Image_Real_Width < 1:
         print(f"No Image Data to Process, Quitting...")
         exit(0)
 
-    print(f"\n  Object Width/Height : {widthMultiplier}mm x {heightMultiplier}mm")
+    print(f"\n  Object Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
 
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
@@ -1161,10 +1197,10 @@ if __name__ == "__main__":
 
     print("\n")
 
-    displayColourInformation()
+    #displayColourInformation()
 
     if args.listColours:
         displayColourInformation()
     else:
-        main()
+        main(args.noframe)
 
