@@ -297,6 +297,10 @@ Primitive_Layer_Depth = 0.0
 # If we need a specific Initial Layer, this will override.
 Primitive_Initial_Layer_Depth = 0.0
 
+# Create a Single Layered File with Object Heights Dependent on Colour Order
+# provided in the Process Colour Order list
+Create_Towered_File = False
+
 # Update Verticies depending on position (0 or non 0)
 def update_vert(val,r1,r2):
     if val > 0.0:
@@ -422,6 +426,9 @@ def getPixelFromRow(x, row, channels, rowWidth):
 
     # Need the current Index of Colour or do we? Could use dict len?
     global mtl_current_index
+    global Create_Towered_File
+
+    TowerMultiplier = 1.0
 
     # If Indexed PNG, we're only interested in the index value
     if channels == 1:
@@ -701,6 +708,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     global Primitive_Multiplier_Layers
     global Primitive_Layer_Depth
     global Primitive_Initial_Layer_Depth
+    global Create_Towered_File
  
     # Used to define the Current Face Counter
     # Needed to ensure Vertices are correctly defined.
@@ -727,6 +735,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     #   an  OBJ file with 3D Mesh Details
     #       TXT file with pixel data as seen
 
+    TowerMultiplier = 1.0
+    LastTowerMultiplier = 1.0
     if Create_Layered_File:
         obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
     else:
@@ -786,13 +796,15 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                     if Debug_Txt_File:
                         fp_txt.write('\n')
                 
-                # Iterate through the data with 
+                # Iterate through the data with
                 start_x = 0
                 pixel_found = False
                 pixel_found_colour_index = 0
                 primitive_width = 0
                 primitive_x = 0
                 lastPixelFound = -1
+                LastTowerMultiplier = 1.0
+                TowerMultiplier = 1.0
 
                 #for x in range(pattern_w):
                 for x in range(Image_MinX,Image_MaxX + 1):
@@ -808,9 +820,9 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                             if Create_Layered_File:
                                 thisColour = list(mtl_colour_dict).index(colourMatch)
                             pixel_found = False
-                            fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier) )
+                            fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                             Total_Primitives += 1
-                        # Reset Start Position of next Sprite 
+                        # Reset Start Position of next Sprite
                         start_x=start_x+1
                         primitive_width = 0
                         primitive_x = start_x
@@ -818,6 +830,14 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
                     # Get Pixel from Row
                     pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
+
+                    if Create_Towered_File:
+                        LastTowerMultiplier = TowerMultiplier
+                        if mm in allowedDictionary:
+                            TowerMultiplier = list(allowedDictionary.keys()).index(mm) + 1.0
+                        else:
+                            TowerMultiplier = 0.01
+
 
                     # If Pixel present then add to TXT File and create primitive.
                     # if pixel > 0 and mi==colourIndex:
@@ -842,7 +862,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                                         thisColour = list(mtl_colour_dict).index(colourMatch)
                                     #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                                     #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier, Primitive_Multiplier_Layers) )
-                                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier))
+                                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier))
                                     primitive_width = 0
                                     Total_Primitives += 1
                                     pixel_found_colour_index = mi
@@ -858,7 +878,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                             if Create_Layered_File:
                                 thisColour = list(mtl_colour_dict).index(colourMatch)
                             #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
-                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier) )
+                            fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier) )
                             pixel_found = False
                             primitive_width = 0
                             Total_Primitives += 1
@@ -872,7 +892,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                         newJoint = CheckJointRequired(x, y, row, nextRow, channels, pattern_w)
 
                         if newJoint:
-                            fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, joint_normals, newJoint, thisColour, primitive_y_multiplier) )
+                            fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, joint_normals, newJoint, thisColour, primitive_y_multiplier * LastTowerMultiplier) )
                             newJoint = False
 
 
@@ -885,7 +905,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                     thisColour = pixel_found_colour_index
                     if Create_Layered_File:
                         thisColour = list(mtl_colour_dict).index(colourMatch)
-                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier) )
+                    fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                     pixel_found = False
                     primitive_width = 0
                     primitive_x = 0
@@ -896,7 +916,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
             # Write and Flush the Object File
             if primitive_width > 0:
                 
-                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , 0, primitive_y_multiplier) )
+                fp_obj.write(  create_primitive(start_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , 0, primitive_y_multiplier * TowerMultiplier) )
 
             fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
 
@@ -904,7 +924,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
     except Exception as error:
     # Bad Practice I know...
-       print("Failed to write file: ",obj_file)
+       print(f"Failed to write file: {obj_file}",obj_file)
+       print(f"Exception: {error}")
        return False
     
 
@@ -1059,6 +1080,7 @@ if __name__ == "__main__":
     group=parser.add_mutually_exclusive_group()
     group.add_argument("-fl","--flat",help="Create a Single OBJ File with all colour information",action="store_true", default=True)
     group.add_argument("--layered",help="Create a Multi Layer Set of files for each colour code",action="store_true",default=False)
+    group.add_argument("--tower",help="Create a single layer, different heights based on colour order",action="store_true",default=False)
     # Get arguments from the Command Line
     args=parser.parse_args()
 
@@ -1075,6 +1097,9 @@ if __name__ == "__main__":
     
     if args.layered:
         Create_Layered_File = True
+
+    if args.tower:
+        Create_Towered_File = True 
 
     ALPHACUTOFF = args.alphacutoff
 
