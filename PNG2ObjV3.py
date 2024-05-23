@@ -1099,7 +1099,7 @@ if __name__ == "__main__":
         Create_Layered_File = True
 
     if args.tower:
-        Create_Towered_File = True 
+        Create_Towered_File = True
 
     ALPHACUTOFF = args.alphacutoff
 
@@ -1177,8 +1177,10 @@ if __name__ == "__main__":
         # Do we need a fixed First Layer Depth?
         if args.initialLayerDepth != 0.0 and len(Colour_Process_Only_list) > 1:
             # Set height of initial layer depth
-            Primitive_Layer_Depth = args.initialLayerDepth
+            #Primitive_Layer_Depth = args.initialLayerDepth
             Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(Colour_Process_Only_list) - 1)
+            Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+            CurrentZOffset = args.initialLayerDepth
         else:
             if Colour_Process_Only_list.count:
                 Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)

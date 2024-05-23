@@ -50,7 +50,7 @@
             //"args": ["-db","--layered","-pc","#ff0000","#ffffff","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/JetPac"],
             //"args": ["--layered","-pc","#ff001d","#ffff00","--mtl","-mh","110.0","-mw","110.0","-md","8.0","-nf","-ild","2.0","./ZXSpectrum/JSW/Zub"],
             //"args": ["--tower","-pc","#000000","#69330c","#ffffff","#a7a7a7","#b64116","--mtl","-mh","25.0","-mw","85.0","-md","4.0","-nf","-ild","0.0","./Hewco/Logo"],
-            "args": ["--layered","-pc","#2c00ff","--mtl","-mh","110.0","-mw","110.0","-md","9.0","-nf","-ild","6.0","./Hewco/Andy"],
+            "args": ["--layered","-pc","#ff0000","#ffffff","#ffff02","#02ffff","#dd0887","#3030ff","-el","#000000","--mtl","-mh","30.0","-mw","85.0","-md","9.0","-nf","-ild","6.0","./Sarah/Sarah"],
             // 
             "justMyCode": true
         }
