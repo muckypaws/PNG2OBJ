@@ -289,7 +289,7 @@ Image_Real_Width = 0
 Image_Real_Height = 0
 
 # Object X/Y Multiplier
-Primitive_Multipler = 1.0
+Primitive_Multipler = 0.1
 
 # Object Z Multiplier for each layer
 Primitive_Layer_Depth = 0.0
@@ -1132,6 +1132,9 @@ if __name__ == "__main__":
     Pixel_W = args.spriteWidth
     Pixel_H = args.spriteHeight
 
+    widthMultiplier = 0.01
+    heightMultiplier = 0.01
+
 
     ColoursOnSingleLayerHeight = args.nextlayeronly
 
@@ -1230,4 +1233,3 @@ if __name__ == "__main__":
         displayColourInformation()
     else:
         main(args.noframe)
-
