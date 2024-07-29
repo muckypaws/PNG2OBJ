@@ -367,7 +367,7 @@ def create_primitive(primitive_x, primitive_y,
             v2 = update_vert(v2, ry, ry2)
         else:
             # Invert Jointer Piece Depending on Direction set
-            v1 = (jointFlag * v1) + rx + CUBE_X
+            v1 = (jointFlag * v1) + rx + (CUBE_X * Primitive_Multipler)
             v2 = v2 + ry
 
         strVertices = strVertices + "v " + str(myFormatter.format(v1)) + " " + \
@@ -394,6 +394,8 @@ def create_primitive(primitive_x, primitive_y,
     mtl_string = "mtllib "+os.path.basename(mtl_filename) + "\n" + \
             f"usemtl {material_index}\n"
     strFaces=f"g ACIS Pixel_{primitive_x}_{primitive_y}_F\n"
+
+
     for index in range(face_len):
         f1 = primitive_face[index][0] + Current_Face
         f2 = primitive_face[index][1] + Current_Face
@@ -452,14 +454,17 @@ def getPixelFromRow(x, row, channels, rowWidth):
             g = 0
             b = 0
 
-
     # Check to see if we already have this material.
     ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
 
-    if not ColourCode in mtl_colour_dict: # and not ColourCode in Colour_Exclusion_List:
+    # Is Pixel in excluded list?
+    if ColourCode in Colour_Exclusion_List:
+        pixel = -1
+
+    if not ColourCode in mtl_colour_dict and not ColourCode in Colour_Exclusion_List:
         mtl_colour_dict[ColourCode] = 0
-        
-        if CREATE_MTL_FILE == True:
+
+        if CREATE_MTL_FILE == True and pixel >= 0:
             myFormatter = "{0:.6f}"
 
             mult = 1.0/255.0
@@ -473,11 +478,12 @@ def getPixelFromRow(x, row, channels, rowWidth):
             WriteToMTLFile(Material)
             mtl_current_index += 1
 
-    material_index = 0
+    material_index = -1
     
     # Retrieve the index of the Colour Code from the Dictionary
-    material_index = list(mtl_colour_dict).index(ColourCode)
-    mtl_colour_dict[ColourCode] += 1
+    if ColourCode in mtl_colour_dict:
+        material_index = list(mtl_colour_dict).index(ColourCode)
+        mtl_colour_dict[ColourCode] += 1
 
     return pixel, material_index, ColourCode
 
@@ -657,6 +663,7 @@ def discoverPixelLayers():
     global Image_MaxY
     global Image_Real_Width
     global Image_Real_Height
+    global Image_Total_Colours
 
     minx = 999999999
     maxx = 0
@@ -731,7 +738,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
     global lastPixelFound
 
-    # Define output Filenames based on Input, creating 
+    # Define output Filenames based on Input, creating
     #   an  OBJ file with 3D Mesh Details
     #       TXT file with pixel data as seen
 
@@ -1075,6 +1082,7 @@ if __name__ == "__main__":
     parser.add_argument("-md","--maxdepth",help="Maximum depth of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
     parser.add_argument("-ild","--initialLayerDepth",help="First Layer depth of OBJ in mm (Affects Multipliers)",type=float,default=0.0)
     parser.add_argument("-nf","--noframe",help="Don't Generate a Bounding Frame",action="store_true", default=False)
+    parser.add_argument("-sz","--startZ",help="Initial Z Height Starting Position",type=float,default=0.0)
     
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
@@ -1116,10 +1124,10 @@ if __name__ == "__main__":
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
 
     # Create the Material File if required.
-    if args.mtl:
+    if args.mtl and not args.listColours:
         CreateMasterMaterialFile(mtl_filename)
 
-    if args.excludelist:
+    if args.excludelist and not args.listColours:
         print(f"Excluding the following colours: {args.excludelist}\n")
         Colour_Exclusion_List = args.excludelist
 
@@ -1175,21 +1183,55 @@ if __name__ == "__main__":
 
         Primitive_Multipler = min(widthMultiplier, heightMultiplier) / 10.0
 
+
+    # Remove Excluded Colours from Process Colours List
+    # If user provides both in both tables, we'll force exclusion!
+    totalColours = len(mtl_colour_dict)
+    for excluded in Colour_Exclusion_List:
+        if excluded in mtl_colour_dict:
+            totalColours -= 1
+
     # Calculate Layer Depths.
     if args.maxdepth != 0.0:
         # Do we need a fixed First Layer Depth?
-        if args.initialLayerDepth != 0.0 and len(Colour_Process_Only_list) > 1:
-            # Set height of initial layer depth
-            #Primitive_Layer_Depth = args.initialLayerDepth
-            Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(Colour_Process_Only_list) - 1)
+
+        if not Create_Layered_File:
+            Primitive_Initial_Layer_Depth = args.maxdepth
             Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
-            CurrentZOffset = args.initialLayerDepth
         else:
-            if Colour_Process_Only_list.count:
-                Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+            # If we didn't pass an colours to process (So all except the exception list)
+            if args.initialLayerDepth != 0.0 and totalColours > 0 and len(args.processcolours) == 0:
+                # How many colours are we processing?
+                # If more than one, set layer heights accordingly.
+                if totalColours > 1:
+                    Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth)/(len(mtl_colour_dict)-1)
+                    Primitive_Layer_Depth = args.initialLayerDepth
+                else:
+                    # Only one colour to process so has to be maximum height.
+                    Primitive_Initial_Layer_Depth = args.maxdepth
+                    Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+                CurrentZOffset = 0.0
+
+            if args.initialLayerDepth != 0.0 and len(Colour_Process_Only_list) > 1 and len(args.processcolours) > 0:
+                # Set height of initial layer depth
+                Primitive_Layer_Depth = args.initialLayerDepth
+                Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(Colour_Process_Only_list) - 1)
+                #Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+                CurrentZOffset = 0.0
+            else:
+                if len(Colour_Process_Only_list) > 0:
+                    if len(Colour_Process_Only_list):
+                        Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+                    else:
+                        Primitive_Layer_Depth = args.maxdepth
     else: 
         Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
 
+
+    if args.startZ != 0.0:
+        CurrentZOffset = args.startZ 
+
+    print(f"       Object Start Z : {args.startZ:.2f}mm")
     print(f" Object Max Depth (Z) : {args.maxdepth:.2f}mm")
     if Primitive_Initial_Layer_Depth != 0.0:
         print(f"      First Layer Depth : {Primitive_Layer_Depth:.2f}mm")
@@ -1212,7 +1254,7 @@ if __name__ == "__main__":
         print(f"No Image Data to Process, Quitting...")
         exit(0)
 
-    print(f"\n  Object Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
+    print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
 
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
