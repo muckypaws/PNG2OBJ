@@ -84,7 +84,14 @@
             //"args": ["--layered","-pc","#ffff00","#ff0000","#ff00ff","#000000","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","1.2","-sz","2.6","./BBC/Frak/Fark"],
             //"args": ["--layered","-pc","#ffff00","#00ff00","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","1.0","-sz","2.6","./BBC/Repton/Repton"],
             //"args": ["--layered","-el","#000000","-pc","#0000ff","#ffff00","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","2.4","-sz","2.6","./BBC/Repton2/Repton2Colour"],
-            "args": ["--layered","-el","#000000","-pc","#ff00ff","#ffff00","#00ffff","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","1.6","-sz","2.6","./BBC/Repton2/Repton2Logo"],
+            //"args": ["--layered","-el","#000000","-pc","#ff00ff","#ffff00","#00ffff","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","1.6","-sz","2.6","./BBC/Repton2/Repton2Logo"],
+            //"args": ["--layered","-el","#b8c76f","-pc","#000000","#68372b","#6f3d86","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","0.8","-sz","2.6","./Commodore/Thing/ThingOnASpring"],
+            //"args": ["--layered","-el","#000000","-pc","#ffff00","#bdbd00","#ffffff","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","2.0","-sz","2.6","./ZXSpectrum/Cybernoid/Cybernoid"],
+            //"args": ["--flat","-el","#ffff00","-pc","#ff0000","#000000","#ffffff","--mtl","-md","40.0","-mh","400.0","-mw","400.0","-nf","-ild","0.0","./ZXSpectrum/JSW/Barrel"],
+            //"args": ["--flat","-el","#000000","-pc","#ff0000","--mtl","-md","16.0","-mh","88.0","-mw","88.0","-nf","-ild","0.0","./ZXSpectrum/ManicMinerPlatform/Platform"],
+            //"args": ["--layered","-el","#000000","-pc","#bdbdbd","#00bdbd","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","2.0","-sz","2.6","./ZXSpectrum/Airwolf/Airwolf2"],
+            //"args": ["--layered","--joints","-el","#000000","-pc","#ffffff","--mtl","-md","40.0","-mh","40.0","-mw","40.0","-nf","./ZXSpectrum/Airwolf/Pixel2"],
+            "args": ["-pt","./Test/Parametric"],
             // 
             "justMyCode": true
         }

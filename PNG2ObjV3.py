@@ -18,6 +18,9 @@
 # V1.03 - 4th September 2023 - Welcome to the Layer Cake Edition
 #                              Added Processing for Multiple Layers
 #                              Added Option to Size Model in mm (-mw or -mh Maximum Width, Maximum Height)
+# V1.04 - 23rd August 2024   - The Matrix Edition
+#                              Creating options to create Parametric Designs based on grid patterns
+#                              Let's see where this goes...
 #
 # Usage :-
 #   PNG2OBJ.py Filename
@@ -38,6 +41,7 @@ from datetime import datetime
 import os
 import sys
 import png
+import math
 
 # Application Defaults
 
@@ -45,8 +49,8 @@ import png
 #PATTERNS = "./"
 PATTERNS=""
 
-DEFAULT_PIXEL_WIDTH  = 4096
-DEFAULT_PIXEL_HEIGHT = 4096
+DEFAULT_PIXEL_WIDTH  = 1096
+DEFAULT_PIXEL_HEIGHT = 1096
 
 # Set Pixel Width and Height if Sprites are fixed width within the sheet, otherwise 
 # use a high number.
@@ -108,6 +112,7 @@ ColoursOnSingleLayerHeight = False
 
 # Basic Definition of cube with 8 Vertices (4 Sets of Co-Ords per face)
 
+'''
 cube_vertices = (   [ 0.000000 , 10.000000,  0.000000],
                     [ 10.000000, 10.000000, 10.000000],
                     [ 10.000000, 10.000000,  0.000000],
@@ -170,22 +175,143 @@ cube_faces = (  [ 6, 2, 1],
                 [ 1, 3, 8],
                 [ 8, 3, 4]
               )
+'''
+
+# Fixed 15/8/2024
+'''
+cube_vertices = (   [ 0.000000,	 0.000000,  10.000000],
+                    [10.000000,	 0.000000,  10.000000],
+                    [10.000000,	 0.000000,   0.000000],
+                    [ 0.000000,	 0.000000,   0.000000],
+
+                    [10.000000,	 0.000000,  10.000000],
+                    [10.000000,  10.000000, 10.000000],
+                    [10.000000, 10.000000,	 0.000000],
+                    [10.000000,	  0.000000,	 0.000000],
+
+                    [10.000000,	10.000000, 10.000000],
+                    [ 0.000000,	10.000000, 10.000000],
+                    [ 0.000000,	10.000000,	 0.000000],
+                    [10.000000,	10.000000,	 0.000000],
+
+                    [ 0.000000,	10.000000, 10.000000],
+                    [ 0.000000,	   0.000000,10.000000],
+                    [ 0.000000,	   0.000000, 0.000000],
+                    [ 0.000000,	 10.000000, 0.000000],
+
+                    [10.000000,	 0.000000,  10.000000],
+                    [ 0.000000,	 0.000000,  10.000000],
+                    [ 0.000000, 10.000000, 10.000000],
+                    [10.000000, 10.000000, 10.000000],
+
+                    [ 0.000000, 10.000000,	 0.000000],
+                    [ 0.000000,	 0.000000,	 0.000000],
+                    [10.000000,	 0.000000,	 0.000000],
+                    [10.000000, 10.000000,	 0.000000]
+)
+
+cube_normals = (    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  0.000000,  1.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  1.000000,  0.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [  0.000000, -1.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [ -1.000000,  0.000000,  0.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000,  1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000],
+                    [  0.000000,  0.000000, -1.000000]
+)
+
+cube_faces = (  [ 1,  2,  4],
+                [ 4,  2,  3],
+                [ 5,  6,  8],
+                [ 8,  6,  7],
+                [ 9, 10, 12],
+                [12, 10, 11],
+                [13, 14, 16],
+                [16, 14, 15],
+                [17, 18, 20],
+                [20, 18, 19],
+                [22, 23, 21],
+                [21, 23, 24]
+)
+'''
+
+#
+# This is optimal from a vertex point of view, and resolves the issue of "Non-Manifold Edge" Errors
+# Observed in some slicer and 3D Software, however the surface normals result in "Missing edges"
+# when being rendered.  As described in Section 14.2.2 Surface Normals of 3D Math Primer for
+# Graphics and Game Develpoment (Fletcher Dunn and Ian Parberry) ISBN 1-55622-911-9
+# wordware publishing Inc, https://gamemath.com now discontinued.
+# Take a look here https://gamemath.com/book/intro.html the online version describes the issue
+# https://gamemath.com/book/graphics.html 10.4.2 (Fig 10.14)
+#
+cube_vertices = (   [  0.000000,  0.000000, 10.000000],
+                    [ 10.000000,  0.000000, 10.000000],
+                    [ 10.000000,  0.000000,  0.000000],
+                    [  0.000000,  0.000000,  0.000000],
+
+                    [ 10.000000, 10.000000, 10.000000],
+                    [ 10.000000, 10.000000,  0.000000],
+                    [  0.000000, 10.000000, 10.000000],
+                    [  0.000000, 10.000000,  0.000000]
+)
+
+cube_normals = ( [ -1.000000,  1.000000,  1.000000],
+                    [  1.000000,  1.000000,  1.000000],
+                    [  1.000000,  1.000000, -1.000000],
+                    [ -1.000000,  1.000000, -1.000000],
+                    [  1.000000, -1.000000,  1.000000],
+                    [  1.000000, -1.000000, -1.000000],
+                    [ -1.000000, -1.000000,  1.000000],
+                    [ -1.000000, -1.000000, -1.000000]
+)
+
+cube_faces = (  [ 1, 2, 4],
+                [ 4, 2, 3],     # Bottom Face
+                [ 2, 5, 3],
+                [ 3, 5, 6],     # Right Face
+                [ 5, 7, 6],
+                [ 6, 7, 8],     # Top Face
+                [ 7, 1, 8],
+                [ 8, 1, 4],     # Left Face
+                [ 2, 1, 5],
+                [ 5, 1, 7],     # Rear Face
+                [ 4, 3, 8],
+                [ 8, 3, 6]      # Front Face
+)
+
+
 
 # Basic Definition for a Jointer Cube Where Pixels are connected by Corners Only
 # This is needed if there's no overlap on your printer and want to ensure a 
 # a connection that should lift off the printer.
 
 
-joint_verticies = ( [ -1.414213, -0.000000,  0.000000],
-                    [ -1.414213, -0.000000, 10.000000],
+joint_verticies = ( [ -3.00000, -0.000000,  0.000000],
+                    [ -3.00000, -0.000000, 10.000000],
                     [  0.000000, -0.000000,  0.000000],
                     [  0.000000, -0.000000, 10.000000],
-                    [  0.000000,  1.414214, 10.000000],
-                    [  0.000000,  1.414214,  0.000000],
-                    [  1.414213, -0.000000,  0.000000],
-                    [  0.000000, -1.414214,  0.000000],
-                    [  0.000000, -1.414214, 10.000000],
-                    [  1.414213, -0.000000, 10.000000])
+                    [  0.000000,  3.00000, 10.000000],
+                    [  0.000000,  3.00000,  0.000000],
+                    [  3.00000, -0.000000,  0.000000],
+                    [  0.000000, -3.00000,  0.000000],
+                    [  0.000000, -3.00000, 10.000000],
+                    [  3.00000, -0.000000, 10.000000])
 
 
 
@@ -302,6 +428,8 @@ Primitive_Initial_Layer_Depth = 0.0
 Create_Towered_File = False
 
 # Update Verticies depending on position (0 or non 0)
+# Currently Assumes, 0 - Left, non-Zero right
+#
 def update_vert(val,r1,r2):
     if val > 0.0:
         return r2
@@ -309,7 +437,7 @@ def update_vert(val,r1,r2):
 
 #
 # Create a Primitive, in this example a Cube, but could be swapped for
-#   Any primitive type
+# Any primitive type
 #
 def create_primitive(primitive_x, primitive_y,
                      width, height,
@@ -317,7 +445,8 @@ def create_primitive(primitive_x, primitive_y,
                      primitive_face,
                      primitive_normals,
                      jointFlag, material_index,
-                     primitive_y_multiplier=1.0):
+                     primitive_y_multiplier=1.0,
+                     modify_Flag = True):
     
     global Current_Face
     global Current_Opposite_Face
@@ -340,11 +469,6 @@ def create_primitive(primitive_x, primitive_y,
     rx2 = rx + (CUBE_X * width * Primitive_Multipler)
     ry2 = ry + (CUBE_Y * height * Primitive_Multipler)
 
-    #rx = primitive_x  * Primitive_Multipler
-    #ry = primitive_y  * -Primitive_Multipler
-    #rx2 = rx + (width * Primitive_Multipler)
-    #ry2 = ry + (height * -Primitive_Multipler)
-
     myFormatter = "{0:.6f}"
 
     #
@@ -353,7 +477,7 @@ def create_primitive(primitive_x, primitive_y,
     for index in range(vert_len):
         v1 = primitive_vert[index][0] * Primitive_Multipler
         v2 = primitive_vert[index][1] * Primitive_Multipler
-        v3 = primitive_vert[index][2] * (Primitive_Layer_Depth/10)
+        v3 = primitive_vert[index][2] * (Primitive_Layer_Depth/10) #* Primitive_Multipler
 
         if v3 != 0.0 and primitive_y_multiplier != 1.0:
             v4 = primitive_y_multiplier * v3
@@ -363,8 +487,10 @@ def create_primitive(primitive_x, primitive_y,
 
         # Yeah, quick and dirty, I need to think this through
         if not jointFlag:
-            v1 = update_vert(v1, rx, rx2)
-            v2 = update_vert(v2, ry, ry2)
+            if modify_Flag:
+                v1 = update_vert(v1, rx, rx2)
+                v2 = update_vert(v2, ry, ry2)
+
         else:
             # Invert Jointer Piece Depending on Direction set
             v1 = (jointFlag * v1) + rx + (CUBE_X * Primitive_Multipler)
@@ -395,17 +521,33 @@ def create_primitive(primitive_x, primitive_y,
             f"usemtl {material_index}\n"
     strFaces=f"g ACIS Pixel_{primitive_x}_{primitive_y}_F\n"
 
-
+    #
+    # Face List may contain variable length face lists.
+    #
     for index in range(face_len):
-        f1 = primitive_face[index][0] + Current_Face
-        f2 = primitive_face[index][1] + Current_Face
-        f3 = primitive_face[index][2] + Current_Face
+        # Initial Face Identifier
+        strFaces = strFaces + "f "
 
-        #strFaces = strFaces + "f " + f"{f1}//{f1} {f2}//{f2} {f3}//{f3}\n"
-        if jointFlag:
-            strFaces = strFaces + "f " + f"{f1}//{Current_Opposite_Face + f1} {f2}//{Current_Opposite_Face + f2} {f3}//{Current_Opposite_Face + f3}\n"
-        else:
-            strFaces = strFaces + "f " + f"{f1}//{(index*3)+1+ Current_Opposite_Face} {f2}//{(index*3)+2+ Current_Opposite_Face} {f3}//{(index*3)+3+ Current_Opposite_Face}\n"
+        for faceIndex in range(len(primitive_face[index])):
+            
+            faceID = primitive_face[index][faceIndex] + Current_Face
+            faceIDOpposite = Current_Opposite_Face+faceID
+            if jointFlag:
+                strFaces = strFaces + f"{faceID}//{faceIDOpposite} "
+            else:
+                strFaces = strFaces + f"{faceID}//{faceID} "
+            #f1 = primitive_face[index][0] + Current_Face
+            #f2 = primitive_face[index][1] + Current_Face
+            #f3 = primitive_face[index][2] + Current_Face
+
+            #strFaces = strFaces + "f " + f"{f1}//{f1} {f2}//{f2} {f3}//{f3}\n"
+            #if jointFlag:
+            #    strFaces = strFaces + "f " + f"{f1}//{Current_Opposite_Face + f1} {f2}//{Current_Opposite_Face + f2} {f3}//{Current_Opposite_Face + f3}\n"
+            #else:
+                #strFaces = strFaces + "f " + f"{f1}//{(index*3)+1+ Current_Opposite_Face} {f2}//{(index*3)+2+ Current_Opposite_Face} {f3}//{(index*3)+3+ Current_Opposite_Face}\n"
+            #    strFaces = strFaces + "f " + f"{f1}//{f1} {f2}//{f2} {f3}//{f3}\n"
+
+        strFaces = strFaces + "\n"
 
     Primitive_String = strVertices + strNormals + mtl_string + strFaces + "# "+str(face_len)+" Faces\n\n"
 
@@ -416,6 +558,21 @@ def create_primitive(primitive_x, primitive_y,
     Current_Face += len(primitive_vert)
     Current_Opposite_Face += (len(primitive_normals))
     return Primitive_String
+
+#
+# Define Material Colour
+#
+def MaterialColourAsString(r,g,b):
+    myFormatter = "{0:.6f}"
+
+    mult = 1.0/255.0
+
+    Material = f"\nnewmtl {mtl_current_index}\n" + \
+            f"Kd " + str(myFormatter.format(mult * r)) + " " + \
+            str(myFormatter.format(mult * g)) + " " + \
+            str(myFormatter.format(mult * b)) + " " + \
+            default_mtl_params + "\n"
+    return Material
 
 #
 # Convert Colour To Pixel - Can extend this to exclude colour ranges in future updates.
@@ -465,16 +622,18 @@ def getPixelFromRow(x, row, channels, rowWidth):
         mtl_colour_dict[ColourCode] = 0
 
         if CREATE_MTL_FILE == True and pixel >= 0:
-            myFormatter = "{0:.6f}"
+            
+            #myFormatter = "{0:.6f}"
 
-            mult = 1.0/255.0
+            #mult = 1.0/255.0
 
-            Material = f"\nnewmtl {mtl_current_index}\n" + \
-                    f"Kd " + str(myFormatter.format(mult * r)) + " " + \
-                    str(myFormatter.format(mult * g)) + " " + \
-                    str(myFormatter.format(mult * b)) + " " + \
-                    default_mtl_params + "\n"
-
+            #Material = f"\nnewmtl {mtl_current_index}\n" + \
+            #        f"Kd " + str(myFormatter.format(mult * r)) + " " + \
+            #        str(myFormatter.format(mult * g)) + " " + \
+            #        str(myFormatter.format(mult * b)) + " " + \
+            #        default_mtl_params + "\n"
+            
+            Material = MaterialColourAsString(r,g,b)
             WriteToMTLFile(Material)
             mtl_current_index += 1
 
@@ -510,10 +669,10 @@ def CheckJointRequired(x ,y ,row, nextRow, channels, pattern_w):
     c, mi, mm = getPixelFromRow(x,   nextRow, channels, pattern_w)
     d, mi, mm = getPixelFromRow(x+1, nextRow, channels, pattern_w)
 
-    if (a > 0 and d > 0 and b == 0 and c == 0):
+    if (a > 0 and d > 0 and b <= 0 and c <= 0):
         isJointRequired = 1
 
-    if (b > 0 and c > 0 and a == 0 and d == 0):
+    if (b > 0 and c > 0 and a <= 0 and d <= 0):
         isJointRequired = -1
 
     return isJointRequired
@@ -1053,7 +1212,207 @@ def log(msg):
     sys.stdout.write("\n")
     sys.stdout.flush()
 
+#
+# Position the Vertex Data based on Current X, Y Position on Grid
+# And Currently Scaling Factors
+#
+def PositionDesign(vertices,x,y):
+    nextVertices = []
+    for index, vertex in list(enumerate(vertices)):
+        # Get vertices
+        v1 = vertex[0] + (x * CUBE_X)
+        v2 = vertex[1] + (y * CUBE_Y)
+        v3 = vertex[2]
 
+        nextVertices.append([v1, v2, v3])
+
+    return nextVertices
+
+#
+# Rotate top of the cube, Pass
+#       Simple Cube Vertice
+#       X Position
+#       Centre X Position
+#       Centre Y Position
+#       Radius Of Circle
+#
+def createDesign2(new_vertices,x,cx,cy,Radius):
+
+    if len(new_vertices) != 8:
+        print(f"Sorry Wrong Input Data: {new_vertices}")
+        exit(0)
+
+    # First four Vertices are the base of the design
+    nextVertices = []
+    nextVertices.append(new_vertices[0])
+    nextVertices.append(new_vertices[1])
+    nextVertices.append(new_vertices[2])
+    nextVertices.append(new_vertices[3])
+
+    # Calculate rotation on X-Axis of Top of Cube by Setting X and Y
+
+    v1 = x
+    v2 = math.sqrt(Radius*Radius - x*x)
+    v3 = 10                             # Depth of 10 
+
+    # Set the tops accordingly (Top Left)
+    nextVertices.append([cx+x, v2+cy, v3])
+
+    # Set the tops accordingly (Bottom Left)
+    nextVertices.append([cx-Radius+v1, cy+(Radius-v2),v3])
+
+    # Set the tops accordingly (Top Right
+    nextVertices.append([cx+Radius-v1, cy-(Radius-v2), v3])
+
+    # Set the tops accordingly (Bottom Right)
+    nextVertices.append([cx-v1,cy-v2, v3])
+
+    return nextVertices
+
+
+#
+# Rotate top of the cube, Pass
+#       Simple Cube Vertice
+#       X Position
+#       Centre X Position
+#       Centre Y Position
+#       Radius Of Circle
+#
+def createDesignTopRotation(new_vertices, Angle, cx, cy, Radius):
+
+    if len(new_vertices) != 8:
+        print(f"Sorry Wrong Input Data: {new_vertices}")
+        exit(0)
+
+    # First four Vertices are the base of the design
+    nextVertices = []
+    nextVertices.append(new_vertices[0])
+    nextVertices.append(new_vertices[1])
+    nextVertices.append(new_vertices[2])
+    nextVertices.append(new_vertices[3])
+
+    # Calculate rotation on X-Axis of Top of Cube by Setting X and Y
+
+    v1 = abs(Radius * math.cos(math.radians(Angle)))
+    v2 = abs(Radius * math.sin(math.radians(Angle)))    
+    v3 = 10 # Depth of 10 
+
+    # Set the tops accordingly (Top Left)
+    nextVertices.append([cx-v1, cy+v2, v3])
+
+    # Set the tops accordingly (Bottom Left)
+    nextVertices.append([cx-v2, cy-v1, v3])
+
+    # Set the tops accordingly (Top Right
+    nextVertices.append([cx+v2, cy+v1 , v3])
+
+    # Set the tops accordingly (Bottom Right)
+    nextVertices.append([cx+v1, cy-v2, v3])
+
+    return nextVertices
+#
+# Can we create a simple parametric set of shapes?
+#
+def ParametricTest():
+    global Primitive_Layer_Depth
+    global Primitive_Multipler
+
+    TowerMultiplier = 1.0
+    LastTowerMultiplier = 1.0
+    primitive_y_multiplier = 1.0
+    Primitive_Layer_Depth = 10.0
+    Primitive_Multipler = 1.0
+
+    wibble = 0
+
+    # Test mod primitive
+    new_vertices = ([ 0.000000,  0.000000, 0.000000],
+                    [ 0.000000, 10.000000, 0.000000],
+                    [10.000000,  0.000000, 0.000000],
+                    [10.000000, 10.000000, 0.000000],
+
+                    [2.000000, 8.000000, 10.000000],
+                    [2.000000, 2.000000, 10.000000],
+                    [8.000000, 5.000000, 10.000000],
+                    [8.000000, 2.000000, 10.000000]
+)
+    new_faces = ([2, 4, 3, 1],
+                [6, 8, 7, 5],
+                [1, 3, 8, 6],
+                [1, 6, 5, 2],
+                [5, 7, 4, 2],
+                [4, 7, 8, 3])
+
+    if Create_Layered_File:
+        obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
+    else:
+        obj_file = os.path.join(PATTERNS, "{}_Y{}.obj".format(WORKING_FILENAME,FILE_COUNTER))
+
+    try:
+        # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
+        with open(obj_file,'w') as fp_obj:
+        # Create Header for OBJ File
+            header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
+            header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+            fp_obj.write( header )
+
+            #fp_obj.write( create_primitive(0, 0, 1, 1, new_vertices, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+
+            xRange = 9
+            yRange = 9
+
+            Radius = 4.0
+            xSteps = Radius/5.0
+
+            alternate = False
+
+            startstep = 0.0
+            currentAngle = 0.0
+            angleSteps = 90.0 / 40.0
+        
+            for y in range (0,21):
+                xPos = 0
+                startstep = ((float(y) * xSteps)/20) % Radius
+                angleStep = float(y) * angleSteps
+                for x in range (0,21):
+
+                    #nextDesign = createDesign(new_vertices,x,y)
+
+                    currentStep = float(x) * xSteps
+                    #design1 = createDesign2(new_vertices,((currentStep+startstep) % float(Radius))  ,5.0,5.0,Radius)
+                    myDesign = createDesignTopRotation(new_vertices,(((float(x)*angleSteps)-45+angleStep) % 90.0)  ,-2,0.0,Radius)
+                    nextDesign = PositionDesign(myDesign,x,y)
+
+
+                    if alternate:
+                        if y % 2:
+                            if x % 2:
+                                print("*", end="")
+                                fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+                                        
+                            else:
+                                print(" ",end="")
+                        else:
+                            if not x % 2:
+                                print("*", end="")
+                                fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+                                
+                            else:
+                                print(" ",end="")
+                        print("")
+                    else:
+                        fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+                                
+
+
+            fp_obj.flush()
+            fp_obj.close()
+
+    except Exception as error:
+        # Bad Practice I know...
+        print(f"Failed to write file: {obj_file}",obj_file)
+        print(f"Exception: {error}")
+        return False
 #
 # The actual start of Python Code.
 #
@@ -1090,6 +1449,9 @@ if __name__ == "__main__":
     group.add_argument("--layered",help="Create a Multi Layer Set of files for each colour code",action="store_true",default=False)
     group.add_argument("--tower",help="Create a single layer, different heights based on colour order",action="store_true",default=False)
     # Get arguments from the Command Line
+
+    # Parametric Testing
+    parser.add_argument("-pt","--parametricTest",help="Testing a new idea",action="store_true", default=False)
     args=parser.parse_args()
 
     # Check for Jointer Cubes required.
@@ -1145,6 +1507,11 @@ if __name__ == "__main__":
 
 
     ColoursOnSingleLayerHeight = args.nextlayeronly
+
+    if args.parametricTest:
+        print("Testing....")
+        ParametricTest()
+        exit(0)
 
     # Attempt to Load the PNG to memory.
     if loadPNGToMemory() == False:
