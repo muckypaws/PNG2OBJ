@@ -40,8 +40,8 @@ import argparse         # 'bout time I added Parsing...
 from datetime import datetime
 import os
 import sys
-import png
 import math
+import png
 
 # Application Defaults
 
@@ -362,6 +362,7 @@ default_mtl_params =    "\nKs 0.000000 0.000000 0.000000\n" \
 # Define the Colour Dictionary
 #
 mtl_colour_dict   = {}
+mtl_final_list = []
 mtl_current_index = 0
 mtl_filename = ""
 mtl_lib_filename = ""
@@ -514,11 +515,12 @@ def create_primitive(primitive_x, primitive_y,
     #strFaces = "# "+str(vert_len)+f" Vertices\ng Pixel_{primitive_x}_{primitive_y}_F\n"
     mtl_string=""
 
+    if material_index > 1:
+        print
     if CREATE_MTL_FILE:
         mtl_string = "mtllib "+os.path.basename(mtl_filename) + "\n" + \
             f"usemtl {material_index}\n"
-    mtl_string = "mtllib "+os.path.basename(mtl_filename) + "\n" + \
-            f"usemtl {material_index}\n"
+
     strFaces=f"g ACIS Pixel_{primitive_x}_{primitive_y}_F\n"
 
     #
@@ -563,6 +565,8 @@ def create_primitive(primitive_x, primitive_y,
 # Define Material Colour
 #
 def MaterialColourAsString(r,g,b):
+    global mtl_final_list
+
     myFormatter = "{0:.6f}"
 
     mult = 1.0/255.0
@@ -572,7 +576,35 @@ def MaterialColourAsString(r,g,b):
             str(myFormatter.format(mult * g)) + " " + \
             str(myFormatter.format(mult * b)) + " " + \
             default_mtl_params + "\n"
+    
+    mtl_final_list.append(Material)
     return Material
+
+#
+# Add material colour to Material File
+#
+def addMaterialToFile(r, g, b, pixel =-1):
+    global mtl_current_index
+
+    # Check to see if we already have this material.
+    ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
+
+    # Is Pixel in excluded list?
+    if ColourCode in Colour_Exclusion_List:
+        return False, ColourCode
+
+    if not ColourCode in mtl_colour_dict and not ColourCode in Colour_Exclusion_List:
+        mtl_colour_dict[ColourCode] = 0
+
+
+        if CREATE_MTL_FILE == True and pixel >= 0:
+            
+            Material = MaterialColourAsString(r,g,b)
+            mtl_current_index += 1
+            #WriteToMTLFile(Material)
+            return True, ColourCode
+        
+    return True, ColourCode
 
 #
 # Convert Colour To Pixel - Can extend this to exclude colour ranges in future updates.
@@ -611,31 +643,14 @@ def getPixelFromRow(x, row, channels, rowWidth):
             g = 0
             b = 0
 
-    # Check to see if we already have this material.
-    ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
+    if pixel > 0:
+        print
 
-    # Is Pixel in excluded list?
-    if ColourCode in Colour_Exclusion_List:
-        pixel = -1
+    valid, ColourCode = addMaterialToFile(r, g, b, pixel)
 
-    if not ColourCode in mtl_colour_dict and not ColourCode in Colour_Exclusion_List:
-        mtl_colour_dict[ColourCode] = 0
+    if not valid:
+        pixel =-1
 
-        if CREATE_MTL_FILE == True and pixel >= 0:
-            
-            #myFormatter = "{0:.6f}"
-
-            #mult = 1.0/255.0
-
-            #Material = f"\nnewmtl {mtl_current_index}\n" + \
-            #        f"Kd " + str(myFormatter.format(mult * r)) + " " + \
-            #        str(myFormatter.format(mult * g)) + " " + \
-            #        str(myFormatter.format(mult * b)) + " " + \
-            #        default_mtl_params + "\n"
-            
-            Material = MaterialColourAsString(r,g,b)
-            WriteToMTLFile(Material)
-            mtl_current_index += 1
 
     material_index = -1
     
@@ -676,17 +691,6 @@ def CheckJointRequired(x ,y ,row, nextRow, channels, pattern_w):
         isJointRequired = -1
 
     return isJointRequired
-
-#
-# Write to the MTL File Appending
-#
-def WriteToMTLFile(text):
-    global mtl_filename
-    with open(mtl_filename,'a') as fp_mtl:
-        fp_mtl.write(text)
-        fp_mtl.write("\n")
-        fp_mtl.flush()
-        fp_mtl.close()
 
 #
 # And this is where all that magic happens.
@@ -903,6 +907,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
     TowerMultiplier = 1.0
     LastTowerMultiplier = 1.0
+
     if Create_Layered_File:
         obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
     else:
@@ -1112,8 +1117,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
         fp_txt.flush()
         fp_txt.close()
 
-    if CREATE_MTL_FILE:
-        FinaliseMasterMaterialFile(mtl_filename)
+    #if CREATE_MTL_FILE:
+    #    FinaliseMasterMaterialFile(mtl_filename)
     return True
 
 #
@@ -1169,37 +1174,32 @@ def load_pattern(pattern_name):
         return None, 0, 0, None
 
 #
-# Create the Master Material File
+# Write Cached Material Information to Material File if Required
 #
-def CreateMasterMaterialFile(filename):
+def CreateMasterMaterialFileMaster(filename):
+    global mtl_final_list
+
     try:
         with open(filename,'w') as fp_mtl:
             fp_mtl.write("# Created with PNG2OBJ.PY (C) Jason Brooks\n")
             fp_mtl.write("# See www.muckypaws.com\n")
             fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
+
+            # write the material list.
+            for string in enumerate(mtl_final_list):
+                fp_mtl.write(f"{string[1]}")
+
+            # Write the Trailer portion of the file (Not needed just for reference really)
+            fp_mtl.write(f"#\n# Total Material Colours Created: {len(mtl_colour_dict)}\n#\n")
             fp_mtl.flush()
             fp_mtl.close()
+            
     except Exception as error:
         print(f"Failed to create Material File: {filename}")
         print(f"Error: {error}")
         exit(0)
 
-#
-# Finalise the MTL File
-#
-def FinaliseMasterMaterialFile(filename):
-    global mtl_colour_dict
-    global CREATE_MTL_FILE
-    try:
-        with open(filename,'a') as fp_mtl:
-            fp_mtl.write(f"#\n# Total Material Colours Created: {len(mtl_colour_dict)}\n#\n")
-            fp_mtl.flush()
-            fp_mtl.close()
-            # Switch off flag as MTL File has been created and finalised.
-            CREATE_MTL_FILE = False
-    except Exception as error:
-        print(f"Failed to append to Material File: {filename}")
-        exit(0)
+
                     
 #
 # Default Logging Code
@@ -1272,13 +1272,14 @@ def createDesign2(new_vertices,x,cx,cy,Radius):
 
 #
 # Rotate top of the cube, Pass
-#       Simple Cube Vertice
-#       X Position
+#       Simple Cube Vertex Data
+#       Angle = Rotation in Degrees
 #       Centre X Position
 #       Centre Y Position
-#       Radius Of Circle
+#       Radius Of Box
+#       Depth = Height of TrapezoidalPrism (Default 10.0)
 #
-def createDesignTopRotation(new_vertices, Angle, cx, cy, Radius):
+def createDesignTrapezoidalPrismTopRotation(new_vertices, Angle, cx, cy, Radius, Depth=10.0):
 
     if len(new_vertices) != 8:
         print(f"Sorry Wrong Input Data: {new_vertices}")
@@ -1291,23 +1292,53 @@ def createDesignTopRotation(new_vertices, Angle, cx, cy, Radius):
     nextVertices.append(new_vertices[2])
     nextVertices.append(new_vertices[3])
 
+    if Angle >= 90.0:
+        Angle = Angle - 90.0
+    if Angle <= -90.0:
+        Angle = Angle + 90.0
+    
+
+
     # Calculate rotation on X-Axis of Top of Cube by Setting X and Y
 
-    v1 = abs(Radius * math.cos(math.radians(Angle)))
-    v2 = abs(Radius * math.sin(math.radians(Angle)))    
-    v3 = 10 # Depth of 10 
+    v1 = (Radius * math.cos(math.radians(Angle-45.0)))
+    v2 = (Radius * math.sin(math.radians(Angle-45.0)))
 
     # Set the tops accordingly (Top Left)
-    nextVertices.append([cx-v1, cy+v2, v3])
+    nextVertices.append([cx-v1, cy+v2, Depth])
 
     # Set the tops accordingly (Bottom Left)
-    nextVertices.append([cx-v2, cy-v1, v3])
+    nextVertices.append([cx-v2, cy-v1, Depth])
 
     # Set the tops accordingly (Top Right
-    nextVertices.append([cx+v2, cy+v1 , v3])
+    nextVertices.append([cx+v2, cy+v1 , Depth])
 
     # Set the tops accordingly (Bottom Right)
-    nextVertices.append([cx+v1, cy-v2, v3])
+    nextVertices.append([cx+v1, cy-v2, Depth])
+
+    return nextVertices
+
+#
+# Apply Sine Wave to Z Axis
+#
+def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0):
+    if len(interimDesign) != 8:
+        print(f"Sorry Wrong Input Data: {new_vertices}")
+        exit(0)
+
+    # First four Vertices are the base of the design
+    nextVertices = []
+    nextVertices.append(interimDesign[0])
+    nextVertices.append(interimDesign[1])
+    nextVertices.append(interimDesign[2])
+    nextVertices.append(interimDesign[3])
+
+    # Calculate Z Sinewave
+
+    for index, vertices in enumerate(interimDesign[4:8]):
+        newz = -math.sin(math.sqrt((vertices[0]**2)/divisor + (vertices[1]**2)/divisor)) * Amplitude
+
+        nextVertices.append([vertices[0], vertices[1], vertices[2]+newz])
 
     return nextVertices
 #
@@ -1323,18 +1354,16 @@ def ParametricTest():
     Primitive_Layer_Depth = 10.0
     Primitive_Multipler = 1.0
 
-    wibble = 0
-
     # Test mod primitive
     new_vertices = ([ 0.000000,  0.000000, 0.000000],
                     [ 0.000000, 10.000000, 0.000000],
                     [10.000000,  0.000000, 0.000000],
                     [10.000000, 10.000000, 0.000000],
 
-                    [2.000000, 8.000000, 10.000000],
-                    [2.000000, 2.000000, 10.000000],
-                    [8.000000, 5.000000, 10.000000],
-                    [8.000000, 2.000000, 10.000000]
+                    [0.000000, 10.000000, 10.000000],
+                    [0.000000, 0.000000, 10.000000],
+                    [10.000000, 10.000000, 10.000000],
+                    [10.000000, 0.000000, 10.000000]
 )
     new_faces = ([2, 4, 3, 1],
                 [6, 8, 7, 5],
@@ -1356,12 +1385,10 @@ def ParametricTest():
             header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
             fp_obj.write( header )
 
-            #fp_obj.write( create_primitive(0, 0, 1, 1, new_vertices, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
-
             xRange = 9
             yRange = 9
 
-            Radius = 4.0
+            Radius = 5.0
             xSteps = Radius/5.0
 
             alternate = False
@@ -1369,20 +1396,47 @@ def ParametricTest():
             startstep = 0.0
             currentAngle = 0.0
             angleSteps = 90.0 / 40.0
-        
-            for y in range (0,21):
+
+            waveSteps = 180.0 / 20.0
+
+            VerticesDict = {}
+
+            OffsetX = 5.0
+            OffsetY = 5.0
+
+            GridWidth = 30
+            GridHeight = 20
+
+            for y in range (0,GridHeight):
                 xPos = 0
                 startstep = ((float(y) * xSteps)/20) % Radius
                 angleStep = float(y) * angleSteps
-                for x in range (0,21):
+                waveStart = waveSteps * float(y)
+
+                for x in range (0,GridWidth):
 
                     #nextDesign = createDesign(new_vertices,x,y)
 
                     currentStep = float(x) * xSteps
-                    #design1 = createDesign2(new_vertices,((currentStep+startstep) % float(Radius))  ,5.0,5.0,Radius)
-                    myDesign = createDesignTopRotation(new_vertices,(((float(x)*angleSteps)-45+angleStep) % 90.0)  ,-2,0.0,Radius)
-                    nextDesign = PositionDesign(myDesign,x,y)
+                    #myDesign = createDesign2(new_vertices,((currentStep+startstep) % float(Radius))  ,5.0,5.0,Radius)
 
+                    vx = (float(x)*10.0) - OffsetX
+                    vy = (float(y)*10.0) - OffsetY
+
+                    rotationAngle = -(math.degrees(math.atan2(-vy,vx)))
+
+                    #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,(((float(x)*angleSteps)-45+angleStep) % 90.0)  ,-2,-10.0,Radius, 25.0)
+                    #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,rotationAngle ,-3,15,Radius, 25.0)
+                    myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,-0.0 ,5.0,5.0,5.0, 25.0)
+                    
+                    #interimDesign = PositionDesign(myDesign,x,y)
+                    interimDesign = PositionDesign(myDesign,x,y)
+                    nextDesign = ApplySineWaveToVertices(interimDesign, 20, 400.0)
+
+                    # Create a vertices Key on X,Y position padded to Four Zeros (should be enough)
+                    vertKey = str(f"{x:04d}:{y:04d}")
+                    # Add vertices to dictionary for later manipulation... 
+                    VerticesDict[vertKey] = nextDesign
 
                     if alternate:
                         if y % 2:
@@ -1484,10 +1538,6 @@ if __name__ == "__main__":
 
     WORKING_FILENAME = args.filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
-
-    # Create the Material File if required.
-    if args.mtl and not args.listColours:
-        CreateMasterMaterialFile(mtl_filename)
 
     if args.excludelist and not args.listColours:
         print(f"Excluding the following colours: {args.excludelist}\n")
@@ -1636,9 +1686,13 @@ if __name__ == "__main__":
 
     print("\n")
 
-    #displayColourInformation()
-
     if args.listColours:
         displayColourInformation()
     else:
         main(args.noframe)
+        
+    # Create the Material File if required.
+    # Changed code to reduce IO to disk
+    # Write the Material File at the end
+    if args.mtl and not args.listColours:
+        CreateMasterMaterialFileMaster(mtl_filename)
