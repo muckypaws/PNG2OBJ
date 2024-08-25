@@ -1321,7 +1321,7 @@ def createDesignTrapezoidalPrismTopRotation(new_vertices, Angle, cx, cy, Radius,
 #
 # Apply Sine Wave to Z Axis
 #
-def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0):
+def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0, offsetX = 0.0, offsetY = 0.0):
     if len(interimDesign) != 8:
         print(f"Sorry Wrong Input Data: {new_vertices}")
         exit(0)
@@ -1336,11 +1336,54 @@ def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0):
     # Calculate Z Sinewave
 
     for index, vertices in enumerate(interimDesign[4:8]):
-        newz = -math.sin(math.sqrt((vertices[0]**2)/divisor + (vertices[1]**2)/divisor)) * Amplitude
-
+        # Parametric Equation Z = sqrt(sin(X^2 + Y^2)) * Amplitude
+        newz = -math.sin(math.sqrt(((vertices[0]+offsetX)**2)/divisor + ((vertices[1]+offsetY)**2)/divisor)) * Amplitude
+        
         nextVertices.append([vertices[0], vertices[1], vertices[2]+newz])
 
     return nextVertices
+
+#
+# Apply Hemisphere Wave to Z Axis
+#
+def ApplySphereToVertices(interimDesign, Radius, divisor=40.0, offsetX = 0.0, offsetY = 0.0):
+    if len(interimDesign) != 8:
+        print(f"Sorry Wrong Input Data: {new_vertices}")
+        sys.exit(0)
+
+    # First four Vertices are the base of the design
+    nextVertices = []
+    nextVertices.append(interimDesign[0])
+    nextVertices.append(interimDesign[1])
+    nextVertices.append(interimDesign[2])
+    nextVertices.append(interimDesign[3])
+
+    # Calculate Z Sinewave
+
+    for index, vertices in enumerate(interimDesign[4:8]):
+        mylen = math.sqrt(((vertices[0]-offsetX)**2) + ((vertices[1]-offsetY)**2))
+        
+        if mylen <= Radius:
+        # r^2 = (x-a)^2 + (y-b)^2 + (z-c)^2
+        # Therefore Z = SQRT(r^2 - (x-a)^2 + (y-b)^2) 
+        # Where A, B, C = Offset of Sphere.  We're only interesting in Hemisphere.
+            x2 = (vertices[0]-offsetX)**2
+            y2 = (vertices[1]-offsetY)**2
+            r2 = Radius ** 2
+            z2 = abs(r2 - x2 - y2)
+
+            #newz = (math.sqrt( ((vertices[0]-offsetX)**2)/divisor + (((vertices[1]-offsetY)**2)/divisor)))
+            newz = math.sqrt(z2)
+            
+            if newz >0.0:
+                nextVertices.append([vertices[0], vertices[1], newz])
+            else:
+                nextVertices.append(vertices)
+        else:
+            nextVertices.append(vertices)
+        
+    return nextVertices
+
 #
 # Can we create a simple parametric set of shapes?
 #
@@ -1360,10 +1403,10 @@ def ParametricTest():
                     [10.000000,  0.000000, 0.000000],
                     [10.000000, 10.000000, 0.000000],
 
-                    [0.000000, 10.000000, 10.000000],
-                    [0.000000, 0.000000, 10.000000],
-                    [10.000000, 10.000000, 10.000000],
-                    [10.000000, 0.000000, 10.000000]
+                    [0.000000, 10.000000, 25.000000],
+                    [0.000000, 0.000000, 25.000000],
+                    [10.000000, 10.000000, 25.000000],
+                    [10.000000, 0.000000, 25.000000]
 )
     new_faces = ([2, 4, 3, 1],
                 [6, 8, 7, 5],
@@ -1407,13 +1450,13 @@ def ParametricTest():
             GridWidth = 30
             GridHeight = 20
 
-            for y in range (0,GridHeight):
+            for y in range (-GridHeight,GridHeight):
                 xPos = 0
                 startstep = ((float(y) * xSteps)/20) % Radius
                 angleStep = float(y) * angleSteps
                 waveStart = waveSteps * float(y)
 
-                for x in range (0,GridWidth):
+                for x in range (-GridWidth,GridWidth):
 
                     #nextDesign = createDesign(new_vertices,x,y)
 
@@ -1427,11 +1470,13 @@ def ParametricTest():
 
                     #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,(((float(x)*angleSteps)-45+angleStep) % 90.0)  ,-2,-10.0,Radius, 25.0)
                     #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,rotationAngle ,-3,15,Radius, 25.0)
-                    myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,-0.0 ,5.0,5.0,5.0, 25.0)
+                    #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,-0.0 ,5.0,5.0,5.0, 25.0)
                     
                     #interimDesign = PositionDesign(myDesign,x,y)
-                    interimDesign = PositionDesign(myDesign,x,y)
-                    nextDesign = ApplySineWaveToVertices(interimDesign, 20, 400.0)
+                    interimDesign = PositionDesign(new_vertices,x,y)
+                    interimDesign2 = ApplySineWaveToVertices(interimDesign, 20, 400.0,-100.0)
+                    interimDesign3 = ApplySineWaveToVertices(interimDesign2, 40, 175.0,-50.0,75.0)
+                    nextDesign = ApplySphereToVertices(interimDesign3, 90.0,1.0, 50.0,-60)
 
                     # Create a vertices Key on X,Y position padded to Four Zeros (should be enough)
                     vertKey = str(f"{x:04d}:{y:04d}")
