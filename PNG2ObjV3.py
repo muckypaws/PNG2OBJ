@@ -36,12 +36,16 @@
 #                           Of what pixels were processed.
 #       Filename.mtl    <-- Contains the Wavefront Material File information.
 
+
+# Dependancies 
+# python -m pip install pysimplegui
 import argparse         # 'bout time I added Parsing...
 from datetime import datetime
 import os
 import sys
 import math
 import png
+#import PySimpleGUI as sg
 
 # Application Defaults
 
@@ -1322,66 +1326,69 @@ def createDesignTrapezoidalPrismTopRotation(new_vertices, Angle, cx, cy, Radius,
 # Apply Sine Wave to Z Axis
 #
 def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0, offsetX = 0.0, offsetY = 0.0):
-    if len(interimDesign) != 8:
-        print(f"Sorry Wrong Input Data: {new_vertices}")
+    if len(interimDesign) < 4:
+        print(f"Sorry Wrong Input Data: {interimDesign}")
         exit(0)
 
     # First four Vertices are the base of the design
     nextVertices = []
-    nextVertices.append(interimDesign[0])
-    nextVertices.append(interimDesign[1])
-    nextVertices.append(interimDesign[2])
-    nextVertices.append(interimDesign[3])
 
     # Calculate Z Sinewave
 
-    for index, vertices in enumerate(interimDesign[4:8]):
-        # Parametric Equation Z = sqrt(sin(X^2 + Y^2)) * Amplitude
-        newz = -math.sin(math.sqrt(((vertices[0]+offsetX)**2)/divisor + ((vertices[1]+offsetY)**2)/divisor)) * Amplitude
-        
-        nextVertices.append([vertices[0], vertices[1], vertices[2]+newz])
+    for index, vertices in enumerate(interimDesign):
+        if vertices[2] == 0.0:
+            nextVertices.append(vertices)
+        else:
+            # Parametric Equation Z = sqrt(sin(X^2 + Y^2)) * Amplitude
+            newz = -math.sin(math.sqrt(((vertices[0]+offsetX)**2)/divisor + ((vertices[1]+offsetY)**2)/divisor)) * Amplitude
+
+            # Ensure bottom always Zero
+            if newz + vertices[2]<=0.0:
+                # Ensure there's some volume to a face...
+                nextVertices.append([vertices[0], vertices[1], 0.1])
+            else:
+                nextVertices.append([vertices[0], vertices[1], vertices[2]+newz])
 
     return nextVertices
 
 #
 # Apply Hemisphere Wave to Z Axis
 #
-def ApplySphereToVertices(interimDesign, Radius, divisor=40.0, offsetX = 0.0, offsetY = 0.0):
-    if len(interimDesign) != 8:
-        print(f"Sorry Wrong Input Data: {new_vertices}")
+def ApplyHemiSphereToVertices(interimDesign, Radius, divisor=40.0, offsetX = 0.0, offsetY = 0.0, offsetZ = 0.0):
+    if len(interimDesign) < 4:
+        print(f"Sorry Wrong Input Data: {interimDesign}")
         sys.exit(0)
 
-    # First four Vertices are the base of the design
     nextVertices = []
-    nextVertices.append(interimDesign[0])
-    nextVertices.append(interimDesign[1])
-    nextVertices.append(interimDesign[2])
-    nextVertices.append(interimDesign[3])
 
-    # Calculate Z Sinewave
-
-    for index, vertices in enumerate(interimDesign[4:8]):
-        mylen = math.sqrt(((vertices[0]-offsetX)**2) + ((vertices[1]-offsetY)**2))
-        
-        if mylen <= Radius:
-        # r^2 = (x-a)^2 + (y-b)^2 + (z-c)^2
-        # Therefore Z = SQRT(r^2 - (x-a)^2 + (y-b)^2) 
-        # Where A, B, C = Offset of Sphere.  We're only interesting in Hemisphere.
-            x2 = (vertices[0]-offsetX)**2
-            y2 = (vertices[1]-offsetY)**2
-            r2 = Radius ** 2
-            z2 = abs(r2 - x2 - y2)
-
-            #newz = (math.sqrt( ((vertices[0]-offsetX)**2)/divisor + (((vertices[1]-offsetY)**2)/divisor)))
-            newz = math.sqrt(z2)
+    for index, vertices in enumerate(interimDesign):
+        # If Z = 0.0 then base vertices just copy
+        # if index < (len(interimDesign)/2):
+        if vertices[2] <= 0.0:
+            nextVertices.append([vertices[0], vertices[1], 0.0])
+        else:
+            # Process Upper Hemisphere - Are we in radius of the Sphere?
+            mylen = math.sqrt(((vertices[0]-offsetX)**2) + ((vertices[1]-offsetY)**2))
             
-            if newz >0.0:
-                nextVertices.append([vertices[0], vertices[1], newz])
+            if mylen <= Radius:
+            # r^2 = (x-a)^2 + (y-b)^2 + (z-c)^2
+            # Therefore Z = SQRT(r^2 - (x-a)^2 + (y-b)^2)
+            # Where A, B, C = Offset of Sphere.  We're only interested in the Hemisphere.
+                x2 = (vertices[0]-offsetX)**2
+                y2 = (vertices[1]-offsetY)**2
+                r2 = Radius ** 2
+                z2 = abs(r2 - x2 - y2)
+
+                #newz = (math.sqrt( ((vertices[0]-offsetX)**2)/divisor + (((vertices[1]-offsetY)**2)/divisor)))
+                newz = math.sqrt(z2) + offsetZ
+
+                if newz > 0.0:
+                    nextVertices.append([vertices[0], vertices[1], newz])
+                else:
+                    nextVertices.append(vertices)
             else:
                 nextVertices.append(vertices)
-        else:
-            nextVertices.append(vertices)
-        
+
     return nextVertices
 
 #
@@ -1391,7 +1398,6 @@ def ParametricTest():
     global Primitive_Layer_Depth
     global Primitive_Multipler
 
-    TowerMultiplier = 1.0
     LastTowerMultiplier = 1.0
     primitive_y_multiplier = 1.0
     Primitive_Layer_Depth = 10.0
@@ -1414,6 +1420,9 @@ def ParametricTest():
                 [1, 6, 5, 2],
                 [5, 7, 4, 2],
                 [4, 7, 8, 3])
+    
+
+    VerticesDict = {}
 
     if Create_Layered_File:
         obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
@@ -1470,13 +1479,15 @@ def ParametricTest():
 
                     #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,(((float(x)*angleSteps)-45+angleStep) % 90.0)  ,-2,-10.0,Radius, 25.0)
                     #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,rotationAngle ,-3,15,Radius, 25.0)
-                    #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,-0.0 ,5.0,5.0,5.0, 25.0)
+                    myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,45.0 ,5.0,5.0,5.0, 25.0)
                     
-                    #interimDesign = PositionDesign(myDesign,x,y)
-                    interimDesign = PositionDesign(new_vertices,x,y)
-                    interimDesign2 = ApplySineWaveToVertices(interimDesign, 20, 400.0,-100.0)
-                    interimDesign3 = ApplySineWaveToVertices(interimDesign2, 40, 175.0,-50.0,75.0)
-                    nextDesign = ApplySphereToVertices(interimDesign3, 90.0,1.0, 50.0,-60)
+                    interimDesign = PositionDesign(myDesign,x,y)
+                    #interimDesign = PositionDesign(new_vertices,x,y)
+                    
+                    
+                    #interimDesign2 = ApplySineWaveToVertices(interimDesign, 75, 200.0, -100.0)
+                    #interimDesign2 = ApplySineWaveToVertices(interimDesign2, 40, 175.0,-50.0,75.0)
+                    nextDesign = ApplyHemiSphereToVertices(interimDesign, 300.0,1.0, 50.0,-60,-250)
 
                     # Create a vertices Key on X,Y position padded to Four Zeros (should be enough)
                     vertKey = str(f"{x:04d}:{y:04d}")
@@ -1500,7 +1511,9 @@ def ParametricTest():
                                 print(" ",end="")
                         print("")
                     else:
-                        fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+                        key = f"{x:04d}:{y:04d}"
+                        VerticesDict[key] = nextDesign
+                        #fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
                                 
 
 
@@ -1552,6 +1565,8 @@ if __name__ == "__main__":
     # Parametric Testing
     parser.add_argument("-pt","--parametricTest",help="Testing a new idea",action="store_true", default=False)
     args=parser.parse_args()
+
+    
 
     # Check for Jointer Cubes required.
     if args.joints:
