@@ -21,6 +21,8 @@
 # V1.04 - 23rd August 2024   - The Matrix Edition
 #                              Creating options to create Parametric Designs based on grid patterns
 #                              Let's see where this goes...
+# V1.05 - 2nd September 2024 - Use Your Illusion 1 Edition... 
+#                              Create SVG Files from PNG Image Information
 #
 # Usage :-
 #   PNG2OBJ.py Filename
@@ -79,7 +81,7 @@ CUBE_X = 10
 CUBE_Y = -10
 
 # Define the Alpha Value as Cut Off For the Pixel
-ALPHACUTOFF = 254
+ALPHACUTOFF = 128
 
 # Define TRUE if Printing, FALSE if anything else as not required
 JOINTS_REQUIRED = False
@@ -432,6 +434,171 @@ Primitive_Initial_Layer_Depth = 0.0
 # provided in the Process Colour Order list
 Create_Towered_File = False
 
+# Needed for SVG File Creation.
+SVG_HEADER  = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n'
+
+
+#
+# Create and Write an SVG Object to File with the Square Optical Illusion.
+#
+def create_svg(filename, width, height, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+    try:
+        with open(filename, 'w') as fp:
+            # Write the Header
+            fp.write(SVG_HEADER)
+            # Write the Drawings Dimensions
+            fp.write(f'<svg width="{rect_width * width}mm" height="{rect_height * height}mm" xmlns="http://www.w3.org/2000/svg">\n')
+
+            # Loop Counter to ensure we get all diagonals.
+            max_range = width + height + 1
+            
+			# Main Optical Illusion Drawing Group
+            fill_group = [f'\t<g id="OpticalIllusionGroup">\n']
+            
+            half_rect_width = rect_width / 2
+            half_rect_height = rect_height / 2
+
+			# Loop Across the Object
+            for x in range(max_range):
+                # The Start Y Position will typically be Zero, when it moves to the right of the Width, 
+                # We start offseting the Y position on Grid to be max Width, Y = 0 -> HEIGHT
+                # Just a trick without additional loops.
+                # range_x is fixed to all columns up to maximum column width
+                start_y = max(0, x - width)
+                range_x = min(x, width)
+                
+				# Label up each of the Diagonal Groups with their start X,Y Coords
+                # Diagonals set from Top Right to Bottom Left
+                fill_group.append(f'\t\t<g id="DiagonalGroup{range_x}:{start_y}">\n')
+
+				# Lets do the work.
+                for xpos in range(range_x, -1, -1):
+                    # Check if we're in range of the grid.
+                    if xpos <= width and start_y <= height:
+                        # Set a random Colour
+                        rand = random.randint(0, 10)
+                        fill_color = (
+                            "#000000" if rand <= 3 else
+                            "#008040" if rand <= 5 else
+                            "#00ff80" if rand <= 7 else
+                            "#ffffff"
+                        )
+                        rect_x = xpos * rect_width - half_rect_width
+                        rect_y = start_y * rect_height - half_rect_height
+                        fill_group.append(
+                            f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
+                            f'x="{rect_x}mm" y="{rect_y}mm" fill="{fill_color}" />\n'
+                        )
+                        start_y += 1
+
+                fill_group.append('\t\t</g>\n')
+
+            fill_group.append('\t</g>\n')
+            fp.write(''.join(fill_group))
+
+            # Dark and Light Groups
+            dark_group = [f'\t<g id="DarkGroup">\n']
+            light_group = [f'\t<g id="LightGroup">\n']
+
+            for y in range(height):
+                current_y = y * 20.0
+                for x in range(width):
+                    current_x = x * 20.0
+                    fill_color = "#008040" if (x % 2) == (y % 2) else "#00ff80"
+                    group = dark_group if fill_color == "#008040" else light_group
+                    group.append(
+                        f'\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
+                        f'x="{current_x}mm" y="{current_y}mm" '
+                        f'rx="{rect_radius_x}" ry="{rect_radius_y}" fill="{fill_color}" />\n'
+                    )
+
+            dark_group.append("\t</g>\n")
+            light_group.append("\t</g>\n")
+
+            # Write Dark and Light Groups
+            fp.write(''.join(dark_group))
+            fp.write(''.join(light_group))
+
+            # Finalize SVG
+            fp.write('</svg>\n')
+
+    except IOError as error:
+        print(f"File error: {error}")
+    except Exception as error:
+        print(f"Unexpected error: {error}")
+
+#
+# Create and Write an SVG Object to File with the Square Optical Illusion.
+#
+def create_svg_from_PNG(savename, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+    width = Image_Real_Width
+    height = Image_Real_Height
+
+    svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
+    try:
+        with open(svg_file, 'w') as fp:
+            # Write the Header
+            fp.write(SVG_HEADER)
+            # Write the Drawings Dimensions
+            fp.write(f'<svg width="{rect_width * width}mm" height="{rect_height * height}mm" xmlns="http://www.w3.org/2000/svg">\n')
+            
+			# Main Optical Illusion Drawing Group
+            sprite_group = [f'\t<g id="SpriteImage">\n']
+            
+			# Loop Across the Object
+            for y in range(height):
+                row = pattern[int((y+Image_MinY) % pattern_h)]
+                for x in range(width):
+                    pixel, index, fill_color = getPixelFromRow(x + Image_MinX,row,channels, pattern_w )
+                    # Only Add Pixel if in the Allowed Colour List
+                    if pixel >=0:
+                        rect_x = x * rect_width
+                        rect_y = y * rect_height
+                        sprite_group.append(
+                            f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
+                            f'x="{rect_x}mm" y="{rect_y}mm" fill="{fill_color}" />\n'
+                        )
+            sprite_group.append('\t</g>\n')
+
+            fp.write(''.join(sprite_group))
+
+            # Finalize SVG
+            fp.write('</svg>\n')
+
+    except IOError as error:
+        print(f"File error: {error}")
+    except Exception as error:
+        print(f"Unexpected error: {error}")
+
+#
+# Create SVG Data for currently Loaded PNG In memory.
+#
+def create_svg_data_for_loaded_PNG(offset_X = 0, offset_Y = 0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+    width = Image_Real_Width
+    height = Image_Real_Height
+
+    # Main Optical Illusion Drawing Group
+    sprite_group = [f'\t<g id="SpriteImage">\n']
+    
+    # Loop Across the Object
+    for y in range(height):
+        row = pattern[int((y+Image_MinY) % pattern_h)]
+        for x in range(width):
+            pixel, index, fill_color = getPixelFromRow(x + Image_MinX,row,channels, pattern_w )
+            # Only Add Pixel if in the Allowed Colour List
+            if pixel >=0:
+                rect_x = (x + offset_X) * rect_width
+                rect_y = (y + offset_Y) * rect_height
+
+                sprite_group.append(
+                    f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
+                    f'x="{rect_x}mm" y="{rect_y}mm" '
+                    f'rx="{rect_radius_x}" ry="{rect_radius_y}" fill="{fill_color}" />\n'
+                )
+    sprite_group.append('\t</g>\n')
+
+    return sprite_group
+
 # Update Verticies depending on position (0 or non 0)
 # Currently Assumes, 0 - Left, non-Zero right
 #
@@ -601,7 +768,8 @@ def addMaterialToFile(r, g, b, pixel =-1):
         mtl_colour_dict[ColourCode] = 0
 
 
-        if CREATE_MTL_FILE == True and pixel >= 0:
+        #if CREATE_MTL_FILE == True and pixel >= 0:
+        if pixel >= 0:
             
             Material = MaterialColourAsString(r,g,b)
             mtl_current_index += 1
@@ -791,12 +959,13 @@ def main(noframeRequired):
 # Load PNG File to Memory and perform some initial processing
 #   Check number of Channels, is Alpha Available, discover all colours in image
 #
-def loadPNGToMemory():
-    global WORKING_FILENAME
+def loadPNGToMemory(Filename):
+    #global WORKING_FILENAME
     # Load the PNG File, Check if Valid
     global pattern, pattern_w, pattern_h, pattern_meta, channels
 
-    pattern, pattern_w, pattern_h, pattern_meta = load_pattern(WORKING_FILENAME)
+    #pattern, pattern_w, pattern_h, pattern_meta = load_pattern(WORKING_FILENAME)
+    pattern, pattern_w, pattern_h, pattern_meta = load_pattern(Filename)
 
     # If File Wasn't Found Time to Quit
     if pattern == None:
@@ -809,7 +978,8 @@ def loadPNGToMemory():
 
     # Check if We've loaded a Valid PNG File
     if pattern is None:
-        log(f"File: {WORKING_FILENAME} is not a valid PNG File")
+        #log(f"File: {WORKING_FILENAME} is not a valid PNG File")
+        log(f"File: {Filename} is not a valid PNG File")
         return False
 
     # Check to see if Alpha Byte Present and set number of channels accordingly
@@ -1134,15 +1304,19 @@ def checkProcessingRules(allowedColours, currentColour, excludedColours, pixel):
     if pixel <0:
         return False
     
-    if Create_Layered_File:
-        if currentColour in allowedColours and currentColour not in excludedColours:
-            lastPixelFound = currentColour
-            return True
-        return False
+    if len(allowedColours) > 0:        
+        if Create_Layered_File:
+            if currentColour in allowedColours and currentColour not in excludedColours:
+                lastPixelFound = currentColour
+                return True
+            return False
 
-    #if lastPixelFound == currentColour:
-    if currentColour in allowedColours:
-        return True
+        #if lastPixelFound == currentColour:
+        if currentColour in allowedColours:
+            return True
+    else:
+        if currentColour not in excludedColours:
+            return True
 
     return False
 
@@ -1392,9 +1566,82 @@ def ApplyHemiSphereToVertices(interimDesign, Radius, divisor=40.0, offsetX = 0.0
     return nextVertices
 
 #
+# Change the Colours of the Parametric Object to that of a PNG image... 
+#
+def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictionary, excludedColours):
+    start_y = offsetY
+    for y in range(Image_MinY, Image_MaxY + 1):
+        row = pattern[int(y % pattern_h)]
+
+        # If we're splitting models based on pixel width and height add and extra line
+        #   And ensure we start the next primitive further down to enforce a gap in the model
+        if y >0 and not(y % Pixel_H):
+            start_y = start_y + 1
+        
+        # Iterate through the data with
+        start_x = offsetX
+
+
+        for x in range(Image_MinX,Image_MaxX + 1):
+            # Check if We're Adding extra space between each sprite based
+            #   on fixed pixel width per sprite.
+            if x > 0 and not(x % Pixel_W):
+                if Debug_Txt_File:
+                    fp_txt.write("|")
+
+            # Get Pixel from Row
+            pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
+
+            if checkProcessingRules(allowedDictionary, mm, excludedColours, pixel):
+                if pixel > 0:
+                    print
+                myKey = f"{(x+offsetX):04d}:{(y+offsetY):04d}"
+                if myKey in vertDict:
+                    VertexData = vertDict[myKey]
+                    vertDict[myKey] = [VertexData[0], VertexData[1], VertexData[2] , mi]
+
+            # Update X Position (Taking into account an offset if we're adding space between sprites)
+            start_x = start_x + 1
+
+        start_y = start_y + 1
+#
+#
+#
+def CreateOBJFileFromDictionary(Filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
+    if Create_Layered_File:
+        obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(Filename,FILE_COUNTER,str(colourMatch)))
+    else:
+        obj_file = os.path.join(PATTERNS, "{}_Y{}.obj".format(Filename,FILE_COUNTER))
+
+    try:
+        # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
+        with open(obj_file,'w') as fp_obj:
+        # Create Header for OBJ File
+            header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
+            header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+            fp_obj.write( header )
+
+            for index, (key,value) in enumerate(vertDict.items()):
+                coords = key.split(":")
+                x = int(coords[0])
+                y = int(coords[1])
+                colourIndex = value[3]
+
+                fp_obj.write( create_primitive(x, y, 1, 1, value[0], value[1], value[2], False , colourIndex, primitive_y_multiplier * LastTowerMultiplier, False))
+                 
+
+            fp_obj.flush()
+            fp_obj.close()
+
+    except Exception as error:
+        # Bad Practice I know...
+        print(f"Failed to write file: {obj_file}",obj_file)
+        print(f"Exception: {error}")
+        return False
+#
 # Can we create a simple parametric set of shapes?
 #
-def ParametricTest():
+def ParametricTest(Filename):
     global Primitive_Layer_Depth
     global Primitive_Multipler
 
@@ -1420,111 +1667,91 @@ def ParametricTest():
                 [1, 6, 5, 2],
                 [5, 7, 4, 2],
                 [4, 7, 8, 3])
-    
 
     VerticesDict = {}
 
-    if Create_Layered_File:
-        obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
-    else:
-        obj_file = os.path.join(PATTERNS, "{}_Y{}.obj".format(WORKING_FILENAME,FILE_COUNTER))
+    xRange = 9
+    yRange = 9
 
-    try:
-        # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
-        with open(obj_file,'w') as fp_obj:
-        # Create Header for OBJ File
-            header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
-            header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
-            fp_obj.write( header )
+    Radius = 5.0
+    xSteps = Radius/5.0
 
-            xRange = 9
-            yRange = 9
+    alternate = False
 
-            Radius = 5.0
-            xSteps = Radius/5.0
+    startstep = 0.0
+    currentAngle = 0.0
+    angleSteps = 90.0 / 40.0
 
-            alternate = False
+    waveSteps = 180.0 / 20.0
 
-            startstep = 0.0
-            currentAngle = 0.0
-            angleSteps = 90.0 / 40.0
+    VerticesDict = {}
 
-            waveSteps = 180.0 / 20.0
+    OffsetX = 5.0
+    OffsetY = 5.0
 
-            VerticesDict = {}
+    GridWidth = 30
+    GridHeight = 20
 
-            OffsetX = 5.0
-            OffsetY = 5.0
+    colourIndex = 2
 
-            GridWidth = 30
-            GridHeight = 20
+    for y in range (-GridHeight,GridHeight):
+        xPos = 0
+        startstep = ((float(y) * xSteps)/20) % Radius
+        angleStep = float(y) * angleSteps
+        waveStart = waveSteps * float(y)
 
-            for y in range (-GridHeight,GridHeight):
-                xPos = 0
-                startstep = ((float(y) * xSteps)/20) % Radius
-                angleStep = float(y) * angleSteps
-                waveStart = waveSteps * float(y)
+        for x in range (-GridWidth,GridWidth):
 
-                for x in range (-GridWidth,GridWidth):
+            #myDesign = createDesign(new_vertices,x,y)
 
-                    #nextDesign = createDesign(new_vertices,x,y)
+            currentStep = float(x) * xSteps
+            #myDesign = createDesign2(new_vertices,((currentStep+startstep) % float(Radius))  ,5.0,5.0,Radius)
 
-                    currentStep = float(x) * xSteps
-                    #myDesign = createDesign2(new_vertices,((currentStep+startstep) % float(Radius))  ,5.0,5.0,Radius)
+            vx = (float(x)*10.0) - OffsetX
+            vy = (float(y)*10.0) - OffsetY
 
-                    vx = (float(x)*10.0) - OffsetX
-                    vy = (float(y)*10.0) - OffsetY
+            rotationAngle = -(math.degrees(math.atan2(-vy,vx)))
 
-                    rotationAngle = -(math.degrees(math.atan2(-vy,vx)))
+            #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,(((float(x)*angleSteps)-45+angleStep) % 90.0)  ,-2,-10.0,Radius, 25.0)
+            #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,rotationAngle ,-3,15,Radius, 25.0)
+            myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,0.0 ,5.0,5.0,5.0, 25.0)
+            
+            #interimDesign = PositionDesign(myDesign,x,y)
+            interimDesign = PositionDesign(new_vertices,x,y)
+            
+            
+            interimDesign = ApplySineWaveToVertices(interimDesign, 22, 200.0, -100.0)
+            interimDesign = ApplySineWaveToVertices(interimDesign, 40, 175.0,-50.0,75.0)
+            nextDesign = ApplyHemiSphereToVertices(interimDesign, 300.0,1.0, 50.0,-60,-250)
 
-                    #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,(((float(x)*angleSteps)-45+angleStep) % 90.0)  ,-2,-10.0,Radius, 25.0)
-                    #myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,rotationAngle ,-3,15,Radius, 25.0)
-                    myDesign = createDesignTrapezoidalPrismTopRotation(new_vertices,45.0 ,5.0,5.0,5.0, 25.0)
-                    
-                    interimDesign = PositionDesign(myDesign,x,y)
-                    #interimDesign = PositionDesign(new_vertices,x,y)
-                    
-                    
-                    #interimDesign2 = ApplySineWaveToVertices(interimDesign, 75, 200.0, -100.0)
-                    #interimDesign2 = ApplySineWaveToVertices(interimDesign2, 40, 175.0,-50.0,75.0)
-                    nextDesign = ApplyHemiSphereToVertices(interimDesign, 300.0,1.0, 50.0,-60,-250)
-
-                    # Create a vertices Key on X,Y position padded to Four Zeros (should be enough)
-                    vertKey = str(f"{x:04d}:{y:04d}")
-                    # Add vertices to dictionary for later manipulation... 
-                    VerticesDict[vertKey] = nextDesign
-
-                    if alternate:
-                        if y % 2:
-                            if x % 2:
-                                print("*", end="")
-                                fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
-                                        
-                            else:
-                                print(" ",end="")
-                        else:
-                            if not x % 2:
-                                print("*", end="")
-                                fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+            if alternate:
+                if y % 2:
+                    if x % 2:
+                        print("*", end="")
+                        fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
                                 
-                            else:
-                                print(" ",end="")
-                        print("")
                     else:
-                        key = f"{x:04d}:{y:04d}"
-                        VerticesDict[key] = nextDesign
-                        #fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
-                                
+                        print(" ",end="")
+                else:
+                    if not x % 2:
+                        print("*", end="")
+                        fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+                        
+                    else:
+                        print(" ",end="")
+                print("")
+            else:
+                key = f"{x:04d}:{y:04d}"
+                VerticesDict[key] = [nextDesign, new_faces, cube_normals, colourIndex]
+                #fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
 
+    # Apply PNG Process
+    #ApplyPNGColoursToParametricObjects(VerticesDict,-2,-2, Colour_Process_Only_list, Colour_Exclusion_List)
+    ApplyPNGColoursToParametricObjects(VerticesDict, -GridWidth, -GridHeight, Colour_Process_Only_list, Colour_Exclusion_List)
 
-            fp_obj.flush()
-            fp_obj.close()
+    CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier)
+    CreateMasterMaterialFileMaster(mtl_filename)
 
-    except Exception as error:
-        # Bad Practice I know...
-        print(f"Failed to write file: {obj_file}",obj_file)
-        print(f"Exception: {error}")
-        return False
 #
 # The actual start of Python Code.
 #
@@ -1538,7 +1765,7 @@ if __name__ == "__main__":
     parser.add_argument("-lc","--listColours",help="List the colours discovered and quantity of pixels",action="store_true")
     parser.add_argument("filename",help="Include the PNG File to convert without the PNG Extension, i.e. art.png just pass art")
     parser.add_argument("-el","--excludelist",nargs="*",type=str, default=[])
-    parser.add_argument("-ac","--alphacutoff",help="Cutoff Value for Alpha Byte (0-255), anything equal or below will be treated as fully transparent, above will be treated as fully opaque",type=int,default=254)
+    parser.add_argument("-ac","--alphacutoff",help="Cutoff Value for Alpha Byte (0-255), anything equal or below will be treated as fully transparent, above will be treated as fully opaque",type=int,default=128)
     parser.add_argument("-db","--debug",help="Create a Debug Text File with Pixels identified",action="store_true", default=False)
     parser.add_argument("-s","--sort",help="Sort the colours in order of most colour to least",action="store_true", default=False)
     parser.add_argument("-rs","--reversesort",help="Reverse the order of colours to process with most first",action="store_true",default=False)
@@ -1554,19 +1781,48 @@ if __name__ == "__main__":
     parser.add_argument("-ild","--initialLayerDepth",help="First Layer depth of OBJ in mm (Affects Multipliers)",type=float,default=0.0)
     parser.add_argument("-nf","--noframe",help="Don't Generate a Bounding Frame",action="store_true", default=False)
     parser.add_argument("-sz","--startZ",help="Initial Z Height Starting Position",type=float,default=0.0)
+    # Added SVG Support
+    parser.add_argument("-svgpw","--svg_pixel_width",help="Width of each Pixel for SVG Creation",type=float,default=20.0)
+    parser.add_argument("-svgph","--svg_pixel_height",help="Height of each Pixel for SVG Creation",type=float,default=20.0)
+    parser.add_argument("-svgrpx","--svg_radius_percent_x",help="Radius of the rounded corners X",type=float,default=25.0)
+    parser.add_argument("-svgrpy","--svg_radius_percent_y",help="Radius of the rounded corners X",type=float,default=25.0)
     
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
     group.add_argument("-fl","--flat",help="Create a Single OBJ File with all colour information",action="store_true", default=True)
     group.add_argument("--layered",help="Create a Multi Layer Set of files for each colour code",action="store_true",default=False)
     group.add_argument("--tower",help="Create a single layer, different heights based on colour order",action="store_true",default=False)
-    # Get arguments from the Command Line
-
     # Parametric Testing
     parser.add_argument("-pt","--parametricTest",help="Testing a new idea",action="store_true", default=False)
+    # SVG Files
+    group.add_argument("-svg","--svg",help="Create an SVG File",action="store_true",default=False)
+    # Get arguments from the Command Line
+
+    parser.add_argument("-ptn","--parametricFilename",help="Filename of Parametric File to Generate",nargs=1,type=str, default=["ParamtericTestFile"])
+    
     args=parser.parse_args()
 
-    
+    # Are we processing 3D or 2D?
+    ThreeD = not args.svg
+
+    # Added for Parametric Testing
+    if args.parametricTest:
+        # Black
+        addMaterialToFile(0,0,0,0)
+        # Red
+        addMaterialToFile(255,0,0,0)
+        # Green
+        addMaterialToFile(0,255,0,0)
+        # Blue
+        addMaterialToFile(0,0,255,0)
+        # Yellow
+        addMaterialToFile(255,255,0,0)
+        # Purple
+        addMaterialToFile(255,0,255,0)
+        # Cyan
+        addMaterialToFile(0,255,255,0)
+        # White
+        addMaterialToFile(255,255,255,0)
 
     # Check for Jointer Cubes required.
     if args.joints:
@@ -1618,13 +1874,8 @@ if __name__ == "__main__":
 
     ColoursOnSingleLayerHeight = args.nextlayeronly
 
-    if args.parametricTest:
-        print("Testing....")
-        ParametricTest()
-        exit(0)
-
     # Attempt to Load the PNG to memory.
-    if loadPNGToMemory() == False:
+    if loadPNGToMemory(args.filename) == False:
         print(f"Unable to open file: {WORKING_FILENAME}")
         exit (0)
 
@@ -1708,15 +1959,18 @@ if __name__ == "__main__":
     if args.startZ != 0.0:
         CurrentZOffset = args.startZ 
 
-    print(f"       Object Start Z : {args.startZ:.2f}mm")
-    print(f" Object Max Depth (Z) : {args.maxdepth:.2f}mm")
-    if Primitive_Initial_Layer_Depth != 0.0:
-        print(f"      First Layer Depth : {Primitive_Layer_Depth:.2f}mm")
-        print(f"      Next Layer Depths : {Primitive_Initial_Layer_Depth:.2f}mm")
-        
-    else:
-        print(f"     Each Layer Depth : {Primitive_Layer_Depth:.2f}mm")
-    print(f"     Requested Layers : {len(Colour_Process_Only_list)}")
+    if not args.svg:
+        print(f"       Object Start Z : {args.startZ:.2f}mm")
+        print(f" Object Max Depth (Z) : {args.maxdepth:.2f}mm")
+        if Primitive_Initial_Layer_Depth != 0.0:
+            print(f"      First Layer Depth : {Primitive_Layer_Depth:.2f}mm")
+            print(f"      Next Layer Depths : {Primitive_Initial_Layer_Depth:.2f}mm")
+            
+        else:
+            print(f"     Each Layer Depth : {Primitive_Layer_Depth:.2f}mm")
+
+        if len(Colour_Process_Only_list) > 0:
+            print(f"     Requested Layers : {len(Colour_Process_Only_list)}")
     
 
     if pattern_w != Image_Real_Width or pattern_h != Image_Real_Height:
@@ -1731,7 +1985,11 @@ if __name__ == "__main__":
         print(f"No Image Data to Process, Quitting...")
         exit(0)
 
-    print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
+    if ThreeD:
+        print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
+    else:
+        print(f"\n  Pixel Width/Height : {args.svg_pixel_width:.2f}mm x {args.svg_pixel_height:.2f}mm")
+        print(f"         Rect Radius : {args.svg_radius_percent_x:.2f}% x {args.svg_radius_percent_y:.2f}%")
 
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
@@ -1748,6 +2006,15 @@ if __name__ == "__main__":
 
     if args.listColours:
         displayColourInformation()
+
+
+    if args.parametricTest:
+        print("Testing....")
+        ParametricTest(args.parametricFilename[0])
+        exit(0)
+    elif args.svg:
+        print ("Creating SVG File from PNG: ")
+        create_svg_from_PNG(args.filename)
     else:
         main(args.noframe)
         

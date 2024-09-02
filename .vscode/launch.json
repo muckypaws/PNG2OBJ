@@ -89,10 +89,12 @@
             //"args": ["--layered","-el","#000000","-pc","#ffff00","#bdbd00","#ffffff","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","2.0","-sz","2.6","./ZXSpectrum/Cybernoid/Cybernoid"],
             //"args": ["--flat","-el","#ffff00","-pc","#ff0000","#000000","#ffffff","--mtl","-md","40.0","-mh","400.0","-mw","400.0","-nf","-ild","0.0","./ZXSpectrum/JSW/Barrel"],
             //"args": ["--flat","-el","#000000","-pc","#ff0000","--mtl","-md","16.0","-mh","88.0","-mw","88.0","-nf","-ild","0.0","./ZXSpectrum/ManicMinerPlatform/Platform"],
-            //"args": ["--layered","-el","#000000","-pc","#bdbdbd","#00bdbd","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","2.0","-sz","2.6","./ZXSpectrum/Airwolf/Airwolf2"],
+            //"args": ["-lc","--layered","-el","#000000","-pc","#bdbdbd","#00bdbd","--mtl","-md","3.0","-mh","28.0","-mw","92.0","-nf","-ild","2.0","-sz","2.6","./ZXSpectrum/Airwolf/Airwolf2"],
             //"args": ["--layered","--joints","-el","#000000","-pc","#ffffff","--mtl","-md","40.0","-mh","40.0","-mw","40.0","-nf","./ZXSpectrum/Airwolf/Pixel2"],
-            "args": ["-pt","./Test/Parametric"],
+            //"args": ["-pt","--mtl","-ptn","./Test/Parametric","./Test/Polar3"],
             // 
+
+            "args": ["-el","#002fff","-svg","./ZXSpectrum/Dizzy/DizzyZX2"],
             "justMyCode": true
         }
     ]
