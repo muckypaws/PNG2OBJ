@@ -94,7 +94,7 @@
             //"args": ["-pt","--mtl","-ptn","./Test/Parametric","./Test/Polar3"],
             // 
 
-            "args": ["-el","#002fff","-svg","./ZXSpectrum/Dizzy/DizzyZX2"],
+            "args": ["-el","#002fff","-svg","-illusion","-f400","./ZXSpectrum/Dizzy/DizzyZX2"],
             "justMyCode": true
         }
     ]

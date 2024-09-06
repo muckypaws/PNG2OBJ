@@ -47,6 +47,8 @@ import os
 import sys
 import math
 import png
+import random
+
 #import PySimpleGUI as sg
 
 # Application Defaults
@@ -437,145 +439,311 @@ Create_Towered_File = False
 # Needed for SVG File Creation.
 SVG_HEADER  = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n'
 
+# Contains SVG Data
+SVG_DATA_LIST = []
+
+# Canvas Width/Height
+SVG_CANVAS_WIDTH = 0.0
+SVG_CANVAS_HEIGHT = 0.0
 
 #
-# Create and Write an SVG Object to File with the Square Optical Illusion.
+# Write the Final SVG File from Data in the List.
 #
-def create_svg(filename, width, height, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+def svg_savefile(savename):
+    global SVG_CANVAS_WIDTH
+    global SVG_CANVAS_HEIGHT
+
     try:
-        with open(filename, 'w') as fp:
+        with open(savename, 'w') as fp:
             # Write the Header
             fp.write(SVG_HEADER)
-            # Write the Drawings Dimensions
-            fp.write(f'<svg width="{rect_width * width}mm" height="{rect_height * height}mm" xmlns="http://www.w3.org/2000/svg">\n')
+            fp.write(f'<svg width="{SVG_CANVAS_WIDTH}mm" height="{SVG_CANVAS_HEIGHT}mm" xmlns="http://www.w3.org/2000/svg">\n')
 
-            # Loop Counter to ensure we get all diagonals.
-            max_range = width + height + 1
-            
-			# Main Optical Illusion Drawing Group
-            fill_group = [f'\t<g id="OpticalIllusionGroup">\n']
-            
-            half_rect_width = rect_width / 2
-            half_rect_height = rect_height / 2
-
-			# Loop Across the Object
-            for x in range(max_range):
-                # The Start Y Position will typically be Zero, when it moves to the right of the Width, 
-                # We start offseting the Y position on Grid to be max Width, Y = 0 -> HEIGHT
-                # Just a trick without additional loops.
-                # range_x is fixed to all columns up to maximum column width
-                start_y = max(0, x - width)
-                range_x = min(x, width)
-                
-				# Label up each of the Diagonal Groups with their start X,Y Coords
-                # Diagonals set from Top Right to Bottom Left
-                fill_group.append(f'\t\t<g id="DiagonalGroup{range_x}:{start_y}">\n')
-
-				# Lets do the work.
-                for xpos in range(range_x, -1, -1):
-                    # Check if we're in range of the grid.
-                    if xpos <= width and start_y <= height:
-                        # Set a random Colour
-                        rand = random.randint(0, 10)
-                        fill_color = (
-                            "#000000" if rand <= 3 else
-                            "#008040" if rand <= 5 else
-                            "#00ff80" if rand <= 7 else
-                            "#ffffff"
-                        )
-                        rect_x = xpos * rect_width - half_rect_width
-                        rect_y = start_y * rect_height - half_rect_height
-                        fill_group.append(
-                            f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
-                            f'x="{rect_x}mm" y="{rect_y}mm" fill="{fill_color}" />\n'
-                        )
-                        start_y += 1
-
-                fill_group.append('\t\t</g>\n')
-
-            fill_group.append('\t</g>\n')
-            fp.write(''.join(fill_group))
-
-            # Dark and Light Groups
-            dark_group = [f'\t<g id="DarkGroup">\n']
-            light_group = [f'\t<g id="LightGroup">\n']
-
-            for y in range(height):
-                current_y = y * 20.0
-                for x in range(width):
-                    current_x = x * 20.0
-                    fill_color = "#008040" if (x % 2) == (y % 2) else "#00ff80"
-                    group = dark_group if fill_color == "#008040" else light_group
-                    group.append(
-                        f'\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
-                        f'x="{current_x}mm" y="{current_y}mm" '
-                        f'rx="{rect_radius_x}" ry="{rect_radius_y}" fill="{fill_color}" />\n'
-                    )
-
-            dark_group.append("\t</g>\n")
-            light_group.append("\t</g>\n")
-
-            # Write Dark and Light Groups
-            fp.write(''.join(dark_group))
-            fp.write(''.join(light_group))
+            fp.write(''.join(SVG_DATA_LIST))
 
             # Finalize SVG
             fp.write('</svg>\n')
+        
+            # Flush the buffer
+            fp.flush()
+            # Close the file.
+            fp.close()
 
+    # Exception Time... 
     except IOError as error:
         print(f"File error: {error}")
+        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
+
     except Exception as error:
         print(f"Unexpected error: {error}")
+        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
+
+#
+# Update Canvas Width/Height
+#
+def update_svg_canvas_dimensions(width, height):
+    global SVG_CANVAS_WIDTH
+    global SVG_CANVAS_HEIGHT
+
+    if width > SVG_CANVAS_WIDTH:
+        SVG_CANVAS_WIDTH = width
+
+    if height > SVG_CANVAS_HEIGHT:
+        SVG_CANVAS_HEIGHT = height
+
+#
+# Add rectangle
+#
+def add_svg_rectangle(x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000", opacity = 100.0, stroke_width = 0.0, stroke_colour = "#000000"):
+    # Base rectangle attributes
+    rect_str = (f'<rect width="{width}mm" height="{height}mm" '
+                f'x="{x}mm" y="{y}mm"  ')
+    
+    # Add rx and ry only if they're non-zero
+    if rx != 0.0:
+        rect_str += f'rx="{rx}" '
+    if ry != 0.0:
+        rect_str += f'ry="{ry}" '
+
+    # Add stroke attributes if stroke width is not 0
+    if stroke_width != 0.0:
+        #rect_str += f'stroke-width="{stroke_width}" stroke="{stroke_colour}" stroke-opacity="100%" '
+        rect_str += f'style="fill:none;stroke:{stroke_colour};stroke-width:{stroke_width}mm; " '
+    else:
+        # Add opacity only if it's not 100%
+        if opacity != 100.0:
+            rect_str += f'opacity="{opacity}" '
+
+        rect_str += f'fill="{fill_colour}" '
+        #style="fill:none;stroke:rgb(35,31,32);stroke-width:12.5px;"
+
+    # Close the rect tag
+    rect_str += '/>\n'
+    
+    # Update canvas dimensions if needed
+    update_svg_canvas_dimensions(x + width, y + height)
+    
+    return rect_str
+
+#
+# Create an SVG File sized for the Range 400mm Frames
+#   Current loading is the internal frame has a useable 397mm
+#       with 405mm on outer frame before backing board.
+#
+def create_svg_frame400(add_PNG = False, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+    global SVG_DATA_LIST
+
+    # Useable Area of the Frame
+    useableArea = 397.00
+    outerFrame  = 405.00
+
+    # Get the number of Pixels plus border of 2
+    if Image_Real_Width > 0:
+        multiplier = max (Image_Real_Width + 4, Image_Real_Height + 4)
+        rect_width = useableArea / multiplier
+        rect_height = rect_width
+
+
+
+    SquareGrid = useableArea / rect_width
+    # Calculate the real width
+
+    offset = (outerFrame - useableArea) / 2
+
+    
+    create_svg(SquareGrid, SquareGrid, add_PNG, offset, offset, rect_width, rect_height, rect_radius_x, rect_radius_y )
+
+    # Add 400mm border
+    SVG_DATA_LIST.append(''.join(add_svg_rectangle(0.0, 0.0, 405.0, 405.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
+
+    # Add Maped Cutter Marks
+    SVG_DATA_LIST.append(''.join(add_svg_rectangle(0.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
+    SVG_DATA_LIST.append(''.join(add_svg_rectangle(SVG_CANVAS_WIDTH - 60.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
+    SVG_DATA_LIST.append(''.join(add_svg_rectangle(0.0, SVG_CANVAS_HEIGHT - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
+    SVG_DATA_LIST.append(''.join(add_svg_rectangle(SVG_CANVAS_WIDTH - 60.0, SVG_CANVAS_HEIGHT - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
+
+
+
+
+#
+# Create and Write an SVG Object to File with the Square Optical Illusion.
+#   savename        : Filename to Write
+#   width           : Width in pixels   (Number of Rectangles Wide)
+#   height          : Height in Pixels  (Number of Rectangles High)
+#   add_PNG         : Add the PNG loaded in Memory?, Default = No
+#   startX          : X Position Offset Start , Default = 0.0mm
+#   startY          : Y Position Offset Start , Default = 0.0 mm
+#   rect_width      : Width of Rectangles , Default = 20.0mm
+#   rect_height     : Height of Rectangles, Default = 20.0mm
+#   rect_radius_X   : Corner Radius on X  , Default = 25%
+#   rect_radius_Y   : Corner Radius on Y  , Default = 25%
+#
+def create_svg(width, height, add_PNG = False, startX = 0.0, startY = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+    global SVG_DATA_LIST
+
+    #svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
+
+    totalWidth = rect_width * width + abs(startX)
+    totalHeight = rect_height * height + abs(startY)
+    
+    update_svg_canvas_dimensions(totalWidth, totalHeight)
+
+    # Write the Drawings Dimensions
+    # SVG_DATA_LIST.append(f'<svg width="{totalWidth}mm" height="{totalHeight}mm" xmlns="http://www.w3.org/2000/svg">\n')
+
+    # Get Illusion Data
+    fill_group, light_group, dark_group = create_svg_illusion_data(width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+
+    SVG_DATA_LIST.append(''.join(fill_group))
+    SVG_DATA_LIST.append(''.join(dark_group))
+    SVG_DATA_LIST.append(''.join(light_group))
+
+    if add_PNG:
+        offsetX = (width - Image_Real_Width) / 2
+        offsetY = (height - Image_Real_Height) / 2
+        sprite_Data = create_svg_data_for_loaded_PNG(offsetX, offsetY, rect_width , rect_height, rect_radius_x, rect_radius_y, startX, startY)
+        SVG_DATA_LIST.append(''.join(sprite_Data))
+
+#
+# Create SVG Data for the Optical Illusion
+#
+def create_svg_illusion_data(width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", offsetX = 0.0, offsetY = 0.0):
+    # Loop Counter to ensure we get all diagonals.
+    max_range = int(width + height + 1)
+    
+    # Main Optical Illusion Drawing Group
+    fill_group = [f'\t<g id="OpticalIllusionGroup">\n']
+    
+    half_rect_width = (rect_width / 2)
+    half_rect_height = (rect_height / 2)
+
+    totalWidth = rect_width * width + abs(offsetX)
+    totalHeight = rect_height * height + abs(offsetY)
+    update_svg_canvas_dimensions(totalWidth, totalHeight)
+
+    # Loop Across the Object
+    for x in range(max_range):
+        # The Start Y Position will typically be Zero, when it moves to the right of the Width, 
+        # We start offseting the Y position on Grid to be max Width, Y = 0 -> HEIGHT
+        # Just a trick without additional loops.
+        # range_x is fixed to all columns up to maximum column width
+        start_y = int(max(0, x - width))
+        range_x = int(min(x, width))
+        
+        # Label up each of the Diagonal Groups with their start X,Y Coords
+        # Diagonals set from Top Right to Bottom Left
+        fill_group.append(f'\t\t<g id="DiagonalGroup{range_x}:{start_y}">\n')
+        # Set a random Colour
+        rand = random.randint(0, 10)
+        fill_color = (
+            "#000000" if rand <= 5 else
+            "#ffffff"
+        )
+        # Lets do the work.
+        for xpos in range(range_x, -1, -1):
+            # Check if we're in range of the grid.
+            if xpos <= width and start_y <= height:
+                # Set a random Colour
+                rand = random.randint(0, 10)
+                fill_color = (
+                    "#000000" if rand <= 5 else
+                    "#ffffff"
+                )
+                rect_x = xpos * rect_width - half_rect_width + offsetX
+                rect_y = start_y * rect_height - half_rect_height + offsetY
+                fill_group.append(
+                    f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
+                    f'x="{rect_x}mm" y="{rect_y}mm" fill="{fill_color}" />\n'
+                )
+                start_y += 1
+
+        fill_group.append('\t\t</g>\n')
+
+    fill_group.append('\t</g>\n')
+    
+    # Dark and Light Groups
+    dark_group = [f'\t<g id="DarkGroup">\n']
+    light_group = [f'\t<g id="LightGroup">\n']
+
+    for y in range(int(height)):
+        current_y = (y * rect_height) + offsetY
+        for x in range(int(width)):
+            current_x = (x * rect_width) + offsetX
+            fill_color = "#008040" if (x % 2) == (y % 2) else "#00ff80"
+
+            # Generate random base values for RGB within the range 0-63
+            #r, g, b = [random.randint(0, 63) for _ in range(3)]
+
+            # Determine the offset based on the parity of x and y
+            #offset = 16 if (x % 2) == (y % 2) else 164
+
+            # Apply the offset to each color component
+            #r, g, b = [value + offset for value in (r, g, b)]
+
+            # Format the final color as a hex string
+            #fill_color = "#{:02x}{:02x}{:02x}".format(r, g, b)
+            
+            group = dark_group if fill_color == "#008040" else light_group
+            group.append(
+                f'\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
+                f'x="{current_x}mm" y="{current_y}mm" '
+                )
+            
+            if rect_radius_x != 0.0:
+                group.append(f'rx="{rect_radius_x}%" ')
+
+            if rect_radius_y != 0.0:
+                group.append(f'ry="{rect_radius_y}%" ')
+
+            group.append(f'fill="{fill_color}" />\n')
+                 #ry="{rect_radius_y}" fill="{fill_color}" />\n'
+
+    dark_group.append("\t</g>\n")
+    light_group.append("\t</g>\n")
+
+    return fill_group, light_group, dark_group
 
 #
 # Create and Write an SVG Object to File with the Square Optical Illusion.
 #
-def create_svg_from_PNG(savename, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+def create_svg_from_PNG(rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", startX = 0.0, startY = 0.0):
+    global SVG_DATA_LIST
+
     width = Image_Real_Width
     height = Image_Real_Height
 
-    svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
-    try:
-        with open(svg_file, 'w') as fp:
-            # Write the Header
-            fp.write(SVG_HEADER)
-            # Write the Drawings Dimensions
-            fp.write(f'<svg width="{rect_width * width}mm" height="{rect_height * height}mm" xmlns="http://www.w3.org/2000/svg">\n')
-            
-			# Main Optical Illusion Drawing Group
-            sprite_group = [f'\t<g id="SpriteImage">\n']
-            
-			# Loop Across the Object
-            for y in range(height):
-                row = pattern[int((y+Image_MinY) % pattern_h)]
-                for x in range(width):
-                    pixel, index, fill_color = getPixelFromRow(x + Image_MinX,row,channels, pattern_w )
-                    # Only Add Pixel if in the Allowed Colour List
-                    if pixel >=0:
-                        rect_x = x * rect_width
-                        rect_y = y * rect_height
-                        sprite_group.append(
-                            f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
-                            f'x="{rect_x}mm" y="{rect_y}mm" fill="{fill_color}" />\n'
-                        )
-            sprite_group.append('\t</g>\n')
+    totalWidth = rect_width * width + abs(startX)
+    totalHeight = rect_height * height + abs(startY)
+    update_svg_canvas_dimensions(totalWidth, totalHeight)
 
-            fp.write(''.join(sprite_group))
+    #svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
 
-            # Finalize SVG
-            fp.write('</svg>\n')
+    # Write the Header
+    #SVG_DATA_LIST.append(SVG_HEADER)
+    # Write the Drawings Dimensions
+    #SVG_DATA_LIST.append(f'<svg width="{rect_width * width}mm" height="{rect_height * height}mm" xmlns="http://www.w3.org/2000/svg">\n')
+    
+    # Main Optical Illusion Drawing Group
+    sprite_group = create_svg_data_for_loaded_PNG(startX, startY, rect_width, rect_height, rect_radius_x, rect_radius_y)
 
-    except IOError as error:
-        print(f"File error: {error}")
-    except Exception as error:
-        print(f"Unexpected error: {error}")
+    SVG_DATA_LIST.append(''.join(sprite_group))
+
+    # Finalize SVG
+    #SVG_DATA_LIST.append('</svg>\n')
+
+    #svg_savefile(svg_file)
 
 #
 # Create SVG Data for currently Loaded PNG In memory.
 #
-def create_svg_data_for_loaded_PNG(offset_X = 0, offset_Y = 0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+def create_svg_data_for_loaded_PNG(offset_X = 0.0, offset_Y = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", start_X = 0.0, start_Y = 0.0):
     width = Image_Real_Width
     height = Image_Real_Height
+    
+    totalWidth = rect_width * (width + offset_X) + abs(start_X)
+    totalHeight = rect_height * (height + offset_Y) + abs(start_Y)
+
+    update_svg_canvas_dimensions(totalWidth, totalHeight)
 
     # Main Optical Illusion Drawing Group
     sprite_group = [f'\t<g id="SpriteImage">\n']
@@ -587,14 +755,24 @@ def create_svg_data_for_loaded_PNG(offset_X = 0, offset_Y = 0, rect_width=20.0, 
             pixel, index, fill_color = getPixelFromRow(x + Image_MinX,row,channels, pattern_w )
             # Only Add Pixel if in the Allowed Colour List
             if pixel >=0:
-                rect_x = (x + offset_X) * rect_width
-                rect_y = (y + offset_Y) * rect_height
+                fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
+
+                rect_x = (x + offset_X) * rect_width + start_X
+                rect_y = (y + offset_Y) * rect_height + start_Y
 
                 sprite_group.append(
-                    f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
+                    f'\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
                     f'x="{rect_x}mm" y="{rect_y}mm" '
-                    f'rx="{rect_radius_x}" ry="{rect_radius_y}" fill="{fill_color}" />\n'
                 )
+                if rect_radius_x != 0.0:
+                    sprite_group.append(f'rx="{rect_radius_x}%" ')
+
+                if rect_radius_y != 0.0:
+                    sprite_group.append(f'ry="{rect_radius_y}%" ')
+
+                sprite_group.append(f'fill="{fill_color}" />\n')
+                #    f'rx="{rect_radius_x}" ry="{rect_radius_y}" fill="{fill_color}" />\n'
+                
     sprite_group.append('\t</g>\n')
 
     return sprite_group
@@ -1787,6 +1965,9 @@ if __name__ == "__main__":
     parser.add_argument("-svgrpx","--svg_radius_percent_x",help="Radius of the rounded corners X",type=float,default=25.0)
     parser.add_argument("-svgrpy","--svg_radius_percent_y",help="Radius of the rounded corners X",type=float,default=25.0)
     
+    parser.add_argument("-illusion","--illusion",help="Create an SVG File with an optical illusion",action="store_true",default=False)
+    parser.add_argument("-f400","--frame400",help="Create an SVG File designed for Frames of 400mm internal",action="store_true",default=False)
+  
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
     group.add_argument("-fl","--flat",help="Create a Single OBJ File with all colour information",action="store_true", default=True)
@@ -1796,6 +1977,7 @@ if __name__ == "__main__":
     parser.add_argument("-pt","--parametricTest",help="Testing a new idea",action="store_true", default=False)
     # SVG Files
     group.add_argument("-svg","--svg",help="Create an SVG File",action="store_true",default=False)
+  
     # Get arguments from the Command Line
 
     parser.add_argument("-ptn","--parametricFilename",help="Filename of Parametric File to Generate",nargs=1,type=str, default=["ParamtericTestFile"])
@@ -2012,9 +2194,21 @@ if __name__ == "__main__":
         print("Testing....")
         ParametricTest(args.parametricFilename[0])
         exit(0)
+
+
     elif args.svg:
-        print ("Creating SVG File from PNG: ")
-        create_svg_from_PNG(args.filename)
+        if args.frame400:
+            # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
+            create_svg_frame400(True, 20, 20, 25, 25)
+
+        elif args.illusion:
+            create_svg(Image_Real_Width + 4,Image_Real_Height + 4, True, 5.0, 8.0)
+            #create_svg_illusion_data()
+        else:
+            print ("Creating SVG File from PNG: ")
+            create_svg_from_PNG(args.filename)
+
+        svg_savefile("./Test/TestIllusionUpdate.svg")
     else:
         main(args.noframe)
         
