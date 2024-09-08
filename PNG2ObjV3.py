@@ -840,7 +840,7 @@ def draw_circle_svg_illusion(cx = 20, cy = 20, radius = 10, rect_width=20.0, rec
 # Create SVG Data for the Optical Illusion - circles...
 #
 def create_svg_illusion_data_circular(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", offsetX = 0.0, offsetY = 0.0):
-    global SVG_ILLUSION_ARRAY
+    global SVG_ILLUSION_ARRAY, SVG_DARK_COUNT, SVG_LIGHT_COUNT
 
     width = int(width)
     height = int(height)
@@ -909,9 +909,11 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
             sample = SVG_ILLUSION_ARRAY[y][x]
             if sample != " ":
                 fillColour = "#000000"
+                SVG_DARK_COUNT += 1
             else:
                 fillColour = "#ffffff"
-
+                SVG_LIGHT_COUNT += 1
+                    
             rect_x = x * rect_width - half_rect_width + offsetX
             rect_y = y * rect_height - half_rect_height + offsetY
 
@@ -1015,7 +1017,7 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
                     SVG_DARK_COUNT += 1
                 else:
                     SVG_LIGHT_COUNT += 1
-                    
+
                 if not outline_only:
                     newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fill_color)
                 else:
