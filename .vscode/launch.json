@@ -94,7 +94,10 @@
             //"args": ["-pt","--mtl","-ptn","./Test/Parametric","./Test/Polar3"],
             // 
 
-            "args": ["-el","#002fff","-svg","-illusion","-f400","./ZXSpectrum/Dizzy/DizzyZX2"],
+            //"args": ["-el","#002fff","-svg","-f400","./ZXSpectrum/Dizzy/DizzyZX2"],
+            //"args": ["--svgfilename","./Test/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","./Test/ManicMinor/MinorWilly"],
+            //"args": ["--outlineOnly","--svgfilename","./SVG/SpacemanWillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","-f400","./Test/JSW2/JetSetInSpace"],
+            "args": ["-svgopen","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","-f400","./ZXSpectrum/JSW/JSWStride"],
             "justMyCode": true
         }
     ]

@@ -4,6 +4,7 @@
 *.stl
 *.png
 *.3mf
+TestCircle.py
 
 2023/*
 Amstrad/
@@ -20,7 +21,7 @@ Test/
 2023/Jetpack/
 Hewco/
 Sarah/*
-
+SVG/*
 
 
 ## Ignore Visual Studio temporary files, build results, and

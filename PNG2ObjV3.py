@@ -23,6 +23,8 @@
 #                              Let's see where this goes...
 # V1.05 - 2nd September 2024 - Use Your Illusion 1 Edition... 
 #                              Create SVG Files from PNG Image Information
+#                              Yeah I know the codes a bit of mess right now, I need to seperate stuff
+#                              into classes and optimise code.  But ... You know... 
 #
 # Usage :-
 #   PNG2OBJ.py Filename
@@ -39,7 +41,7 @@
 #       Filename.mtl    <-- Contains the Wavefront Material File information.
 
 
-# Dependancies 
+# Dependancies
 # python -m pip install pysimplegui
 import argparse         # 'bout time I added Parsing...
 from datetime import datetime
@@ -48,6 +50,7 @@ import sys
 import math
 import png
 import random
+import subprocess, os, platform
 
 #import PySimpleGUI as sg
 
@@ -442,9 +445,128 @@ SVG_HEADER  = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE
 # Contains SVG Data
 SVG_DATA_LIST = []
 
+# Illusion Array Data
+SVG_ILLUSION_ARRAY = []
+
 # Canvas Width/Height
 SVG_CANVAS_WIDTH = 0.0
 SVG_CANVAS_HEIGHT = 0.0
+
+ILLUSION_MAX_STREAK = 3
+
+SVG_PNG_PIXEL_COUNT = 0
+SVG_GRID_COUNT = 0
+SVG_OPTICAL_ILLUSION_COUNT = 0
+SVG_LIGHT_COUNT = 0
+SVG_DARK_COUNT = 0
+#
+# Create an Array we use for the Optical Illusion Data
+#
+def create_array(size :int):
+    """Create a 2D array of given size filled with spaces."""
+    return [[' ' for _ in range(size)] for _ in range(size)]
+
+#
+# Plot Circle Points based on each quadrant and opposite faces.
+#
+def plot_circle_points(array, cx, cy, x, y):
+    """Plot circle points in all octants with boundary checks."""
+    max_y = len(array)
+    max_x = len(array[0])
+
+    cx = int(cx)
+    cy = int(cy)
+    x = int(x)
+    y= int(y)
+
+    # Bresenhams Opposite points...
+    if 0 <= cx + x < max_x and 0 <= cy + y < max_y:
+        array[cy + y][cx + x] = '*'
+    if 0 <= cx - x < max_x and 0 <= cy + y < max_y:
+        array[cy + y][cx - x] = '*'
+    if 0 <= cx + x < max_x and 0 <= cy - y < max_y:
+        array[cy - y][cx + x] = '*'
+    if 0 <= cx - x < max_x and 0 <= cy - y < max_y:
+        array[cy - y][cx - x] = '*'
+    if 0 <= cx + y < max_x and 0 <= cy + x < max_y:
+        array[cy + x][cx + y] = '*'
+    if 0 <= cx - y < max_x and 0 <= cy + x < max_y:
+        array[cy + x][cx - y] = '*'
+    if 0 <= cx + y < max_x and 0 <= cy - x < max_y:
+        array[cy - x][cx + y] = '*'
+    if 0 <= cx - y < max_x and 0 <= cy - x < max_y:
+        array[cy - x][cx - y] = '*'
+
+#
+# Use Bresenhams Algorithm to create the points
+#
+def draw_circle(array, center_x, center_y, radius):
+    """Draw a circle on the 2D array using Bresenham's circle algorithm."""
+    x = radius
+    y = 0
+    p = 1 - radius  # Initial decision parameter
+
+    # Draw circle
+    plot_circle_points(array, center_x, center_y, x, y)
+
+    while x > y:
+        y += 1
+        if p <= 0:
+            p += 2 * y + 1
+        else:
+            x -= 1
+            p += 2 * y - 2 * x + 1
+        plot_circle_points(array, center_x, center_y, x, y)
+
+def draw_diagonals_in_array(width :int, height: int):
+    global SVG_ILLUSION_ARRAY
+
+    size = max(width, height)
+    SVG_ILLUSION_ARRAY = create_array(size)
+
+    max_range = width + height + 1
+    max_y = len(SVG_ILLUSION_ARRAY)
+    max_x = len(SVG_ILLUSION_ARRAY[0])
+
+    line_streak = none_line_streak = 0
+
+    for x in range(max_range):
+        start_y = max(0, x - width)
+        range_x = min(x, width)
+
+        # Determine if a diagonal line should be drawn
+        rand = random.randint(0, 10)
+        draw_line = False
+        
+        if rand > 5:
+            line_streak, none_line_streak = line_streak + 1, 0
+            draw_line = line_streak < 2
+        else:
+            none_line_streak, line_streak = none_line_streak + 1, 0
+            draw_line = none_line_streak > 2
+            if draw_line:
+                none_line_streak = 0
+        
+        if draw_line:
+            # Lets do the work.
+            for xpos in range(range_x, -1, -1):
+                # Check if we're in range of the grid.
+                if xpos <= width and start_y <= height:
+                    if 0 <= xpos < max_x and 0 <= start_y < max_y:
+                        SVG_ILLUSION_ARRAY[start_y][xpos] = '*'
+                                
+                start_y += 1
+
+#    print_array(SVG_ILLUSION_ARRAY)
+
+
+#
+# Debugging purposes to see the array... 
+#
+def print_array(array):
+    """Print the 2D array."""
+    for row in array:
+        print(''.join(row))
 
 #
 # Write the Final SVG File from Data in the List.
@@ -457,7 +579,7 @@ def svg_savefile(savename):
         with open(savename, 'w') as fp:
             # Write the Header
             fp.write(SVG_HEADER)
-            fp.write(f'<svg width="{SVG_CANVAS_WIDTH}mm" height="{SVG_CANVAS_HEIGHT}mm" xmlns="http://www.w3.org/2000/svg">\n')
+            fp.write(f'<svg width="{SVG_CANVAS_WIDTH:.2f}mm" height="{SVG_CANVAS_HEIGHT:.2f}mm" xmlns="http://www.w3.org/2000/svg">\n')
 
             fp.write(''.join(SVG_DATA_LIST))
 
@@ -468,6 +590,8 @@ def svg_savefile(savename):
             fp.flush()
             # Close the file.
             fp.close()
+
+            print(f"\nWritten file: {savename}")
 
     # Exception Time... 
     except IOError as error:
@@ -485,6 +609,8 @@ def update_svg_canvas_dimensions(width, height):
     global SVG_CANVAS_WIDTH
     global SVG_CANVAS_HEIGHT
 
+    if width > 405:
+        print
     if width > SVG_CANVAS_WIDTH:
         SVG_CANVAS_WIDTH = width
 
@@ -492,18 +618,48 @@ def update_svg_canvas_dimensions(width, height):
         SVG_CANVAS_HEIGHT = height
 
 #
+# Add Centred Text
+#
+def add_svg_centeredText(x, y, text, fill_colour):
+
+    text_str = (f'\t\t<text x="{x:.3f}mm" y="{y:.3f}mm" text-anchor="middle" '
+                f'dominant-baseline="central" fill="none" stroke = "{fill_colour}" '
+                f'stroke-width="0.5px" alignment-baseline="middle" font-size="24pt"'
+                f'>{text} </text>\n'
+    )
+
+    return text_str
+
+#
+# Add Centred Text
+#
+def add_svg_centeredCircle(x, y, radius = 5.0, fill_colour = "#000000", stroke_width = 0.0, stroke = "#000000"):
+
+    circle_str = (f'\t\t<circle cx="{x:.3f}mm" cy="{y:.3f}mm" r="{radius:.3f}mm" fill="{fill_colour}" ')
+    if stroke_width != 0.0:
+        circle_str += f'stroke="{stroke}" stroke-width="{stroke_width}mm" '
+
+
+    return circle_str + "/> \n"
+
+#
 # Add rectangle
 #
-def add_svg_rectangle(x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000", opacity = 100.0, stroke_width = 0.0, stroke_colour = "#000000"):
+def add_svg_rectangle(id, x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000", opacity = 100.0, stroke_width = 0.0, stroke_colour = "#000000"):
     # Base rectangle attributes
-    rect_str = (f'<rect width="{width}mm" height="{height}mm" '
-                f'x="{x}mm" y="{y}mm"  ')
+    rect_str = (f'\t\t<rect ')
+
+    if len(id)>0:
+        rect_str += f'id="{id}" '
+
+    rect_str += (f'width="{width:.3f}mm" height="{height:.3f}mm" '
+                f'x="{x:.3f}mm" y="{y:.3f}mm"  ')
     
     # Add rx and ry only if they're non-zero
     if rx != 0.0:
-        rect_str += f'rx="{rx}" '
+        rect_str += f'rx="{rx}%" '
     if ry != 0.0:
-        rect_str += f'ry="{ry}" '
+        rect_str += f'ry="{ry}%" '
 
     # Add stroke attributes if stroke width is not 0
     if stroke_width != 0.0:
@@ -521,7 +677,7 @@ def add_svg_rectangle(x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000"
     rect_str += '/>\n'
     
     # Update canvas dimensions if needed
-    update_svg_canvas_dimensions(x + width, y + height)
+    #update_svg_canvas_dimensions(x + width, y + height)
     
     return rect_str
 
@@ -530,7 +686,7 @@ def add_svg_rectangle(x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000"
 #   Current loading is the internal frame has a useable 397mm
 #       with 405mm on outer frame before backing board.
 #
-def create_svg_frame400(add_PNG = False, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+def create_svg_frame400(Outline_Only = True, add_PNG = False, rect_radius_x = 25, rect_radius_y = 25):
     global SVG_DATA_LIST
 
     # Useable Area of the Frame
@@ -539,29 +695,41 @@ def create_svg_frame400(add_PNG = False, rect_width=20.0, rect_height=20.0, rect
 
     # Get the number of Pixels plus border of 2
     if Image_Real_Width > 0:
-        multiplier = max (Image_Real_Width + 4, Image_Real_Height + 4)
+        multiplier = int(max (Image_Real_Width + 4, Image_Real_Height + 4))
+        if multiplier < 20: 
+            multiplier = 20
         rect_width = useableArea / multiplier
         rect_height = rect_width
 
-
-
-    SquareGrid = useableArea / rect_width
+    
     # Calculate the real width
 
     offset = (outerFrame - useableArea) / 2
 
-    
-    create_svg(SquareGrid, SquareGrid, add_PNG, offset, offset, rect_width, rect_height, rect_radius_x, rect_radius_y )
+    print(" Actual dimensions for 400mm Frame are :")
+    print("----------------------------------------")
+    print(f"       Internal Frame : {useableArea}mm x {useableArea}mm")
+    print(f"          Outer Frame : {outerFrame}mm x {outerFrame}mm")
+    print(f"   Pixel Width/Height : {rect_width:.2f}mm x {rect_height:.2f}mm")
+    print(f"          Rect Radius : {args.svg_radius_percent_x:.2f}% x {args.svg_radius_percent_y:.2f}%")
 
+
+    create_svg(multiplier, multiplier, Outline_Only,  True, add_PNG, offset, offset, rect_width, rect_height, rect_radius_x, rect_radius_y )
+
+    CutGuides = [f'\t<g id="CutGuidesGroup"> \n']
+    
     # Add 400mm border
-    SVG_DATA_LIST.append(''.join(add_svg_rectangle(0.0, 0.0, 405.0, 405.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
+    CutGuides.append(add_svg_rectangle("Card Border",0.0, 0.0, 405.0, 405.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
 
     # Add Maped Cutter Marks
-    SVG_DATA_LIST.append(''.join(add_svg_rectangle(0.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
-    SVG_DATA_LIST.append(''.join(add_svg_rectangle(SVG_CANVAS_WIDTH - 60.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
-    SVG_DATA_LIST.append(''.join(add_svg_rectangle(0.0, SVG_CANVAS_HEIGHT - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
-    SVG_DATA_LIST.append(''.join(add_svg_rectangle(SVG_CANVAS_WIDTH - 60.0, SVG_CANVAS_HEIGHT - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000")))
+    CutGuides.append(add_svg_rectangle("TopLeftGuide",0.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
+    CutGuides.append(add_svg_rectangle("TopRightGuide",SVG_CANVAS_WIDTH - 60.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
+    CutGuides.append(add_svg_rectangle("BottonLeftGuide",0.0, SVG_CANVAS_HEIGHT - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
+    CutGuides.append(add_svg_rectangle("BottomRightGuide",SVG_CANVAS_WIDTH - 60.0, SVG_CANVAS_HEIGHT - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
 
+    CutGuides.append(f'\t</g>\n')
+
+    SVG_DATA_LIST.append(''.join(CutGuides))
 
 
 
@@ -578,13 +746,13 @@ def create_svg_frame400(add_PNG = False, rect_width=20.0, rect_height=20.0, rect
 #   rect_radius_X   : Corner Radius on X  , Default = 25%
 #   rect_radius_Y   : Corner Radius on Y  , Default = 25%
 #
-def create_svg(width, height, add_PNG = False, startX = 0.0, startY = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+def create_svg(width, height, outline_only, use_real_colours = True, add_PNG = False, startX = 0.0, startY = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
     global SVG_DATA_LIST
 
     #svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
 
-    totalWidth = rect_width * width + abs(startX)
-    totalHeight = rect_height * height + abs(startY)
+    totalWidth = rect_width * width + abs(startX * 2)
+    totalHeight = rect_height * height + abs(startY * 2)
     
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
@@ -592,22 +760,104 @@ def create_svg(width, height, add_PNG = False, startX = 0.0, startY = 0.0, rect_
     # SVG_DATA_LIST.append(f'<svg width="{totalWidth}mm" height="{totalHeight}mm" xmlns="http://www.w3.org/2000/svg">\n')
 
     # Get Illusion Data
-    fill_group, light_group, dark_group = create_svg_illusion_data(width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
 
-    SVG_DATA_LIST.append(''.join(fill_group))
+    fill_group, light_group, dark_group = create_svg_illusion_data_diagonals(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+    #fill_group, light_group, dark_group = create_svg_illusion_data_circular(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+    if not outline_only:
+        SVG_DATA_LIST.append(''.join(fill_group))
+
     SVG_DATA_LIST.append(''.join(dark_group))
     SVG_DATA_LIST.append(''.join(light_group))
 
     if add_PNG:
-        offsetX = (width - Image_Real_Width) / 2
-        offsetY = (height - Image_Real_Height) / 2
-        sprite_Data = create_svg_data_for_loaded_PNG(offsetX, offsetY, rect_width , rect_height, rect_radius_x, rect_radius_y, startX, startY)
+        offsetX = math.ceil((width - Image_Real_Width) / 2)
+        offsetY = math.ceil((height - Image_Real_Height) / 2)
+        sprite_Data = create_svg_data_for_loaded_PNG(outline_only, use_real_colours, offsetX, offsetY, rect_width , rect_height, rect_radius_x, rect_radius_y, startX, startY)
         SVG_DATA_LIST.append(''.join(sprite_Data))
 
 #
 # Create SVG Data for the Optical Illusion
 #
-def create_svg_illusion_data(width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", offsetX = 0.0, offsetY = 0.0):
+def create_svg_rect_Grid(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = 25, rect_radius_y = 25, offsetX = 0.0, offsetY = 0.0, fillcolour1 = "#008040", fillcolour2 = "#00ff80"):
+    global SVG_GRID_COUNT
+    # Dark and Light Groups
+    dark_group = [f'\t<g id="DarkGroup">\n']
+    light_group = [f'\t<g id="LightGroup">\n']
+
+    for y in range(int(height)):
+        current_y = (y * rect_height) + offsetY
+        for x in range(int(width)):
+            current_x = (x * rect_width) + offsetX
+            fill_color = fillcolour1 if (x % 2) == (y % 2) else fillcolour2
+
+            # Generate random base values for RGB within the range 0-63
+            #r, g, b = [random.randint(0, 63) for _ in range(3)]
+
+            # Determine the offset based on the parity of x and y
+            #offset = 16 if (x % 2) == (y % 2) else 164
+
+            # Apply the offset to each color component
+            #r, g, b = [value + offset for value in (r, g, b)]
+
+            # Format the final color as a hex string
+            #fill_color = "#{:02x}{:02x}{:02x}".format(r, g, b)
+            
+            group = dark_group if fill_color == fillcolour1 else light_group
+
+            if not outline_only:
+                newObj = add_svg_rectangle("",current_x, current_y, rect_width, rect_height, rect_radius_x, rect_radius_y, fill_color)
+            else:
+                newObj = add_svg_rectangle("",current_x, current_y, rect_width, rect_height, rect_radius_x, rect_radius_y, fill_color, 0, 0.25)
+            
+            group.append(newObj)
+            SVG_GRID_COUNT += 1
+
+    dark_group.append("\t</g>\n")
+    light_group.append("\t</g>\n")
+
+    return light_group, dark_group
+
+#
+#
+#
+def draw_circle_svg_illusion(cx = 20, cy = 20, radius = 10, rect_width=20.0, rect_height=20.0, offsetX = 0.0, offsetY = 0.0):
+    x = radius
+    y = 0
+    p = 1 - radius  # Initial decision parameter
+
+    # Draw circle
+    plot_circle_points(center_x, center_y, x, y)
+
+    while x > y:
+        y += 1
+        if p <= 0:
+            p += 2 * y + 1
+        else:
+            x -= 1
+            p += 2 * y - 2 * x + 1
+        plot_circle_points(center_x, center_y, x, y)
+#
+# Create SVG Data for the Optical Illusion - circles...
+#
+def create_svg_illusion_data_circular(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", offsetX = 0.0, offsetY = 0.0):
+    global SVG_ILLUSION_ARRAY
+
+    width = int(width)
+    height = int(height)
+
+    size = max(width, height)
+    SVG_ILLUSION_ARRAY = create_array(size)
+
+    max_range = width + height + 1
+
+    # Get Maxiumum dimensions of Array
+    max_x = len(SVG_ILLUSION_ARRAY[0])
+    max_y = len(SVG_ILLUSION_ARRAY)
+
+    # Centre Point of Array
+    cx = max_x / 2
+    cy = max_y / 2
+
     # Loop Counter to ensure we get all diagonals.
     max_range = int(width + height + 1)
     
@@ -620,6 +870,96 @@ def create_svg_illusion_data(width = 20, height = 20, rect_width=20.0, rect_heig
     totalWidth = rect_width * width + abs(offsetX)
     totalHeight = rect_height * height + abs(offsetY)
     update_svg_canvas_dimensions(totalWidth, totalHeight)
+
+
+    #
+    # Create Circles of Data in Array
+    #
+    circle_streak = none_circle_streak = 0
+    draw_circles = False
+
+    max_radius = width + height
+    circle_streak = none_circle_streak = 0
+
+    for radius in range(max_radius):
+        rand = random.randint(0,10)
+
+        if rand > 5:
+            circle_streak, none_circle_streak = circle_streak + 1, 0
+            draw_circles = circle_streak < ILLUSION_MAX_STREAK
+            if not draw_circles:
+                circle_streak = 0
+                none_circle_streak = 1
+        else:
+            none_circle_streak, circle_streak = none_circle_streak + 1, 0
+            draw_circles = none_circle_streak > ILLUSION_MAX_STREAK
+            if draw_circles:
+                circle_streak = 1
+                none_circle_streak = 0
+
+        if draw_circles:
+            draw_circle(SVG_ILLUSION_ARRAY, cx, cy, radius)
+
+        #draw_circle_svg_illusion(cx, cy, rect_width, rect_height, radius, fill_color)
+   # print_array(SVG_ILLUSION_ARRAY)
+
+    fill_group = [f'\t<g id="OpticalIllusionCirclesAll">\n']
+    for y in range (height):
+        for x in range(width):
+            sample = SVG_ILLUSION_ARRAY[y][x]
+            if sample != " ":
+                fillColour = "#000000"
+            else:
+                fillColour = "#ffffff"
+
+            rect_x = x * rect_width - half_rect_width + offsetX
+            rect_y = y * rect_height - half_rect_height + offsetY
+
+            if not outline_only:
+                newObj = add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fillColour)
+            else:
+                newObj = add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fillColour, 0, 0.5)
+            fill_group.append(newObj)
+
+    fill_group.append('\t</g>\n')
+
+    light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,"#ff0000")
+ 
+    return fill_group, light_group, dark_group
+
+
+#
+# Create SVG Data for the Optical Illusion
+#
+def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", offsetX = 0.0, offsetY = 0.0):
+
+    global SVG_LIGHT_COUNT, SVG_DARK_COUNT
+
+    width = int(width)
+    height = int(height)
+    
+    # Loop Counter to ensure we get all diagonals.
+    max_range = int(width + height + 1)
+    
+    # Main Optical Illusion Drawing Group
+    fill_group = [f'\t<g id="OpticalIllusionGroup">\n']
+    
+    half_rect_width = (rect_width / 2)
+    half_rect_height = (rect_height / 2)
+
+    totalWidth = rect_width * width + abs(offsetX)
+    totalHeight = rect_height * height + abs(offsetY)
+    update_svg_canvas_dimensions(totalWidth, totalHeight)
+
+
+    light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,"#ff0000")
+ 
+    if outline_only:
+        return [], light_group, dark_group
+    
+
+    line_streak = none_line_streak = 0
+    draw_line = False
 
     # Loop Across the Object
     for x in range(max_range):
@@ -639,74 +979,63 @@ def create_svg_illusion_data(width = 20, height = 20, rect_width=20.0, rect_heig
             "#000000" if rand <= 5 else
             "#ffffff"
         )
+
+        # Determine if a diagonal line should be drawn
+
+        # Try Black if greater than five and less than streak
+        if rand > 5:
+            line_streak, none_line_streak = line_streak + 1, 0
+            draw_line = line_streak < ILLUSION_MAX_STREAK
+            if not draw_line:
+                line_streak = 0
+                none_line_streak = 1
+        else:
+            none_line_streak, line_streak = none_line_streak + 1, 0
+            draw_line = none_line_streak > ILLUSION_MAX_STREAK
+            if draw_line:
+                line_streak = 1
+                none_line_streak = 0
+
+        
+        fill_color = (
+            "#000000" if draw_line else
+            "#ffffff"
+        )
+
+
+
         # Lets do the work.
         for xpos in range(range_x, -1, -1):
             # Check if we're in range of the grid.
             if xpos <= width and start_y <= height:
-                # Set a random Colour
-                rand = random.randint(0, 10)
-                fill_color = (
-                    "#000000" if rand <= 5 else
-                    "#ffffff"
-                )
                 rect_x = xpos * rect_width - half_rect_width + offsetX
                 rect_y = start_y * rect_height - half_rect_height + offsetY
-                fill_group.append(
-                    f'\t\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
-                    f'x="{rect_x}mm" y="{rect_y}mm" fill="{fill_color}" />\n'
-                )
+
+                if draw_line:
+                    SVG_DARK_COUNT += 1
+                else:
+                    SVG_LIGHT_COUNT += 1
+                    
+                if not outline_only:
+                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fill_color)
+                else:
+                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fill_color, 0, 1.0)
+                    
+                fill_group.append(newObj)
                 start_y += 1
 
         fill_group.append('\t\t</g>\n')
 
     fill_group.append('\t</g>\n')
     
-    # Dark and Light Groups
-    dark_group = [f'\t<g id="DarkGroup">\n']
-    light_group = [f'\t<g id="LightGroup">\n']
-
-    for y in range(int(height)):
-        current_y = (y * rect_height) + offsetY
-        for x in range(int(width)):
-            current_x = (x * rect_width) + offsetX
-            fill_color = "#008040" if (x % 2) == (y % 2) else "#00ff80"
-
-            # Generate random base values for RGB within the range 0-63
-            #r, g, b = [random.randint(0, 63) for _ in range(3)]
-
-            # Determine the offset based on the parity of x and y
-            #offset = 16 if (x % 2) == (y % 2) else 164
-
-            # Apply the offset to each color component
-            #r, g, b = [value + offset for value in (r, g, b)]
-
-            # Format the final color as a hex string
-            #fill_color = "#{:02x}{:02x}{:02x}".format(r, g, b)
-            
-            group = dark_group if fill_color == "#008040" else light_group
-            group.append(
-                f'\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
-                f'x="{current_x}mm" y="{current_y}mm" '
-                )
-            
-            if rect_radius_x != 0.0:
-                group.append(f'rx="{rect_radius_x}%" ')
-
-            if rect_radius_y != 0.0:
-                group.append(f'ry="{rect_radius_y}%" ')
-
-            group.append(f'fill="{fill_color}" />\n')
-                 #ry="{rect_radius_y}" fill="{fill_color}" />\n'
-
-    dark_group.append("\t</g>\n")
-    light_group.append("\t</g>\n")
-
+    #light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,"#ff0000")
+ 
     return fill_group, light_group, dark_group
 
 #
 # Create and Write an SVG Object to File with the Square Optical Illusion.
 #
-def create_svg_from_PNG(rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", startX = 0.0, startY = 0.0):
+def create_svg_from_PNG(outlineOnly, use_real_colours, rect_width=20.0, rect_height=20.0, rect_radius_x = 25, rect_radius_y = 25, startX = 0.0, startY = 0.0):
     global SVG_DATA_LIST
 
     width = Image_Real_Width
@@ -716,37 +1045,32 @@ def create_svg_from_PNG(rect_width=20.0, rect_height=20.0, rect_radius_x = "25%"
     totalHeight = rect_height * height + abs(startY)
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
-    #svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
-
-    # Write the Header
-    #SVG_DATA_LIST.append(SVG_HEADER)
-    # Write the Drawings Dimensions
-    #SVG_DATA_LIST.append(f'<svg width="{rect_width * width}mm" height="{rect_height * height}mm" xmlns="http://www.w3.org/2000/svg">\n')
-    
     # Main Optical Illusion Drawing Group
-    sprite_group = create_svg_data_for_loaded_PNG(startX, startY, rect_width, rect_height, rect_radius_x, rect_radius_y)
+    sprite_group = create_svg_data_for_loaded_PNG(outlineOnly, use_real_colours, startX, startY, rect_width, rect_height, rect_radius_x, rect_radius_y)
 
     SVG_DATA_LIST.append(''.join(sprite_group))
-
-    # Finalize SVG
-    #SVG_DATA_LIST.append('</svg>\n')
-
-    #svg_savefile(svg_file)
 
 #
 # Create SVG Data for currently Loaded PNG In memory.
 #
-def create_svg_data_for_loaded_PNG(offset_X = 0.0, offset_Y = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", start_X = 0.0, start_Y = 0.0):
+def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True, offset_X = 0.0, offset_Y = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", start_X = 0.0, start_Y = 0.0):
+    global SVG_PNG_PIXEL_COUNT
+    
     width = Image_Real_Width
     height = Image_Real_Height
+
+    half_w = rect_width / 2
+    half_h = rect_height / 2
     
-    totalWidth = rect_width * (width + offset_X) + abs(start_X)
+    totalWidth = (rect_width * width) + offset_X + abs(start_X)
     totalHeight = rect_height * (height + offset_Y) + abs(start_Y)
 
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
     # Main Optical Illusion Drawing Group
     sprite_group = [f'\t<g id="SpriteImage">\n']
+
+    radius_size = min(rect_width, rect_height) * 0.25
     
     # Loop Across the Object
     for y in range(height):
@@ -755,23 +1079,19 @@ def create_svg_data_for_loaded_PNG(offset_X = 0.0, offset_Y = 0.0, rect_width=20
             pixel, index, fill_color = getPixelFromRow(x + Image_MinX,row,channels, pattern_w )
             # Only Add Pixel if in the Allowed Colour List
             if pixel >=0:
-                fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
+                if not use_real_colours:
+                    fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
 
                 rect_x = (x + offset_X) * rect_width + start_X
                 rect_y = (y + offset_Y) * rect_height + start_Y
 
-                sprite_group.append(
-                    f'\t\t<rect width="{rect_width}mm" height="{rect_height}mm" '
-                    f'x="{rect_x}mm" y="{rect_y}mm" '
-                )
-                if rect_radius_x != 0.0:
-                    sprite_group.append(f'rx="{rect_radius_x}%" ')
-
-                if rect_radius_y != 0.0:
-                    sprite_group.append(f'ry="{rect_radius_y}%" ')
-
-                sprite_group.append(f'fill="{fill_color}" />\n')
-                #    f'rx="{rect_radius_x}" ry="{rect_radius_y}" fill="{fill_color}" />\n'
+                SVG_PNG_PIXEL_COUNT += 1
+                if not outline_only:
+                    newObj = add_svg_rectangle("",rect_x, rect_y, rect_width, rect_height, rect_radius_x, rect_radius_y, fill_color)
+                else:
+                    #newObj = add_svg_centeredText(rect_x + half_w, rect_y + half_h, "X", "#000000")
+                    newObj = add_svg_centeredCircle(rect_x + half_w, rect_y + half_h, radius_size, "none", 1)
+                sprite_group. append(newObj)
                 
     sprite_group.append('\t</g>\n')
 
@@ -1981,6 +2301,10 @@ if __name__ == "__main__":
     # Get arguments from the Command Line
 
     parser.add_argument("-ptn","--parametricFilename",help="Filename of Parametric File to Generate",nargs=1,type=str, default=["ParamtericTestFile"])
+    parser.add_argument("-outfile","--svgfilename",help="Filename of the SVG File to Generate",nargs=1,type=str, default=["SVGTestFile.svg"])
+    parser.add_argument("-outline","--outlineOnly",help="Draw Outline only ready for machining",action="store_true",default=False)
+    parser.add_argument("-svgaddpng","--svgaddpng",help="Add loaded PNG to SVG Output",action="store_true",default=False)
+    parser.add_argument("-svgopen",help="Open SVG File with Default Application",action="store_true",default=False)
     
     args=parser.parse_args()
 
@@ -2170,8 +2494,9 @@ if __name__ == "__main__":
     if ThreeD:
         print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
     else:
-        print(f"\n  Pixel Width/Height : {args.svg_pixel_width:.2f}mm x {args.svg_pixel_height:.2f}mm")
-        print(f"         Rect Radius : {args.svg_radius_percent_x:.2f}% x {args.svg_radius_percent_y:.2f}%")
+        print("\n            Requested : ")
+        print(f"   Pixel Width/Height : {args.svg_pixel_width:.2f}mm x {args.svg_pixel_height:.2f}mm")
+        print(f"          Rect Radius : {args.svg_radius_percent_x:.2f}% x {args.svg_radius_percent_y:.2f}%")
 
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
@@ -2195,20 +2520,37 @@ if __name__ == "__main__":
         ParametricTest(args.parametricFilename[0])
         exit(0)
 
-
     elif args.svg:
         if args.frame400:
             # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
-            create_svg_frame400(True, 20, 20, 25, 25)
+            create_svg_frame400(args.outlineOnly, args.svgaddpng, args.svg_radius_percent_x, args.svg_radius_percent_y)
 
         elif args.illusion:
-            create_svg(Image_Real_Width + 4,Image_Real_Height + 4, True, 5.0, 8.0)
-            #create_svg_illusion_data()
+            create_svg(Image_Real_Width + 4,Image_Real_Height + 4, args.outlineOnly, True, True, 5.0, 8.0)
         else:
             print ("Creating SVG File from PNG: ")
-            create_svg_from_PNG(args.filename)
+            create_svg_from_PNG(args.outlineOnly, True, args.svg_pixel_width,args.svg_pixel_height, args.svg_radius_percent_x,args.svg_radius_percent_y)
+        svgFilename = ''.join(args.svgfilename)
 
-        svg_savefile("./Test/TestIllusionUpdate.svg")
+        print(f'     Total PNG Pixels : {SVG_PNG_PIXEL_COUNT}')
+        print(f'     Total Grid Count : {SVG_GRID_COUNT}')
+        print(f'  Total Grid less PNG : {SVG_GRID_COUNT- SVG_PNG_PIXEL_COUNT}')
+        if SVG_LIGHT_COUNT:
+            print(f'  Total Light Inserts : {SVG_LIGHT_COUNT}')
+        if SVG_DARK_COUNT:
+            print(f'   Total Dark Inserts : {SVG_DARK_COUNT}')
+
+        svg_savefile(svgFilename)
+
+        # Open file automatically?
+        if args.svgopen:
+            # Open file Automatically
+            if platform.system() == 'Darwin':       # macOS
+                subprocess.call(('open', svgFilename))
+            elif platform.system() == 'Windows':    # Windows
+                os.startfile(svgFilename)
+            else:                                   # linux variants
+                subprocess.call(('xdg-open', svgFilename))
     else:
         main(args.noframe)
         
