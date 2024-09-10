@@ -452,13 +452,22 @@ SVG_ILLUSION_ARRAY = []
 SVG_CANVAS_WIDTH = 0.0
 SVG_CANVAS_HEIGHT = 0.0
 
-ILLUSION_MAX_STREAK = 3
+ILLUSION_MAX_STREAK = 2
 
 SVG_PNG_PIXEL_COUNT = 0
 SVG_GRID_COUNT = 0
 SVG_OPTICAL_ILLUSION_COUNT = 0
 SVG_LIGHT_COUNT = 0
 SVG_DARK_COUNT = 0
+
+# Table is Defined as colours for Light Block, Dark Block, Light Pixel, Dark Pixel index 0, 1, 2, 3
+SVG_ILLUSION_COLOUR_TABLE = ["#3F53FF","#020078","#D93C41","#781314"]
+
+DARK_BLOCK_INDEX = 1
+LIGHT_BLOCK_INDEX = 0
+DARK_PIXEL_INDEX = 3
+LIGHT_PIXEL_INDEX = 2
+
 #
 # Create an Array we use for the Optical Illusion Data
 #
@@ -778,7 +787,7 @@ def create_svg(width, height, outline_only, use_real_colours = True, add_PNG = F
 #
 # Create SVG Data for the Optical Illusion
 #
-def create_svg_rect_Grid(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = 25, rect_radius_y = 25, offsetX = 0.0, offsetY = 0.0, fillcolour1 = "#008040", fillcolour2 = "#00ff80"):
+def create_svg_rect_Grid(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = 25, rect_radius_y = 25, offsetX = 0.0, offsetY = 0.0, fillcolour1 = "#020078", fillcolour2 = "#3F53FF"):
     global SVG_GRID_COUNT
     # Dark and Light Groups
     dark_group = [f'\t<g id="DarkGroup">\n']
@@ -925,7 +934,7 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
 
     fill_group.append('\t</g>\n')
 
-    light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,"#ff0000")
+    light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,SVG_ILLUSION_COLOUR_TABLE[DARK_BLOCK_INDEX], SVG_ILLUSION_COLOUR_TABLE[LIGHT_BLOCK_INDEX])
  
     return fill_group, light_group, dark_group
 
@@ -954,7 +963,12 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
 
-    light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,"#ff0000")
+    light_group, dark_group = create_svg_rect_Grid(outline_only, 
+                                                   width, height, rect_width, rect_height, 
+                                                   rect_radius_x, rect_radius_y, 
+                                                   offsetX, offsetY,
+                                                   SVG_ILLUSION_COLOUR_TABLE[DARK_BLOCK_INDEX],
+                                                   SVG_ILLUSION_COLOUR_TABLE[LIGHT_BLOCK_INDEX])
  
     if outline_only:
         return [], light_group, dark_group
@@ -978,7 +992,7 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
         # Set a random Colour
         rand = random.randint(0, 10)
         fill_color = (
-            "#000000" if rand <= 5 else
+            "#000000" if rand <= 7 else
             "#ffffff"
         )
 
@@ -1037,7 +1051,7 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
 #
 # Create and Write an SVG Object to File with the Square Optical Illusion.
 #
-def create_svg_from_PNG(outlineOnly, use_real_colours, rect_width=20.0, rect_height=20.0, rect_radius_x = 25, rect_radius_y = 25, startX = 0.0, startY = 0.0):
+def create_svg_from_PNG(outlineOnly, use_real_colours, rect_width=20.0, rect_height=20.0, rect_radius_x = 25.0, rect_radius_y = 25.0, startX = 0.0, startY = 0.0):
     global SVG_DATA_LIST
 
     width = Image_Real_Width
@@ -1082,7 +1096,8 @@ def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True
             # Only Add Pixel if in the Allowed Colour List
             if pixel >=0:
                 if not use_real_colours:
-                    fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
+                    #fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
+                    fill_color = SVG_ILLUSION_COLOUR_TABLE[DARK_PIXEL_INDEX] if (x % 2) == (y % 2) else SVG_ILLUSION_COLOUR_TABLE[LIGHT_PIXEL_INDEX]
 
                 rect_x = (x + offset_X) * rect_width + start_X
                 rect_y = (y + offset_Y) * rect_height + start_Y
@@ -2281,15 +2296,7 @@ if __name__ == "__main__":
     parser.add_argument("-ild","--initialLayerDepth",help="First Layer depth of OBJ in mm (Affects Multipliers)",type=float,default=0.0)
     parser.add_argument("-nf","--noframe",help="Don't Generate a Bounding Frame",action="store_true", default=False)
     parser.add_argument("-sz","--startZ",help="Initial Z Height Starting Position",type=float,default=0.0)
-    # Added SVG Support
-    parser.add_argument("-svgpw","--svg_pixel_width",help="Width of each Pixel for SVG Creation",type=float,default=20.0)
-    parser.add_argument("-svgph","--svg_pixel_height",help="Height of each Pixel for SVG Creation",type=float,default=20.0)
-    parser.add_argument("-svgrpx","--svg_radius_percent_x",help="Radius of the rounded corners X",type=float,default=25.0)
-    parser.add_argument("-svgrpy","--svg_radius_percent_y",help="Radius of the rounded corners X",type=float,default=25.0)
-    
-    parser.add_argument("-illusion","--illusion",help="Create an SVG File with an optical illusion",action="store_true",default=False)
-    parser.add_argument("-f400","--frame400",help="Create an SVG File designed for Frames of 400mm internal",action="store_true",default=False)
-  
+
     # First Mutually Excluded Group of Flags
     group=parser.add_mutually_exclusive_group()
     group.add_argument("-fl","--flat",help="Create a Single OBJ File with all colour information",action="store_true", default=True)
@@ -2301,12 +2308,27 @@ if __name__ == "__main__":
     group.add_argument("-svg","--svg",help="Create an SVG File",action="store_true",default=False)
   
     # Get arguments from the Command Line
-
+    # Added SVG Support
+    parser.add_argument("-svgpw","--svg_pixel_width",help="Width of each Pixel for SVG Creation",type=float,default=20.0)
+    parser.add_argument("-svgph","--svg_pixel_height",help="Height of each Pixel for SVG Creation",type=float,default=20.0)
+    parser.add_argument("-svgrpx","--svg_radius_percent_x",
+                        help="Radius of the rounded corners X",
+                        type=float,default=25.0)
+    parser.add_argument("-svgrpy","--svg_radius_percent_y",help="Radius of the rounded corners X",type=float,default=25.0)
+    
+    parser.add_argument("-illusion","--illusion",help="Create an SVG File with an optical illusion",action="store_true",default=False)
+    parser.add_argument("-f400","--frame400",help="Create an SVG File designed for Frames of 400mm internal",action="store_true",default=False)
+  
     parser.add_argument("-ptn","--parametricFilename",help="Filename of Parametric File to Generate",nargs=1,type=str, default=["ParamtericTestFile"])
     parser.add_argument("-outfile","--svgfilename",help="Filename of the SVG File to Generate",nargs=1,type=str, default=["SVGTestFile.svg"])
     parser.add_argument("-outline","--outlineOnly",help="Draw Outline only ready for machining",action="store_true",default=False)
     parser.add_argument("-svgaddpng","--svgaddpng",help="Add loaded PNG to SVG Output",action="store_true",default=False)
     parser.add_argument("-svgopen",help="Open SVG File with Default Application",action="store_true",default=False)
+    parser.add_argument("-ict","--illusioncolourtable",help="Colour Table for Optical Illusion",nargs="*",type=str, default=["#3F53FF","#020078","#D93C41","#781314"])
+    parser.add_argument("-urc","--userealcolours", help="Use PNG Actual Colours?",action="store_true",default=False)
+    parser.add_argument("-mb","--minimumborder", help="Minimum Border to add to PNG Image",type=int,default=2)
+    parser.add_argument("-mbw","--minimumborderwidth", help="Minimum Border to add to PNG Image",type=int,default=20)
+    parser.add_argument("-mbh","--minimumborderheight", help="Minimum Border to add to PNG Image",type=int,default=16)
     
     args=parser.parse_args()
 
@@ -2460,12 +2482,12 @@ if __name__ == "__main__":
                         Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
                     else:
                         Primitive_Layer_Depth = args.maxdepth
-    else: 
+    else:
         Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
 
 
     if args.startZ != 0.0:
-        CurrentZOffset = args.startZ 
+        CurrentZOffset = args.startZ
 
     if not args.svg:
         print(f"       Object Start Z : {args.startZ:.2f}mm")
@@ -2473,13 +2495,13 @@ if __name__ == "__main__":
         if Primitive_Initial_Layer_Depth != 0.0:
             print(f"      First Layer Depth : {Primitive_Layer_Depth:.2f}mm")
             print(f"      Next Layer Depths : {Primitive_Initial_Layer_Depth:.2f}mm")
-            
+
         else:
             print(f"     Each Layer Depth : {Primitive_Layer_Depth:.2f}mm")
 
         if len(Colour_Process_Only_list) > 0:
             print(f"     Requested Layers : {len(Colour_Process_Only_list)}")
-    
+
 
     if pattern_w != Image_Real_Width or pattern_h != Image_Real_Height:
         print(f"\n   Actual Image Width : {Image_Real_Width} Pixels")
@@ -2521,27 +2543,51 @@ if __name__ == "__main__":
         print("Testing....")
         ParametricTest(args.parametricFilename[0])
         exit(0)
-
+    # Process new SVG Options.
     elif args.svg:
         if args.frame400:
             # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
+            # Creates the grid of pieces with PNG Image pieces represented by circles
+            # and adds the registration marks for cutting mountboard using a Maped Ruler and Cutter (60mm offsets)
             create_svg_frame400(args.outlineOnly, args.svgaddpng, args.svg_radius_percent_x, args.svg_radius_percent_y)
 
         elif args.illusion:
-            create_svg(Image_Real_Width + 4,Image_Real_Height + 4, args.outlineOnly, True, True, 5.0, 8.0)
-        else:
-            print ("Creating SVG File from PNG: ")
-            create_svg_from_PNG(args.outlineOnly, True, args.svg_pixel_width,args.svg_pixel_height, args.svg_radius_percent_x,args.svg_radius_percent_y)
-        svgFilename = ''.join(args.svgfilename)
+            # Create the Optical Illusion Images using two contrasting colours for the tiles
+            # and two contrasting tiles for the PNG Image
 
+            # Want to use a custom table?
+            if len(args.illusioncolourtable) == 4:
+                SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
+
+            # Create the Optical Illusion, using
+            #   Number of block horizontal, vertical
+            #   Draw Outlines Only
+            #   Use the Real Colours of the PNG Image
+            #   Add the PNG to the SVG File (False if you just want to create the illusion without the image.)
+            blocks_horizontal = max((args.minimumborder * 2) + Image_Real_Width, args.minimumborderwidth)
+            blocks_vertical = max((args.minimumborder * 2) + Image_Real_Height, args.minimumborderheight)
+            create_svg(blocks_horizontal, blocks_vertical,
+                       args.outlineOnly,
+                       args.userealcolours,
+                       args.svgaddpng)
+        else:
+            # Simply create an SVG Block File from a PNG no other features.
+            print ("Creating SVG File from PNG: ")
+            create_svg_from_PNG(args.outlineOnly, args.userealcolours, 
+                                args.svg_pixel_width,args.svg_pixel_height, 
+                                args.svg_radius_percent_x,args.svg_radius_percent_y)
+
+        # Report the Stats
         print(f'     Total PNG Pixels : {SVG_PNG_PIXEL_COUNT}')
         print(f'     Total Grid Count : {SVG_GRID_COUNT}')
-        print(f'  Total Grid less PNG : {SVG_GRID_COUNT- SVG_PNG_PIXEL_COUNT}')
+        print(f'  Total Grid less PNG : {SVG_GRID_COUNT - SVG_PNG_PIXEL_COUNT}')
         if SVG_LIGHT_COUNT:
             print(f'  Total Light Inserts : {SVG_LIGHT_COUNT}')
         if SVG_DARK_COUNT:
             print(f'   Total Dark Inserts : {SVG_DARK_COUNT}')
 
+        # Create the Final SVG File.
+        svgFilename = ''.join(args.svgfilename)
         svg_savefile(svgFilename)
 
         # Open file automatically?
@@ -2555,7 +2601,7 @@ if __name__ == "__main__":
                 subprocess.call(('xdg-open', svgFilename))
     else:
         main(args.noframe)
-        
+
     # Create the Material File if required.
     # Changed code to reduce IO to disk
     # Write the Material File at the end
