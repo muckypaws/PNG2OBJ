@@ -452,7 +452,7 @@ SVG_ILLUSION_ARRAY = []
 SVG_CANVAS_WIDTH = 0.0
 SVG_CANVAS_HEIGHT = 0.0
 
-ILLUSION_MAX_STREAK = 2
+ILLUSION_MAX_STREAK = 3
 
 SVG_PNG_PIXEL_COUNT = 0
 SVG_GRID_COUNT = 0
@@ -463,6 +463,12 @@ SVG_DARK_COUNT = 0
 # Table is Defined as colours for Light Block, Dark Block, Light Pixel, Dark Pixel index 0, 1, 2, 3
 SVG_ILLUSION_COLOUR_TABLE = ["#3F53FF","#020078","#D93C41","#781314"]
 
+SVG_COLOUR_SETS = { 0:["#3F53FF","#020078","#D93C41","#781314"],
+                    1:["#FFF300", "#DD9C3D", "#394C93", "#000F45"],
+                    2:["#F6C6CD", "#FF4862", "#00FF60", "#005506"],
+                    3:["#D93C41","#781314", "#00FF60", "#005506"],
+                    4:["#3F53FF","#020078","#c0c0c0","#676767"]
+                   }
 DARK_BLOCK_INDEX = 1
 LIGHT_BLOCK_INDEX = 0
 DARK_PIXEL_INDEX = 3
@@ -851,6 +857,32 @@ def draw_circle_svg_illusion(cx = 20, cy = 20, radius = 10, rect_width=20.0, rec
             x -= 1
             p += 2 * y - 2 * x + 1
         plot_circle_points(center_x, center_y, x, y)
+
+#
+# clip the coords for inside the canvas.
+#
+def ClipDimensions(rect_x, rect_y, rect_width, rect_height, offsetX, offsetY):
+    req_width = rect_width
+    req_height = rect_height
+    
+    # Clip Illusion Squares to image when in frame mode.
+    if rect_x < offsetX:
+        rect_x = offsetX
+        req_width = rect_width - offsetX
+    
+    if rect_x + req_width > SVG_CANVAS_WIDTH - offsetX:
+        req_width = SVG_CANVAS_WIDTH - offsetX - rect_x
+    
+    if rect_y < offsetY:
+        rect_y = offsetY
+        req_height= rect_height - offsetY
+    
+    if rect_y + req_height > SVG_CANVAS_HEIGHT - offsetY:
+        req_height = SVG_CANVAS_HEIGHT - offsetY - rect_y
+
+    return rect_x, rect_y, req_width, req_height
+
+
 #
 # Create SVG Data for the Optical Illusion - circles...
 #
@@ -932,10 +964,12 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
             rect_x = x * rect_width - half_rect_width + offsetX
             rect_y = y * rect_height - half_rect_height + offsetY
 
+            rect_x, rect_y, req_width, req_height = ClipDimensions(rect_x, rect_y, rect_width, rect_height, offsetX, offsetY)
+                
             if not outline_only:
-                newObj = add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fillColour)
+                newObj = add_svg_rectangle("",rect_x, rect_y,req_width, req_height, 0, 0, fillColour)
             else:
-                newObj = add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fillColour, 0, 0.5)
+                newObj = add_svg_rectangle("",rect_x, rect_y,req_width, req_height, 0, 0, fillColour, 0, 0.5)
             fill_group.append(newObj)
 
     fill_group.append('\t</g>\n')
@@ -1007,7 +1041,7 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
         # Try Black if greater than five and less than streak
         if rand > 5:
             line_streak, none_line_streak = line_streak + 1, 0
-            draw_line = line_streak < ILLUSION_MAX_STREAK
+            draw_line = line_streak <= ILLUSION_MAX_STREAK
             if not draw_line:
                 line_streak = 0
                 none_line_streak = 1
@@ -1018,7 +1052,7 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
             if draw_line:
                 line_streak = 1
                 none_line_streak = 0
-                draw_line = False
+                draw_line = True
 
         
         fill_color = (
@@ -1035,15 +1069,19 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
                 rect_x = xpos * rect_width - half_rect_width + offsetX
                 rect_y = start_y * rect_height - half_rect_height + offsetY
 
+
+                rect_x, rect_y, req_width, req_height = ClipDimensions(rect_x, rect_y, rect_width, rect_height, offsetX, offsetY)
+                
+
                 if draw_line:
                     SVG_DARK_COUNT += 1
                 else:
                     SVG_LIGHT_COUNT += 1
 
                 if not outline_only:
-                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fill_color)
+                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,req_width, req_height, 0, 0, fill_color)
                 else:
-                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,rect_width, rect_height, 0, 0, fill_color, 0, 1.0)
+                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,req_width, req_height, 0, 0, fill_color, 0, 1.0)
                     
                 fill_group.append(newObj)
                 start_y += 1
@@ -2334,9 +2372,11 @@ if __name__ == "__main__":
     parser.add_argument("-svgopen",help="Open SVG File with Default Application",action="store_true",default=False)
     parser.add_argument("-ict","--illusioncolourtable",help="Colour Table for Optical Illusion",nargs="*",type=str, default=["#3F53FF","#020078","#D93C41","#781314"])
     parser.add_argument("-mb","--minimumborder", help="Minimum Border to add to PNG Image",type=int,default=2)
-    parser.add_argument("-mbw","--minimumborderwidth", help="Minimum Border to add to PNG Image",type=int,default=20)
-    parser.add_argument("-mbh","--minimumborderheight", help="Minimum Border to add to PNG Image",type=int,default=16)
+    parser.add_argument("-mbw","--minimumgridwidth", help="Minimum Border to add to PNG Image",type=int,default=20)
+    parser.add_argument("-mbh","--minimumgridheight", help="Minimum Border to add to PNG Image",type=int,default=16)
     parser.add_argument("-ilc","--illusioncircle", help="Illusion type circle not diagonals",action="store_true",default=False)
+    parser.add_argument("-cset","--colourset", help="Which Colour Set to Use for Illusion",type=int,default=-1)
+    parser.add_argument("-stmax","--maxstreak", help="Set Maximum Colour Run Streak for Optical Illusion",type=int,default=-1)
     
     group2=parser.add_mutually_exclusive_group()
     group2.add_argument("-urc","--userealcolours", help="Use PNG Actual Colours?",action="store_true",default=True)
@@ -2396,6 +2436,13 @@ if __name__ == "__main__":
     WORKING_FILENAME = args.filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
 
+    # Remove Excluded Colours from Process Colours List
+    # If user provides both in both tables, we'll force exclusion!
+    totalColours = len(mtl_colour_dict)
+    for excluded in Colour_Exclusion_List:
+        if excluded in mtl_colour_dict:
+            totalColours -= 1
+
     if args.excludelist and not args.listColours:
         print(f"Excluding the following colours: {args.excludelist}\n")
         Colour_Exclusion_List = args.excludelist
@@ -2412,13 +2459,16 @@ if __name__ == "__main__":
     widthMultiplier = 0.01
     heightMultiplier = 0.01
 
-
     ColoursOnSingleLayerHeight = args.nextlayeronly
 
     # Attempt to Load the PNG to memory.
     if loadPNGToMemory(args.filename) == False:
         print(f"Unable to open file: {WORKING_FILENAME}")
         exit (0)
+    
+    if Image_Real_Height < 1 or Image_Real_Width < 1:
+        print(f"No Image Data to Process, Quitting...")
+        exit(0)
 
     print("")
     print(f"    Image Information :")
@@ -2431,76 +2481,69 @@ if __name__ == "__main__":
     print(f" Reverse Sort Colours : {Sort_Colours_Flag}")
     print(f"Create Flat File Only : {not Create_Layered_File}" )
     print(f"         Alpha Cutoff : {ALPHACUTOFF}")
-    print(f"Background Multiplier : {Primitive_Multiplier_Background:.2f}")
-    print(f"     Layer Multiplier : {Primitive_Multiplier_Layers:.2f}")
+
 
     if Pixel_W != DEFAULT_PIXEL_WIDTH:
         print(f"   Sprite Sheet Width : {Pixel_W}")
     if Pixel_H != DEFAULT_PIXEL_HEIGHT:    
         print(f"  Sprite Sheet Height : {Pixel_H}")
 
-    if args.maxheight != 0.0 or args.maxwidth != 0.0:
-        # Need to calculate the Multipliers...
-        widthMultiplier = args.maxwidth / Image_Real_Width
-        heightMultiplier = args.maxheight / Image_Real_Height
-
-        if widthMultiplier == 0.0:
-            widthMultiplier = heightMultiplier
-
-        if heightMultiplier == 0.0:
-            heightMultiplier = widthMultiplier
-
-        Primitive_Multipler = min(widthMultiplier, heightMultiplier) / 10.0
-
-
-    # Remove Excluded Colours from Process Colours List
-    # If user provides both in both tables, we'll force exclusion!
-    totalColours = len(mtl_colour_dict)
-    for excluded in Colour_Exclusion_List:
-        if excluded in mtl_colour_dict:
-            totalColours -= 1
-
-    # Calculate Layer Depths.
-    if args.maxdepth != 0.0:
-        # Do we need a fixed First Layer Depth?
-
-        if not Create_Layered_File:
-            Primitive_Initial_Layer_Depth = args.maxdepth
-            Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
-        else:
-            # If we didn't pass an colours to process (So all except the exception list)
-            if args.initialLayerDepth != 0.0 and totalColours > 0 and len(args.processcolours) == 0:
-                # How many colours are we processing?
-                # If more than one, set layer heights accordingly.
-                if totalColours > 1:
-                    Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth)/(len(mtl_colour_dict)-1)
-                    Primitive_Layer_Depth = args.initialLayerDepth
-                else:
-                    # Only one colour to process so has to be maximum height.
-                    Primitive_Initial_Layer_Depth = args.maxdepth
-                    Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
-                CurrentZOffset = 0.0
-
-            if args.initialLayerDepth != 0.0 and len(Colour_Process_Only_list) > 1 and len(args.processcolours) > 0:
-                # Set height of initial layer depth
-                Primitive_Layer_Depth = args.initialLayerDepth
-                Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(Colour_Process_Only_list) - 1)
-                #Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
-                CurrentZOffset = 0.0
-            else:
-                if len(Colour_Process_Only_list) > 0:
-                    if len(Colour_Process_Only_list):
-                        Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
-                    else:
-                        Primitive_Layer_Depth = args.maxdepth
-    else:
-        Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
-
-
-    if args.startZ != 0.0:
-        CurrentZOffset = args.startZ
 
     if not args.svg:
+        if args.maxheight != 0.0 or args.maxwidth != 0.0:
+            # Need to calculate the Multipliers...
+            widthMultiplier = args.maxwidth / Image_Real_Width
+            heightMultiplier = args.maxheight / Image_Real_Height
+
+            if widthMultiplier == 0.0:
+                widthMultiplier = heightMultiplier
+
+            if heightMultiplier == 0.0:
+                heightMultiplier = widthMultiplier
+
+            Primitive_Multipler = min(widthMultiplier, heightMultiplier) / 10.0
+
+        # Calculate Layer Depths.
+        if args.maxdepth != 0.0:
+            # Do we need a fixed First Layer Depth?
+
+            if not Create_Layered_File:
+                Primitive_Initial_Layer_Depth = args.maxdepth
+                Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+            else:
+                # If we didn't pass an colours to process (So all except the exception list)
+                if args.initialLayerDepth != 0.0 and totalColours > 0 and len(args.processcolours) == 0:
+                    # How many colours are we processing?
+                    # If more than one, set layer heights accordingly.
+                    if totalColours > 1:
+                        Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth)/(len(mtl_colour_dict)-1)
+                        Primitive_Layer_Depth = args.initialLayerDepth
+                    else:
+                        # Only one colour to process so has to be maximum height.
+                        Primitive_Initial_Layer_Depth = args.maxdepth
+                        Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+                    CurrentZOffset = 0.0
+
+                if args.initialLayerDepth != 0.0 and len(Colour_Process_Only_list) > 1 and len(args.processcolours) > 0:
+                    # Set height of initial layer depth
+                    Primitive_Layer_Depth = args.initialLayerDepth
+                    Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(Colour_Process_Only_list) - 1)
+                    #Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+                    CurrentZOffset = 0.0
+                else:
+                    if len(Colour_Process_Only_list) > 0:
+                        if len(Colour_Process_Only_list):
+                            Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+                        else:
+                            Primitive_Layer_Depth = args.maxdepth
+        else:
+            Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
+
+        if args.startZ != 0.0:
+            CurrentZOffset = args.startZ
+        
+        print(f"Background Multiplier : {Primitive_Multiplier_Background:.2f}")
+        print(f"     Layer Multiplier : {Primitive_Multiplier_Layers:.2f}")
         print(f"       Object Start Z : {args.startZ:.2f}mm")
         print(f" Object Max Depth (Z) : {args.maxdepth:.2f}mm")
         if Primitive_Initial_Layer_Depth != 0.0:
@@ -2513,6 +2556,11 @@ if __name__ == "__main__":
         if len(Colour_Process_Only_list) > 0:
             print(f"     Requested Layers : {len(Colour_Process_Only_list)}")
 
+        print(f"     Background Frame : {not args.noframe}")
+
+        if ColoursOnSingleLayerHeight:
+            print(f"\n **** Seperate Colours On Single Layer Selected ****")
+
 
     if pattern_w != Image_Real_Width or pattern_h != Image_Real_Height:
         print(f"\n   Actual Image Width : {Image_Real_Width} Pixels")
@@ -2521,10 +2569,7 @@ if __name__ == "__main__":
         print(f"        Image Start Y : {Image_MinY}")
         print(f"         Bounding Box : ({Image_MinX},{Image_MinY},{Image_MaxX},{Image_MaxY}) ")
 
-    print(f"     Background Frame : {not args.noframe}")
-    if Image_Real_Height < 1 or Image_Real_Width < 1:
-        print(f"No Image Data to Process, Quitting...")
-        exit(0)
+ 
 
     if ThreeD:
         print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
@@ -2536,8 +2581,6 @@ if __name__ == "__main__":
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
 
-    if ColoursOnSingleLayerHeight:
-        print(f"\n **** Seperate Colours On Single Layer Selected ****")
 
     if len(Colour_Exclusion_List) > 0:
         print(f"\nColour list to exclude: {Colour_Exclusion_List}")
@@ -2556,6 +2599,48 @@ if __name__ == "__main__":
         exit(0)
     # Process new SVG Options.
     elif args.svg:
+        # Want to use a custom table?
+        if len(args.illusioncolourtable) == 4:
+            SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
+
+        if args.colourset > -1:
+            SVG_ILLUSION_COLOUR_TABLE = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
+
+        print("              SVG Parameters : ")
+        print("              ---------------\n")
+        if args.frame400:
+            print(f"   Building for Frame 400mm x 400mm Guide File")
+        print(f"   SVG Pixel Width Requested : {args.svg_pixel_width}mm")
+        print(f"  SVG Pixel Height Requested : {args.svg_pixel_height}mm")
+        print(f"         SVG Corner Radius X : {args.svg_radius_percent_x}%")
+        print(f"         SVG Corner Radius Y : {args.svg_radius_percent_y}%")
+        print(f"              Add loaded PNG : {args.svgaddpng}")
+        if args.usegridcolours:
+            print(f"            Use Grid Colours : {args.usegridcolours}")
+        else:
+            print(f"        Use PNG Real Colours : {args.userealcolours}")
+
+        if args.illusion:
+            print(f"             Create Illusion : {args.illusion}")
+            print(f"       Illusion Colour Table : {args.illusioncolourtable}")
+            if not args.illusioncircle:
+                print(f"               Illusion Type : Diagonals")
+            else:
+                print(f"               Illusion Type : Circular")
+            print(f"   Minimum Border to Add PNG : {args.minimumborder}")
+            print(f"          Minimum Grid Width : {args.minimumgridwidth}")
+            print(f"         Minimum Grid Height : {args.minimumgridheight}")
+            if args.colourset >= 0:
+                print(f"        Colour Set Requested : {args.colourset % len(SVG_COLOUR_SETS)}")
+                
+        print(f"              Create Outline : {args.outlineOnly}")
+        print(f"             Output Filename : {''.join(args.svgfilename)}")
+        print(f"Open SVG File after creation : {args.svgopen}\n")
+              
+        
+        if args.maxstreak > 0:
+            ILLUSION_MAX_STREAK = args.maxstreak
+
         if args.frame400:
             # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
             # Creates the grid of pieces with PNG Image pieces represented by circles
@@ -2566,9 +2651,6 @@ if __name__ == "__main__":
             # Create the Optical Illusion Images using two contrasting colours for the tiles
             # and two contrasting tiles for the PNG Image
 
-            # Want to use a custom table?
-            if len(args.illusioncolourtable) == 4:
-                SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
 
             ILLUSION_TYPE_CIRCLE = args.illusioncircle
 
@@ -2577,8 +2659,8 @@ if __name__ == "__main__":
             #   Draw Outlines Only
             #   Use the Real Colours of the PNG Image
             #   Add the PNG to the SVG File (False if you just want to create the illusion without the image.)
-            blocks_horizontal = max((args.minimumborder * 2) + Image_Real_Width, args.minimumborderwidth)
-            blocks_vertical = max((args.minimumborder * 2) + Image_Real_Height, args.minimumborderheight)
+            blocks_horizontal = max((args.minimumborder * 2) + Image_Real_Width, args.minimumgridwidth)
+            blocks_vertical = max((args.minimumborder * 2) + Image_Real_Height, args.minimumgridheight)
             create_svg(blocks_horizontal, blocks_vertical,
                        args.outlineOnly,
                        not args.usegridcolours,

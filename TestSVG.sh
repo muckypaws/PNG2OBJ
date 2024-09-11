@@ -20,6 +20,9 @@ then
     exit
 fi
 
+
+
+
 # Test Basic PNG To SVG Functionality
 
 ./PNG2ObjV3.py -svg -svgopen $PNGTestFile
@@ -58,3 +61,8 @@ fi
 ./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableIllusionDefaultWithCircle -el "#000000" -illusion -ilc $PNGTestFile
 ./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableIllusionDefaultWithCircleAndPNG -el "#000000" -illusion -ilc -svgaddpng $PNGTestFile
 ./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableIllusionDefaultWithCircleAndPNGGridColours -el "#000000" -illusion -ilc -svgaddpng -ugc $PNGTestFile
+
+./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableIllusionDefaultStreak5 -el "#000000" -illusion -streak 8 $PNGTestFile
+
+./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableIllusionDefaultStreak5 -el "#000000" -illusion -stmax 8 $PNGTestFile
+
