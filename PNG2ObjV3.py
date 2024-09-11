@@ -467,7 +467,8 @@ SVG_COLOUR_SETS = { 0:["#3F53FF","#020078","#D93C41","#781314"],
                     1:["#FFF300", "#DD9C3D", "#394C93", "#000F45"],
                     2:["#F6C6CD", "#FF4862", "#00FF60", "#005506"],
                     3:["#D93C41","#781314", "#00FF60", "#005506"],
-                    4:["#3F53FF","#020078","#c0c0c0","#676767"]
+                    4:["#3F53FF","#020078","#c0c0c0","#676767"],
+                    5:["#0092FF","#6600FF","#F82AB9","#B70A2B"]
                    }
 DARK_BLOCK_INDEX = 1
 LIGHT_BLOCK_INDEX = 0
@@ -765,7 +766,7 @@ def create_svg_frame400(Outline_Only = True, add_PNG = False, rect_radius_x = 25
 #   rect_radius_Y   : Corner Radius on Y  , Default = 25%
 #
 def create_svg(width, height, outline_only, use_real_colours = True, add_PNG = False, startX = 0.0, startY = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
-    global SVG_DATA_LIST
+    global SVG_DATA_LIST, ILLUSION_TYPE_CIRCLE
 
     #svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
 
@@ -1134,6 +1135,9 @@ def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True
 
     radius_size = min(rect_width, rect_height) * 0.25
     
+    dark_group = [f'\t\t<g id="DarkPNGGroup">\n']
+    light_group = [f'\t\t<g id="LightPNGGroup">\n']
+    
     # Loop Across the Object
     for y in range(height):
         row = pattern[int((y+Image_MinY) % pattern_h)]
@@ -1144,6 +1148,7 @@ def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True
                 if not use_real_colours:
                     #fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
                     fill_color = SVG_ILLUSION_COLOUR_TABLE[DARK_PIXEL_INDEX] if (x % 2) == (y % 2) else SVG_ILLUSION_COLOUR_TABLE[LIGHT_PIXEL_INDEX]
+                    group = dark_group if (x % 2) == (y % 2) else light_group
 
                 rect_x = (x + offset_X) * rect_width + start_X
                 rect_y = (y + offset_Y) * rect_height + start_Y
@@ -1154,8 +1159,17 @@ def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True
                 else:
                     #newObj = add_svg_centeredText(rect_x + half_w, rect_y + half_h, "X", "#000000")
                     newObj = add_svg_centeredCircle(rect_x + half_w, rect_y + half_h, radius_size, "none", 1)
-                sprite_group. append(newObj)
-                
+
+                if use_real_colours:
+                    sprite_group.append(newObj)
+                else:
+                    group.append("\t"+newObj)
+    if not use_real_colours:
+        dark_group.append("\t\t</g>\n")
+        light_group.append("\t\t</g>\n")
+        sprite_group.append(''.join(dark_group))
+        sprite_group.append(''.join(light_group))
+    
     sprite_group.append('\t</g>\n')
 
     return sprite_group
@@ -2641,6 +2655,8 @@ if __name__ == "__main__":
         if args.maxstreak > 0:
             ILLUSION_MAX_STREAK = args.maxstreak
 
+        ILLUSION_TYPE_CIRCLE = args.illusioncircle
+
         if args.frame400:
             # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
             # Creates the grid of pieces with PNG Image pieces represented by circles
@@ -2652,7 +2668,7 @@ if __name__ == "__main__":
             # and two contrasting tiles for the PNG Image
 
 
-            ILLUSION_TYPE_CIRCLE = args.illusioncircle
+            
 
             # Create the Optical Illusion, using
             #   Number of block horizontal, vertical
