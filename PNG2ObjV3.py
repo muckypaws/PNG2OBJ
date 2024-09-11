@@ -468,6 +468,9 @@ LIGHT_BLOCK_INDEX = 0
 DARK_PIXEL_INDEX = 3
 LIGHT_PIXEL_INDEX = 2
 
+# Create Circles instead of Diagonals?
+ILLUSION_TYPE_CIRCLE = False
+
 #
 # Create an Array we use for the Optical Illusion Data
 #
@@ -770,8 +773,11 @@ def create_svg(width, height, outline_only, use_real_colours = True, add_PNG = F
 
     # Get Illusion Data
 
-    fill_group, light_group, dark_group = create_svg_illusion_data_diagonals(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
-    #fill_group, light_group, dark_group = create_svg_illusion_data_circular(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+    if ILLUSION_TYPE_CIRCLE:
+        fill_group, light_group, dark_group = create_svg_illusion_data_circular(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+    else:
+        fill_group, light_group, dark_group = create_svg_illusion_data_diagonals(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+
     if not outline_only:
         SVG_DATA_LIST.append(''.join(fill_group))
 
@@ -864,8 +870,8 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
     max_y = len(SVG_ILLUSION_ARRAY)
 
     # Centre Point of Array
-    cx = max_x / 2
-    cy = max_y / 2
+    cx = width / 2
+    cy = height / 2
 
     # Loop Counter to ensure we get all diagonals.
     max_range = int(width + height + 1)
@@ -893,7 +899,7 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
     for radius in range(max_radius):
         rand = random.randint(0,10)
 
-        if rand > 5:
+        if rand > 3:
             circle_streak, none_circle_streak = circle_streak + 1, 0
             draw_circles = circle_streak < ILLUSION_MAX_STREAK
             if not draw_circles:
@@ -1005,12 +1011,14 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
             if not draw_line:
                 line_streak = 0
                 none_line_streak = 1
+                #draw_line = True
         else:
             none_line_streak, line_streak = none_line_streak + 1, 0
             draw_line = none_line_streak > ILLUSION_MAX_STREAK
             if draw_line:
                 line_streak = 1
                 none_line_streak = 0
+                draw_line = False
 
         
         fill_color = (
@@ -2325,11 +2333,14 @@ if __name__ == "__main__":
     parser.add_argument("-svgaddpng","--svgaddpng",help="Add loaded PNG to SVG Output",action="store_true",default=False)
     parser.add_argument("-svgopen",help="Open SVG File with Default Application",action="store_true",default=False)
     parser.add_argument("-ict","--illusioncolourtable",help="Colour Table for Optical Illusion",nargs="*",type=str, default=["#3F53FF","#020078","#D93C41","#781314"])
-    parser.add_argument("-urc","--userealcolours", help="Use PNG Actual Colours?",action="store_true",default=False)
     parser.add_argument("-mb","--minimumborder", help="Minimum Border to add to PNG Image",type=int,default=2)
     parser.add_argument("-mbw","--minimumborderwidth", help="Minimum Border to add to PNG Image",type=int,default=20)
     parser.add_argument("-mbh","--minimumborderheight", help="Minimum Border to add to PNG Image",type=int,default=16)
+    parser.add_argument("-ilc","--illusioncircle", help="Illusion type circle not diagonals",action="store_true",default=False)
     
+    group2=parser.add_mutually_exclusive_group()
+    group2.add_argument("-urc","--userealcolours", help="Use PNG Actual Colours?",action="store_true",default=True)
+    group2.add_argument("-ugc","--usegridcolours", help="Use PNG Grid Colours?",action="store_true",default=False)
     args=parser.parse_args()
 
     # Are we processing 3D or 2D?
@@ -2559,6 +2570,8 @@ if __name__ == "__main__":
             if len(args.illusioncolourtable) == 4:
                 SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
 
+            ILLUSION_TYPE_CIRCLE = args.illusioncircle
+
             # Create the Optical Illusion, using
             #   Number of block horizontal, vertical
             #   Draw Outlines Only
@@ -2568,19 +2581,21 @@ if __name__ == "__main__":
             blocks_vertical = max((args.minimumborder * 2) + Image_Real_Height, args.minimumborderheight)
             create_svg(blocks_horizontal, blocks_vertical,
                        args.outlineOnly,
-                       args.userealcolours,
+                       not args.usegridcolours,
                        args.svgaddpng)
         else:
             # Simply create an SVG Block File from a PNG no other features.
             print ("Creating SVG File from PNG: ")
-            create_svg_from_PNG(args.outlineOnly, args.userealcolours, 
+            create_svg_from_PNG(args.outlineOnly, not args.usegridcolours, 
                                 args.svg_pixel_width,args.svg_pixel_height, 
                                 args.svg_radius_percent_x,args.svg_radius_percent_y)
 
         # Report the Stats
         print(f'     Total PNG Pixels : {SVG_PNG_PIXEL_COUNT}')
-        print(f'     Total Grid Count : {SVG_GRID_COUNT}')
-        print(f'  Total Grid less PNG : {SVG_GRID_COUNT - SVG_PNG_PIXEL_COUNT}')
+        if SVG_GRID_COUNT:
+            print(f'     Total Grid Count : {SVG_GRID_COUNT}')
+            if SVG_PNG_PIXEL_COUNT:
+                print(f'  Total Grid less PNG : {SVG_GRID_COUNT - SVG_PNG_PIXEL_COUNT}')
         if SVG_LIGHT_COUNT:
             print(f'  Total Light Inserts : {SVG_LIGHT_COUNT}')
         if SVG_DARK_COUNT:

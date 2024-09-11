@@ -99,7 +99,7 @@
             //"args": ["--outlineOnly","--svgfilename","./SVG/SpacemanWillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","-f400","./Test/JSW2/JetSetInSpace"],
             //"args": ["-svgopen","--outlineOnly","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","-f400","./ZXSpectrum/JSW/JSWStride"],
             //"args": ["-svgopen","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","./ZXSpectrum/JSW/JSWStride"],
-            "args": ["-svgopen","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","--illusion","--minimumborderwidth","30","./ZXSpectrum/JSW/JSWStride"],
+            "args": ["-ugc", "-illusion", "-svgopen","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","--minimumborderwidth","30","--minimumborderheight","30","./ZXSpectrum/JSW/JSWStride"],
             "justMyCode": true
         }
     ]
