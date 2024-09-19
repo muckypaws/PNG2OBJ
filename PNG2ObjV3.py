@@ -21,17 +21,19 @@
 # V1.04 - 23rd August 2024   - The Matrix Edition
 #                              Creating options to create Parametric Designs based on grid patterns
 #                              Let's see where this goes...
-# V1.05 - 2nd September 2024 - Use Your Illusion 1 Edition... 
+# V1.05 - 2nd September 2024 - Use Your Illusion 1 Edition...
 #                              Create SVG Files from PNG Image Information
 #                              Yeah I know the codes a bit of mess right now, I need to seperate stuff
-#                              into classes and optimise code.  But ... You know... 
+#                              into classes and optimise code.  But ... You know...
+#                              Sure you can bitch about it, or... you could contribute and help improve
+#                              this project... #JustSayin...
 #
 # Usage :-
 #   PNG2OBJ.py Filename
 #
 #   i.e. ./PNG2OBJ SpriteSheet
 #
-#   Do not include the File Extension - Lazy I know...
+#   If you don't include the file extension, will add the .PNG to the filename.
 #
 #   Two output files are created
 #
@@ -40,34 +42,31 @@
 #                           Of what pixels were processed.
 #       Filename.mtl    <-- Contains the Wavefront Material File information.
 
-
-# Dependancies
-# python -m pip install pysimplegui
-import argparse         # 'bout time I added Parsing...
-from datetime import datetime
+import argparse                         # 'bout time I added Parsing...
 import os
 import sys
 import math
 import png
 import random
-import subprocess, os, platform
-
-#import PySimpleGUI as sg
+import subprocess
+import platform
+from pathlib import Path
+from datetime import datetime
 
 # Application Defaults
 
 # Default location for File
-#PATTERNS = "./"
 PATTERNS=""
 
-DEFAULT_PIXEL_WIDTH  = 1096
-DEFAULT_PIXEL_HEIGHT = 1096
+DEFAULT_PIXEL_WIDTH  = 99999999
+DEFAULT_PIXEL_HEIGHT = 99999999
 
 # Set Pixel Width and Height if Sprites are fixed width within the sheet, otherwise 
 # use a high number.
 Pixel_W = DEFAULT_PIXEL_WIDTH
 Pixel_H = DEFAULT_PIXEL_HEIGHT
 
+# PNG Data for Image loaded
 pattern = 0
 pattern_w = 0
 pattern_h = 0
@@ -77,11 +76,11 @@ channels = 0
 CurrentZOffset = 0.0
 
 # X is positive, Y is negative unless you want to flip the image.
-# Leave these alone, my initial mistake carried over... represents the value of the 
+# Leave these alone, my initial mistake carried over... represents the value of the
 # Primitive Cube defined as a 10 x 10 x 10... You can change it but... well...
-# you really don't want to... trust me... 
+# you really don't want to... trust me...
 # unless you fix my code to handle this properly
-# so yeah... leave it alone :) 
+# so yeah... leave it alone :)
 CUBE_X = 10
 CUBE_Y = -10
 
@@ -370,7 +369,7 @@ default_mtl_params =    "\nKs 0.000000 0.000000 0.000000\n" \
                         "Ni 1\n" 
 
 #
-# Define the Colour Dictionary
+# Define the Colour Material Dictionary
 #
 mtl_colour_dict   = {}
 mtl_final_list = []
@@ -380,7 +379,7 @@ mtl_lib_filename = ""
 
 #
 # Colour Exclusion List
-# 
+#
 Colour_Exclusion_List = []
 
 #
@@ -463,20 +462,32 @@ SVG_DARK_COUNT = 0
 # Table is Defined as colours for Light Block, Dark Block, Light Pixel, Dark Pixel index 0, 1, 2, 3
 SVG_ILLUSION_COLOUR_TABLE = ["#3F53FF","#020078","#D93C41","#781314"]
 
-SVG_COLOUR_SETS = { 0:["#3F53FF","#020078","#D93C41","#781314"],
+# Some sample colour sets, feel free to amend/adjust as you desire
+SVG_COLOUR_SETS = { 0:["#3F53FF", "#020078", "#D93C41", "#781314"],
                     1:["#FFF300", "#DD9C3D", "#394C93", "#000F45"],
                     2:["#F6C6CD", "#FF4862", "#00FF60", "#005506"],
-                    3:["#D93C41","#781314", "#00FF60", "#005506"],
-                    4:["#3F53FF","#020078","#c0c0c0","#676767"],
-                    5:["#0092FF","#6600FF","#F82AB9","#B70A2B"]
+                    3:["#D93C41", "#781314", "#00FF60", "#005506"],
+                    4:["#3F53FF", "#020078", "#c0c0c0", "#676767"],
+                    5:["#0092FF", "#6600FF", "#F82AB9", "#B70A2B"]
                    }
-DARK_BLOCK_INDEX = 1
+
+# Indexs into the colour table above.
 LIGHT_BLOCK_INDEX = 0
-DARK_PIXEL_INDEX = 3
+DARK_BLOCK_INDEX = 1
 LIGHT_PIXEL_INDEX = 2
+DARK_PIXEL_INDEX = 3
 
 # Create Circles instead of Diagonals?
 ILLUSION_TYPE_CIRCLE = False
+
+
+# Custom ArgumentParser to make option flags case-insensitive
+class CaseInsensitiveArgumentParser(argparse.ArgumentParser):
+    """ Override to Argparse to enable case insensitive arguments """
+    def _get_option_tuples(self, option_string):
+        # Normalize the option string to lowercase for case-insensitive matching
+        option_string = option_string.lower()
+        return super()._get_option_tuples(option_string)
 
 #
 # Create an Array we use for the Optical Illusion Data
@@ -580,7 +591,7 @@ def draw_diagonals_in_array(width :int, height: int):
 
 
 #
-# Debugging purposes to see the array... 
+# Debugging purposes to see the array...
 #
 def print_array(array):
     """Print the 2D array."""
@@ -705,7 +716,15 @@ def add_svg_rectangle(id, x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000
 #   Current loading is the internal frame has a useable 397mm
 #       with 405mm on outer frame before backing board.
 #
-def create_svg_frame400(Outline_Only = True, add_PNG = False, rect_radius_x = 25, rect_radius_y = 25):
+def create_svg_frame400(Outline_Only = True, 
+                        add_PNG = False, 
+                        rect_radius_x = 25, 
+                        rect_radius_y = 25):
+    """Create the SVG File data to create guides and cutmarks for a 400mm frame supplied
+        by The Range... They ofer a few, the latest one has a useable 
+        inner area of 397mm
+        outer area of 405mm (Maximum for the Mountboard to fit)
+        This will need updating when I add more frames"""
     global SVG_DATA_LIST
 
     # Useable Area of the Frame
@@ -735,6 +754,10 @@ def create_svg_frame400(Outline_Only = True, add_PNG = False, rect_radius_x = 25
 
     create_svg(multiplier, multiplier, Outline_Only,  True, add_PNG, offset, offset, rect_width, rect_height, rect_radius_x, rect_radius_y )
 
+
+    # Create the CUT Guides, I'm using the MAPED Mountboard Cutter, the Straight Edge needs
+    # a 60mm Offset from bottom of the ruler to the cutting point of the blade.
+    # You need 70mm if you're planning on using the 45 Degree Bevel Cutter.
     CutGuides = [f'\t<g id="CutGuidesGroup"> \n']
     
     # Add 400mm border
@@ -765,25 +788,36 @@ def create_svg_frame400(Outline_Only = True, add_PNG = False, rect_radius_x = 25
 #   rect_radius_X   : Corner Radius on X  , Default = 25%
 #   rect_radius_Y   : Corner Radius on Y  , Default = 25%
 #
-def create_svg(width, height, outline_only, use_real_colours = True, add_PNG = False, startX = 0.0, startY = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%"):
+def create_svg(width, height, 
+               outline_only, 
+               use_real_colours = True, 
+               add_PNG = False, 
+               startX = 0.0, startY = 0.0, 
+               rect_width=20.0, rect_height=20.0, 
+               rect_radius_x = "25%", rect_radius_y = "25%"):
+    
     global SVG_DATA_LIST, ILLUSION_TYPE_CIRCLE
-
-    #svg_file = os.path.join(PATTERNS, "{}.svg".format(savename))
 
     totalWidth = rect_width * width + abs(startX * 2)
     totalHeight = rect_height * height + abs(startY * 2)
-    
+
+    # Update the Canvas size, just incase...     
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
-    # Write the Drawings Dimensions
-    # SVG_DATA_LIST.append(f'<svg width="{totalWidth}mm" height="{totalHeight}mm" xmlns="http://www.w3.org/2000/svg">\n')
 
-    # Get Illusion Data
-
+    # Create Illusion Data
     if ILLUSION_TYPE_CIRCLE:
-        fill_group, light_group, dark_group = create_svg_illusion_data_circular(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+        fill_group, light_group, dark_group = create_svg_illusion_data_circular(outline_only,
+                                                                                width, height,
+                                                                                rect_width, rect_height,
+                                                                                rect_radius_x, rect_radius_y,
+                                                                                startX, startY)
     else:
-        fill_group, light_group, dark_group = create_svg_illusion_data_diagonals(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, startX, startY)
+        fill_group, light_group, dark_group = create_svg_illusion_data_diagonals(outline_only,
+                                                                                 width, height,
+                                                                                 rect_width, rect_height,
+                                                                                 rect_radius_x, rect_radius_y,
+                                                                                 startX, startY)
 
     if not outline_only:
         SVG_DATA_LIST.append(''.join(fill_group))
@@ -794,13 +828,23 @@ def create_svg(width, height, outline_only, use_real_colours = True, add_PNG = F
     if add_PNG:
         offsetX = math.ceil((width - Image_Real_Width) / 2)
         offsetY = math.ceil((height - Image_Real_Height) / 2)
-        sprite_Data = create_svg_data_for_loaded_PNG(outline_only, use_real_colours, offsetX, offsetY, rect_width , rect_height, rect_radius_x, rect_radius_y, startX, startY)
+        sprite_Data = create_svg_data_for_loaded_PNG(outline_only, use_real_colours, 
+                                                     offsetX, offsetY, 
+                                                     rect_width , rect_height, 
+                                                     rect_radius_x, rect_radius_y, 
+                                                     startX, startY)
         SVG_DATA_LIST.append(''.join(sprite_Data))
 
 #
 # Create SVG Data for the Optical Illusion
 #
-def create_svg_rect_Grid(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = 25, rect_radius_y = 25, offsetX = 0.0, offsetY = 0.0, fillcolour1 = "#020078", fillcolour2 = "#3F53FF"):
+def create_svg_rect_Grid(outline_only = False,
+                         width = 20, height = 20,
+                         rect_width=20.0, rect_height=20.0,
+                         rect_radius_x = 25, rect_radius_y = 25,
+                         offsetX = 0.0, offsetY = 0.0,
+                         fillcolour1 = "#020078",
+                         fillcolour2 = "#3F53FF"):
     global SVG_GRID_COUNT
     # Dark and Light Groups
     dark_group = [f'\t<g id="DarkGroup">\n']
@@ -1915,7 +1959,7 @@ def checkNextPixelProcessingRules(allowedColours, currentColour):
 # Load a PNG File
 #
 def load_pattern(pattern_name):
-    pattern_file = os.path.join(PATTERNS, "{}.png".format(pattern_name))
+    pattern_file = os.path.join(PATTERNS, "{}.png".format(Path(pattern_name).with_suffix('')))
     if os.path.isfile(pattern_file):
         r = png.Reader(file=open(pattern_file, 'rb'))
         pattern_w, pattern_h, pattern, pattern_meta = r.read()
@@ -2213,6 +2257,30 @@ def CreateOBJFileFromDictionary(Filename, vertDict, primitive_y_multiplier, Last
         print(f"Failed to write file: {obj_file}",obj_file)
         print(f"Exception: {error}")
         return False
+    
+#
+# Add default Materials to MTL File
+#
+def addDefaultMaterialColours():
+# Black
+    addMaterialToFile(0,0,0,0)
+    # Red
+    addMaterialToFile(255,0,0,0)
+    # Green
+    addMaterialToFile(0,255,0,0)
+    # Blue
+    addMaterialToFile(0,0,255,0)
+    # Yellow
+    addMaterialToFile(255,255,0,0)
+    # Purple
+    addMaterialToFile(255,0,255,0)
+    # Cyan
+    addMaterialToFile(0,255,255,0)
+    # White
+    addMaterialToFile(255,255,255,0)
+
+
+
 #
 # Can we create a simple parametric set of shapes?
 #
@@ -2327,14 +2395,119 @@ def ParametricTest(Filename):
     CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier)
     CreateMasterMaterialFileMaster(mtl_filename)
 
+
+#
+# Process SVG Options
+#
+def process_SVG_File(args):
+    if len(args.illusioncolourtable) == 4:
+        SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
+
+    if args.colourset > -1:
+        SVG_ILLUSION_COLOUR_TABLE = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
+
+    print("              SVG Parameters : ")
+    print("              ---------------\n")
+    if args.frame400:
+        print(f"   Building for Frame 400mm x 400mm Guide File")
+    print(f"   SVG Pixel Width Requested : {args.svg_pixel_width}mm")
+    print(f"  SVG Pixel Height Requested : {args.svg_pixel_height}mm")
+    print(f"         SVG Corner Radius X : {args.svg_radius_percent_x}%")
+    print(f"         SVG Corner Radius Y : {args.svg_radius_percent_y}%")
+    print(f"              Add loaded PNG : {args.svgaddpng}")
+    if args.usegridcolours:
+        print(f"            Use Grid Colours : {args.usegridcolours}")
+    else:
+        print(f"        Use PNG Real Colours : {args.userealcolours}")
+
+    if args.illusion:
+        print(f"             Create Illusion : {args.illusion}")
+        print(f"       Illusion Colour Table : {args.illusioncolourtable}")
+        if not args.illusioncircle:
+            print(f"               Illusion Type : Diagonals")
+        else:
+            print(f"               Illusion Type : Circular")
+        print(f"   Minimum Border to Add PNG : {args.minimumborder}")
+        print(f"          Minimum Grid Width : {args.minimumgridwidth}")
+        print(f"         Minimum Grid Height : {args.minimumgridheight}")
+        if args.colourset >= 0:
+            print(f"        Colour Set Requested : {args.colourset % len(SVG_COLOUR_SETS)}")
+            
+    print(f"              Create Outline : {args.outlineOnly}")
+    print(f"             Output Filename : {''.join(args.svgfilename)}")
+    print(f"Open SVG File after creation : {args.svgopen}\n")
+            
+    
+    if args.maxstreak > 0:
+        ILLUSION_MAX_STREAK = args.maxstreak
+
+    ILLUSION_TYPE_CIRCLE = args.illusioncircle
+
+    if args.frame400:
+        # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
+        # Creates the grid of pieces with PNG Image pieces represented by circles
+        # and adds the registration marks for cutting mountboard using a Maped Ruler and Cutter (60mm offsets)
+        create_svg_frame400(args.outlineOnly, args.svgaddpng, args.svg_radius_percent_x, args.svg_radius_percent_y)
+
+    elif args.illusion:
+        # Create the Optical Illusion Images using two contrasting colours for the tiles
+        # and two contrasting tiles for the PNG Image
+
+
+        
+
+        # Create the Optical Illusion, using
+        #   Number of block horizontal, vertical
+        #   Draw Outlines Only
+        #   Use the Real Colours of the PNG Image
+        #   Add the PNG to the SVG File (False if you just want to create the illusion without the image.)
+        blocks_horizontal = max((args.minimumborder * 2) + Image_Real_Width, args.minimumgridwidth)
+        blocks_vertical = max((args.minimumborder * 2) + Image_Real_Height, args.minimumgridheight)
+        create_svg(blocks_horizontal, blocks_vertical,
+                    args.outlineOnly,
+                    not args.usegridcolours,
+                    args.svgaddpng)
+    else:
+        # Simply create an SVG Block File from a PNG no other features.
+        print ("Creating SVG File from PNG: ")
+        create_svg_from_PNG(args.outlineOnly, not args.usegridcolours, 
+                            args.svg_pixel_width,args.svg_pixel_height, 
+                            args.svg_radius_percent_x,args.svg_radius_percent_y)
+
+    # Report the Stats
+    print(f'     Total PNG Pixels : {SVG_PNG_PIXEL_COUNT}')
+    if SVG_GRID_COUNT:
+        print(f'     Total Grid Count : {SVG_GRID_COUNT}')
+        if SVG_PNG_PIXEL_COUNT:
+            print(f'  Total Grid less PNG : {SVG_GRID_COUNT - SVG_PNG_PIXEL_COUNT}')
+    if SVG_LIGHT_COUNT:
+        print(f'  Total Light Inserts : {SVG_LIGHT_COUNT}')
+    if SVG_DARK_COUNT:
+        print(f'   Total Dark Inserts : {SVG_DARK_COUNT}')
+
+    # Create the Final SVG File.
+    svgFilename = ''.join(args.svgfilename)
+    svg_savefile(svgFilename)
+
+    # Open file automatically?
+    if args.svgopen:
+        # Open file Automatically
+        print(f"\nAttempting to open file: {svgFilename}")
+        if platform.system() == 'Darwin':       # macOS
+            subprocess.call(('open', svgFilename))
+        elif platform.system() == 'Windows':    # Windows
+            os.startfile(svgFilename)
+        else:                                   # linux variants
+            subprocess.call(('xdg-open', svgFilename))
 #
 # The actual start of Python Code.
 #
 if __name__ == "__main__":
     # Add user options to the code
-    parser = argparse.ArgumentParser(description="Convert PNG Images to OBJ",
+    #parser = argparse.ArgumentParser(description="Convert PNG Images to OBJ or SVG - Jason Brooks",
+    #                                 epilog='https://github.com/muckypaws/PNG2OBJ')
+    parser = CaseInsensitiveArgumentParser(description="Convert PNG Images to OBJ or SVG - Jason Brooks",
                                      epilog='https://github.com/muckypaws/PNG2OBJ')
-    #group  = parser.add_mutually_exclusive_group()
     parser.add_argument("-j","--joints", help="Create small joining blocks where cubes are only attached via their corners", action="store_true", default=False)
     parser.add_argument("-m","--mtl",help="Create a Material File with the OBJECT", action="store_true", default=False)
     parser.add_argument("-lc","--listColours",help="List the colours discovered and quantity of pixels",action="store_true")
@@ -2402,39 +2575,19 @@ if __name__ == "__main__":
 
     # Added for Parametric Testing
     if args.parametricTest:
-        # Black
-        addMaterialToFile(0,0,0,0)
-        # Red
-        addMaterialToFile(255,0,0,0)
-        # Green
-        addMaterialToFile(0,255,0,0)
-        # Blue
-        addMaterialToFile(0,0,255,0)
-        # Yellow
-        addMaterialToFile(255,255,0,0)
-        # Purple
-        addMaterialToFile(255,0,255,0)
-        # Cyan
-        addMaterialToFile(0,255,255,0)
-        # White
-        addMaterialToFile(255,255,255,0)
+        # Add default colours before processing the PNG Image.
+        addDefaultMaterialColours()
 
     # Check for Jointer Cubes required.
-    if args.joints:
-        JOINTS_REQUIRED = True
+    JOINTS_REQUIRED = args.joints
 
     # Check if We're creating the Material File.
-    if args.mtl:
-        CREATE_MTL_FILE = True
 
-    if args.flat:
-        Create_Layered_File = False
-    
-    if args.layered:
-        Create_Layered_File = True
+    CREATE_MTL_FILE = args.mtl
 
-    if args.tower:
-        Create_Towered_File = True
+    Create_Layered_File = args.flat
+    Create_Layered_File = args.layered
+    Create_Towered_File = args.tower
 
     ALPHACUTOFF = args.alphacutoff
 
@@ -2447,7 +2600,10 @@ if __name__ == "__main__":
     if args.reversesort:
         Sort_Colours_Flag=True
 
-    WORKING_FILENAME = args.filename
+    # Ensure the Working Filename Has No Extension.
+    WORKING_FILENAME = Path(args.filename).with_suffix('')
+
+    # Set Material Filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
 
     # Remove Excluded Colours from Process Colours List
@@ -2477,7 +2633,7 @@ if __name__ == "__main__":
 
     # Attempt to Load the PNG to memory.
     if loadPNGToMemory(args.filename) == False:
-        print(f"Unable to open file: {WORKING_FILENAME}")
+        print(f"Unable to open file: {WORKING_FILENAME}.png")
         exit (0)
     
     if Image_Real_Height < 1 or Image_Real_Width < 1:
@@ -2499,10 +2655,10 @@ if __name__ == "__main__":
 
     if Pixel_W != DEFAULT_PIXEL_WIDTH:
         print(f"   Sprite Sheet Width : {Pixel_W}")
-    if Pixel_H != DEFAULT_PIXEL_HEIGHT:    
+    if Pixel_H != DEFAULT_PIXEL_HEIGHT:
         print(f"  Sprite Sheet Height : {Pixel_H}")
 
-
+    # Process file parameters for 3D Waveform OBJ Format
     if not args.svg:
         if args.maxheight != 0.0 or args.maxwidth != 0.0:
             # Need to calculate the Multipliers...
@@ -2583,8 +2739,6 @@ if __name__ == "__main__":
         print(f"        Image Start Y : {Image_MinY}")
         print(f"         Bounding Box : ({Image_MinX},{Image_MinY},{Image_MaxX},{Image_MaxY}) ")
 
- 
-
     if ThreeD:
         print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
     else:
@@ -2594,7 +2748,6 @@ if __name__ == "__main__":
 
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
-
 
     if len(Colour_Exclusion_List) > 0:
         print(f"\nColour list to exclude: {Colour_Exclusion_List}")
@@ -2606,112 +2759,16 @@ if __name__ == "__main__":
     if args.listColours:
         displayColourInformation()
 
-
+    #
+    # Finally process the PNG File.
+    #
     if args.parametricTest:
         print("Testing....")
         ParametricTest(args.parametricFilename[0])
         exit(0)
     # Process new SVG Options.
     elif args.svg:
-        # Want to use a custom table?
-        if len(args.illusioncolourtable) == 4:
-            SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
-
-        if args.colourset > -1:
-            SVG_ILLUSION_COLOUR_TABLE = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
-
-        print("              SVG Parameters : ")
-        print("              ---------------\n")
-        if args.frame400:
-            print(f"   Building for Frame 400mm x 400mm Guide File")
-        print(f"   SVG Pixel Width Requested : {args.svg_pixel_width}mm")
-        print(f"  SVG Pixel Height Requested : {args.svg_pixel_height}mm")
-        print(f"         SVG Corner Radius X : {args.svg_radius_percent_x}%")
-        print(f"         SVG Corner Radius Y : {args.svg_radius_percent_y}%")
-        print(f"              Add loaded PNG : {args.svgaddpng}")
-        if args.usegridcolours:
-            print(f"            Use Grid Colours : {args.usegridcolours}")
-        else:
-            print(f"        Use PNG Real Colours : {args.userealcolours}")
-
-        if args.illusion:
-            print(f"             Create Illusion : {args.illusion}")
-            print(f"       Illusion Colour Table : {args.illusioncolourtable}")
-            if not args.illusioncircle:
-                print(f"               Illusion Type : Diagonals")
-            else:
-                print(f"               Illusion Type : Circular")
-            print(f"   Minimum Border to Add PNG : {args.minimumborder}")
-            print(f"          Minimum Grid Width : {args.minimumgridwidth}")
-            print(f"         Minimum Grid Height : {args.minimumgridheight}")
-            if args.colourset >= 0:
-                print(f"        Colour Set Requested : {args.colourset % len(SVG_COLOUR_SETS)}")
-                
-        print(f"              Create Outline : {args.outlineOnly}")
-        print(f"             Output Filename : {''.join(args.svgfilename)}")
-        print(f"Open SVG File after creation : {args.svgopen}\n")
-              
-        
-        if args.maxstreak > 0:
-            ILLUSION_MAX_STREAK = args.maxstreak
-
-        ILLUSION_TYPE_CIRCLE = args.illusioncircle
-
-        if args.frame400:
-            # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
-            # Creates the grid of pieces with PNG Image pieces represented by circles
-            # and adds the registration marks for cutting mountboard using a Maped Ruler and Cutter (60mm offsets)
-            create_svg_frame400(args.outlineOnly, args.svgaddpng, args.svg_radius_percent_x, args.svg_radius_percent_y)
-
-        elif args.illusion:
-            # Create the Optical Illusion Images using two contrasting colours for the tiles
-            # and two contrasting tiles for the PNG Image
-
-
-            
-
-            # Create the Optical Illusion, using
-            #   Number of block horizontal, vertical
-            #   Draw Outlines Only
-            #   Use the Real Colours of the PNG Image
-            #   Add the PNG to the SVG File (False if you just want to create the illusion without the image.)
-            blocks_horizontal = max((args.minimumborder * 2) + Image_Real_Width, args.minimumgridwidth)
-            blocks_vertical = max((args.minimumborder * 2) + Image_Real_Height, args.minimumgridheight)
-            create_svg(blocks_horizontal, blocks_vertical,
-                       args.outlineOnly,
-                       not args.usegridcolours,
-                       args.svgaddpng)
-        else:
-            # Simply create an SVG Block File from a PNG no other features.
-            print ("Creating SVG File from PNG: ")
-            create_svg_from_PNG(args.outlineOnly, not args.usegridcolours, 
-                                args.svg_pixel_width,args.svg_pixel_height, 
-                                args.svg_radius_percent_x,args.svg_radius_percent_y)
-
-        # Report the Stats
-        print(f'     Total PNG Pixels : {SVG_PNG_PIXEL_COUNT}')
-        if SVG_GRID_COUNT:
-            print(f'     Total Grid Count : {SVG_GRID_COUNT}')
-            if SVG_PNG_PIXEL_COUNT:
-                print(f'  Total Grid less PNG : {SVG_GRID_COUNT - SVG_PNG_PIXEL_COUNT}')
-        if SVG_LIGHT_COUNT:
-            print(f'  Total Light Inserts : {SVG_LIGHT_COUNT}')
-        if SVG_DARK_COUNT:
-            print(f'   Total Dark Inserts : {SVG_DARK_COUNT}')
-
-        # Create the Final SVG File.
-        svgFilename = ''.join(args.svgfilename)
-        svg_savefile(svgFilename)
-
-        # Open file automatically?
-        if args.svgopen:
-            # Open file Automatically
-            if platform.system() == 'Darwin':       # macOS
-                subprocess.call(('open', svgFilename))
-            elif platform.system() == 'Windows':    # Windows
-                os.startfile(svgFilename)
-            else:                                   # linux variants
-                subprocess.call(('xdg-open', svgFilename))
+        process_SVG_File(args)
     else:
         main(args.noframe)
 
