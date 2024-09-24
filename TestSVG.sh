@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PNGTestFile="./JSWStride"
+PNGTestFile="./JSWStride.png"
 OUTDir="$PWD/SVGTests"
 
 # Test Script for SVG Generation Tests
@@ -13,9 +13,9 @@ then
     mkdir "$OUTDir"
 fi
 
-if [ ! -f "$PNGTestFile.png" ]
+if [ ! -f "$PNGTestFile" ]
 then
-    echo "Failed to find test PNG File: $PNGTestFile.png"
+    echo "Failed to find test PNG File: $PNGTestFile"
     echo "Quitting.../n"
     exit
 fi
@@ -39,8 +39,8 @@ fi
 
 ./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableOutline.svg -el "#000000" -svgrpx 0 -svgrpy 0 -outline $PNGTestFile
 
-# mbw and mbh ignored for basic PNG Conversion.
-./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableMinimumBorder.svg -el "#000000" -svgrpx 0 -svgrpy 0 -mbw 17 $PNGTestFile
+# mgw and mgh ignored for basic PNG Conversion.
+./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableMinimumBorder.svg -el "#000000" -svgrpx 0 -svgrpy 0 -mgw 17 $PNGTestFile
 
 # Test Frames for Crafting
 ./PNG2ObjV3.py -svg -svgopen -outfile $OUTDir/SVGTestExcludeColourTableF400.svg -el "#000000" -svgrpx 0 -svgrpy 0 -f400 -ugc $PNGTestFile

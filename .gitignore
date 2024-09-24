@@ -5,6 +5,7 @@
 *.png
 *.3mf
 TestCircle.py
+*.svg 
 
 2023/*
 Amstrad/
@@ -23,6 +24,8 @@ Hewco/
 Sarah/*
 SVG/*
 Manual/*
+OBJTests/*
+SVGTests/*
 
 
 

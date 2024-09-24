@@ -7,7 +7,7 @@
         
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -99,7 +99,12 @@
             //"args": ["--outlineOnly","--svgfilename","./SVG/SpacemanWillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","-f400","./Test/JSW2/JetSetInSpace"],
             //"args": ["-svgopen","--outlineOnly","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","-f400","./ZXSpectrum/JSW/JSWStride"],
             //"args": ["-svgopen","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","./ZXSpectrum/JSW/JSWStride"],
-            "args": ["-ilc", "-cset", "8", "-illusion", "-svgopen","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","--minimumgridwidth","25","--minimumgridheight","16","./ZXSpectrum/JSW/JSWStride"],
+            //"args": ["-ilc", "-cset", "8", "-illusion", "-svgopen","--svgfilename","./SVG/WillyAsSVG.svg","-el","#000000","-svg","--svgaddpng","--minimumgridwidth","25","--minimumgridheight","16","./ZXSpectrum/JSW/JSWStride"],
+            //"args": ["-svgopen","-el","#000000","--svgfilename","./SVG/WillyAsSVG.svg","-svg","--svgaddpng","./JSWStride.png"],
+            //"args": ["-illusion","-ilc", "-svgaddpng", "-ugc", "-svgopen","-el","#000000","-svg","-ict","#0092FF", "#6600FF", "#F82AB9", "#B70A2B","-mgw","20","-mgh","20","./JSWStride"],
+            //"args": [ "-svgopen","-el","#000000","-svg","-svgrpx","101","-svgrpy","50","./JSWStride"],
+            //"args": ["-svgopen","-el","#000000","-svg","-illusion","./PlatformWilly","-svgrpx","100.0"],
+            "args": ["./JSWStrideSingle","-lm","3.0","--layered","-bgh","2.0"],
             "justMyCode": true
         }
     ]

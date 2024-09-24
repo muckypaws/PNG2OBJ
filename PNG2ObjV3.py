@@ -606,7 +606,7 @@ def svg_savefile(savename):
     global SVG_CANVAS_HEIGHT
 
     try:
-        with open(savename, 'w') as fp:
+        with open(savename, 'w', encoding="utf-8") as fp:
             # Write the Header
             fp.write(SVG_HEADER)
             fp.write(f'<svg width="{SVG_CANVAS_WIDTH:.2f}mm" height="{SVG_CANVAS_HEIGHT:.2f}mm" xmlns="http://www.w3.org/2000/svg">\n')
@@ -623,7 +623,7 @@ def svg_savefile(savename):
 
             print(f"\nWritten file: {savename}")
 
-    # Exception Time... 
+    # Exception Time...
     except IOError as error:
         print(f"File error: {error}")
         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
@@ -677,19 +677,21 @@ def add_svg_centeredCircle(x, y, radius = 5.0, fill_colour = "#000000", stroke_w
 #
 def add_svg_rectangle(id, x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000", opacity = 100.0, stroke_width = 0.0, stroke_colour = "#000000"):
     # Base rectangle attributes
-    rect_str = (f'\t\t<rect ')
+    rect_str = ('\t\t<rect ')
 
     if len(id)>0:
         rect_str += f'id="{id}" '
 
     rect_str += (f'width="{width:.3f}mm" height="{height:.3f}mm" '
-                f'x="{x:.3f}mm" y="{y:.3f}mm"  ')
+                f'x="{x:.3f}mm" y="{y:.3f}mm" ')
     
     # Add rx and ry only if they're non-zero
     if rx != 0.0:
-        rect_str += f'rx="{rx}%" '
+        fx = abs(width * (rx/100.0) / 2)
+        rect_str += f'rx="{fx:.3f}mm" '
     if ry != 0.0:
-        rect_str += f'ry="{ry}%" '
+        fy = abs(height * (ry/100.0) / 2)
+        rect_str += f'ry="{fy:.3f}mm" '
 
     # Add stroke attributes if stroke width is not 0
     if stroke_width != 0.0:
@@ -794,7 +796,7 @@ def create_svg(width, height,
                add_PNG = False, 
                startX = 0.0, startY = 0.0, 
                rect_width=20.0, rect_height=20.0, 
-               rect_radius_x = "25%", rect_radius_y = "25%"):
+               rect_radius_x = 25.0, rect_radius_y = 25.0):
     
     global SVG_DATA_LIST, ILLUSION_TYPE_CIRCLE
 
@@ -828,10 +830,10 @@ def create_svg(width, height,
     if add_PNG:
         offsetX = math.ceil((width - Image_Real_Width) / 2)
         offsetY = math.ceil((height - Image_Real_Height) / 2)
-        sprite_Data = create_svg_data_for_loaded_PNG(outline_only, use_real_colours, 
-                                                     offsetX, offsetY, 
-                                                     rect_width , rect_height, 
-                                                     rect_radius_x, rect_radius_y, 
+        sprite_Data = create_svg_data_for_loaded_PNG(outline_only, use_real_colours,
+                                                     offsetX, offsetY,
+                                                     rect_width , rect_height,
+                                                     rect_radius_x, rect_radius_y,
                                                      startX, startY)
         SVG_DATA_LIST.append(''.join(sprite_Data))
 
@@ -847,8 +849,8 @@ def create_svg_rect_Grid(outline_only = False,
                          fillcolour2 = "#3F53FF"):
     global SVG_GRID_COUNT
     # Dark and Light Groups
-    dark_group = [f'\t<g id="DarkGroup">\n']
-    light_group = [f'\t<g id="LightGroup">\n']
+    dark_group = ['\t<g id="DarkGroup">\n']
+    light_group = ['\t<g id="LightGroup">\n']
 
     for y in range(int(height)):
         current_y = (y * rect_height) + offsetY
@@ -884,44 +886,24 @@ def create_svg_rect_Grid(outline_only = False,
     return light_group, dark_group
 
 #
-#
-#
-def draw_circle_svg_illusion(cx = 20, cy = 20, radius = 10, rect_width=20.0, rect_height=20.0, offsetX = 0.0, offsetY = 0.0):
-    x = radius
-    y = 0
-    p = 1 - radius  # Initial decision parameter
-
-    # Draw circle
-    plot_circle_points(center_x, center_y, x, y)
-
-    while x > y:
-        y += 1
-        if p <= 0:
-            p += 2 * y + 1
-        else:
-            x -= 1
-            p += 2 * y - 2 * x + 1
-        plot_circle_points(center_x, center_y, x, y)
-
-#
 # clip the coords for inside the canvas.
 #
 def ClipDimensions(rect_x, rect_y, rect_width, rect_height, offsetX, offsetY):
     req_width = rect_width
     req_height = rect_height
-    
+
     # Clip Illusion Squares to image when in frame mode.
     if rect_x < offsetX:
         rect_x = offsetX
         req_width = rect_width - offsetX
-    
+
     if rect_x + req_width > SVG_CANVAS_WIDTH - offsetX:
         req_width = SVG_CANVAS_WIDTH - offsetX - rect_x
-    
+
     if rect_y < offsetY:
         rect_y = offsetY
         req_height= rect_height - offsetY
-    
+
     if rect_y + req_height > SVG_CANVAS_HEIGHT - offsetY:
         req_height = SVG_CANVAS_HEIGHT - offsetY - rect_y
 
@@ -940,19 +922,10 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
     size = max(width, height)
     SVG_ILLUSION_ARRAY = create_array(size)
 
-    max_range = width + height + 1
-
-    # Get Maxiumum dimensions of Array
-    max_x = len(SVG_ILLUSION_ARRAY[0])
-    max_y = len(SVG_ILLUSION_ARRAY)
-
     # Centre Point of Array
     cx = width / 2
     cy = height / 2
 
-    # Loop Counter to ensure we get all diagonals.
-    max_range = int(width + height + 1)
-    
     # Main Optical Illusion Drawing Group
     fill_group = [f'\t<g id="OpticalIllusionGroup">\n']
     
@@ -962,7 +935,6 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
     totalWidth = rect_width * width + abs(offsetX)
     totalHeight = rect_height * height + abs(offsetY)
     update_svg_canvas_dimensions(totalWidth, totalHeight)
-
 
     #
     # Create Circles of Data in Array
@@ -992,8 +964,7 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
         if draw_circles:
             draw_circle(SVG_ILLUSION_ARRAY, cx, cy, radius)
 
-        #draw_circle_svg_illusion(cx, cy, rect_width, rect_height, radius, fill_color)
-   # print_array(SVG_ILLUSION_ARRAY)
+    print_array(SVG_ILLUSION_ARRAY)
 
     fill_group = [f'\t<g id="OpticalIllusionCirclesAll">\n']
     for y in range (height):
@@ -1019,7 +990,13 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
 
     fill_group.append('\t</g>\n')
 
-    light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,SVG_ILLUSION_COLOUR_TABLE[DARK_BLOCK_INDEX], SVG_ILLUSION_COLOUR_TABLE[LIGHT_BLOCK_INDEX])
+    light_group, dark_group = create_svg_rect_Grid(outline_only, 
+                                                   width, height,
+                                                   rect_width, rect_height,
+                                                   rect_radius_x, rect_radius_y,
+                                                   offsetX, offsetY,
+                                                   SVG_ILLUSION_COLOUR_TABLE[DARK_BLOCK_INDEX],
+                                                   SVG_ILLUSION_COLOUR_TABLE[LIGHT_BLOCK_INDEX])
  
     return fill_group, light_group, dark_group
 
@@ -1033,31 +1010,30 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
 
     width = int(width)
     height = int(height)
-    
+
     # Loop Counter to ensure we get all diagonals.
     max_range = int(width + height + 1)
-    
+
     # Main Optical Illusion Drawing Group
     fill_group = [f'\t<g id="OpticalIllusionGroup">\n']
-    
-    half_rect_width = (rect_width / 2)
-    half_rect_height = (rect_height / 2)
+
+    half_rect_width = rect_width / 2
+    half_rect_height = rect_height / 2
 
     totalWidth = rect_width * width + abs(offsetX)
     totalHeight = rect_height * height + abs(offsetY)
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
 
-    light_group, dark_group = create_svg_rect_Grid(outline_only, 
-                                                   width, height, rect_width, rect_height, 
-                                                   rect_radius_x, rect_radius_y, 
+    light_group, dark_group = create_svg_rect_Grid(outline_only,
+                                                   width, height, rect_width, rect_height,
+                                                   rect_radius_x, rect_radius_y,
                                                    offsetX, offsetY,
                                                    SVG_ILLUSION_COLOUR_TABLE[DARK_BLOCK_INDEX],
                                                    SVG_ILLUSION_COLOUR_TABLE[LIGHT_BLOCK_INDEX])
- 
+
     if outline_only:
         return [], light_group, dark_group
-    
 
     line_streak = none_line_streak = 0
     draw_line = False
@@ -1105,8 +1081,6 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
             "#ffffff"
         )
 
-
-
         # Lets do the work.
         for xpos in range(range_x, -1, -1):
             # Check if we're in range of the grid.
@@ -1124,25 +1098,31 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
                     SVG_LIGHT_COUNT += 1
 
                 if not outline_only:
-                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,req_width, req_height, 0, 0, fill_color)
+                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,
+                                                    req_width, req_height,
+                                                    0, 0, fill_color)
                 else:
-                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,req_width, req_height, 0, 0, fill_color, 0, 1.0)
-                    
+                    newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,
+                                                    req_width, req_height,
+                                                    0, 0, fill_color, 0, 1.0)
+
                 fill_group.append(newObj)
                 start_y += 1
 
         fill_group.append('\t\t</g>\n')
 
     fill_group.append('\t</g>\n')
-    
-    #light_group, dark_group = create_svg_rect_Grid(outline_only, width, height, rect_width, rect_height, rect_radius_x, rect_radius_y, offsetX, offsetY,"#ff0000")
- 
+
     return fill_group, light_group, dark_group
 
 #
 # Create and Write an SVG Object to File with the Square Optical Illusion.
 #
-def create_svg_from_PNG(outlineOnly, use_real_colours, rect_width=20.0, rect_height=20.0, rect_radius_x = 25.0, rect_radius_y = 25.0, startX = 0.0, startY = 0.0):
+def create_svg_from_PNG(outlineOnly, use_real_colours,
+                        rect_width=20.0, rect_height=20.0,
+                        rect_radius_x = 25.0, rect_radius_y = 25.0,
+                        startX = 0.0, startY = 0.0):
+    
     global SVG_DATA_LIST
 
     width = Image_Real_Width
@@ -1153,14 +1133,26 @@ def create_svg_from_PNG(outlineOnly, use_real_colours, rect_width=20.0, rect_hei
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
     # Main Optical Illusion Drawing Group
-    sprite_group = create_svg_data_for_loaded_PNG(outlineOnly, use_real_colours, startX, startY, rect_width, rect_height, rect_radius_x, rect_radius_y)
+    sprite_group = create_svg_data_for_loaded_PNG(outlineOnly,
+                                                  use_real_colours,
+                                                  startX, startY,
+                                                  rect_width, rect_height,
+                                                  rect_radius_x, rect_radius_y)
 
     SVG_DATA_LIST.append(''.join(sprite_group))
 
 #
 # Create SVG Data for currently Loaded PNG In memory.
 #
-def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True, offset_X = 0.0, offset_Y = 0.0, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", start_X = 0.0, start_Y = 0.0):
+def create_svg_data_for_loaded_PNG(outline_only = False,
+                                   use_real_colours = True,
+                                   offset_X = 0.0, offset_Y = 0.0,
+                                   rect_width=20.0, rect_height=20.0,
+                                   rect_radius_x = "25%",
+                                   rect_radius_y = "25%",
+                                   start_X = 0.0, start_Y = 0.0):
+    """ Create the SVG Data for the currently loaded PNG Image """
+
     global SVG_PNG_PIXEL_COUNT
     
     width = Image_Real_Width
@@ -1175,12 +1167,12 @@ def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True
     update_svg_canvas_dimensions(totalWidth, totalHeight)
 
     # Main Optical Illusion Drawing Group
-    sprite_group = [f'\t<g id="SpriteImage">\n']
+    sprite_group = ['\t<g id="SpriteImage">\n']
 
     radius_size = min(rect_width, rect_height) * 0.25
     
-    dark_group = [f'\t\t<g id="DarkPNGGroup">\n']
-    light_group = [f'\t\t<g id="LightPNGGroup">\n']
+    dark_group = ['\t\t<g id="DarkPNGGroup">\n']
+    light_group = ['\t\t<g id="LightPNGGroup">\n']
     
     # Loop Across the Object
     for y in range(height):
@@ -1191,7 +1183,7 @@ def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True
             if pixel >=0:
                 if not use_real_colours:
                     #fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
-                    fill_color = SVG_ILLUSION_COLOUR_TABLE[DARK_PIXEL_INDEX] if (x % 2) == (y % 2) else SVG_ILLUSION_COLOUR_TABLE[LIGHT_PIXEL_INDEX]
+                    fill_color = SVG_ILLUSION_COLOUR_TABLE[DARK_PIXEL_INDEX] if ((x+offset_X) % 2) == ((y+offset_Y) % 2) else SVG_ILLUSION_COLOUR_TABLE[LIGHT_PIXEL_INDEX]
                     group = dark_group if (x % 2) == (y % 2) else light_group
 
                 rect_x = (x + offset_X) * rect_width + start_X
@@ -1221,7 +1213,7 @@ def create_svg_data_for_loaded_PNG(outline_only = False, use_real_colours = True
 # Update Verticies depending on position (0 or non 0)
 # Currently Assumes, 0 - Left, non-Zero right
 #
-def update_vert(val,r1,r2):
+def update_vert(val, r1, r2):
     if val > 0.0:
         return r2
     return r1
@@ -1382,6 +1374,10 @@ def addMaterialToFile(r, g, b, pixel =-1):
     # Is Pixel in excluded list?
     if ColourCode in Colour_Exclusion_List:
         return False, ColourCode
+    
+    if len(Colour_Process_Only_list) > 0:
+        if ColourCode not in Colour_Process_Only_list:
+            return False, ColourCode
 
     if not ColourCode in mtl_colour_dict and not ColourCode in Colour_Exclusion_List:
         mtl_colour_dict[ColourCode] = 0
@@ -1434,9 +1430,6 @@ def getPixelFromRow(x, row, channels, rowWidth):
             g = 0
             b = 0
 
-    if pixel > 0:
-        print
-
     valid, ColourCode = addMaterialToFile(r, g, b, pixel)
 
     if not valid:
@@ -1446,7 +1439,7 @@ def getPixelFromRow(x, row, channels, rowWidth):
     material_index = -1
     
     # Retrieve the index of the Colour Code from the Dictionary
-    if ColourCode in mtl_colour_dict:
+    if ColourCode in mtl_colour_dict and pixel > -1:
         material_index = list(mtl_colour_dict).index(ColourCode)
         mtl_colour_dict[ColourCode] += 1
 
@@ -1488,6 +1481,7 @@ def CheckJointRequired(x ,y ,row, nextRow, channels, pattern_w):
 #   A real Python Programmer can probably optimise this using some Python Magic.
 #
 def main(noframeRequired):
+
     global WORKING_FILENAME
     global Colour_Exclusion_List
     global Debug_Txt_File
@@ -1528,7 +1522,9 @@ def main(noframeRequired):
             ToSort[Colour_Process_Only_list[x]] = x
     else:
         # Set the Sorted Colours Dictionary to Default
-        ToSort = dict(mtl_colour_dict)
+        for key in mtl_colour_dict:
+            if mtl_colour_dict[key] > 0:
+                ToSort[key] = mtl_colour_dict[key]
 
     # Check if we want to sort by Highest Colour Count First
     if Sort_Colours_Flag:
@@ -1554,8 +1550,7 @@ def main(noframeRequired):
     if Create_Layered_File:
         while len(SortedColours) > 0:
             nextLayer = list(SortedColours.keys())[0]
-            print(f"Processing Colour: {nextLayer}")
-
+            log(f"Processing Colour: {nextLayer}")
 
             if nextLayer in mtl_colour_dict:
                 if ColoursOnSingleLayerHeight:
@@ -1579,11 +1574,9 @@ def main(noframeRequired):
 #   Check number of Channels, is Alpha Available, discover all colours in image
 #
 def loadPNGToMemory(Filename):
-    #global WORKING_FILENAME
     # Load the PNG File, Check if Valid
     global pattern, pattern_w, pattern_h, pattern_meta, channels
 
-    #pattern, pattern_w, pattern_h, pattern_meta = load_pattern(WORKING_FILENAME)
     pattern, pattern_w, pattern_h, pattern_meta = load_pattern(Filename)
 
     # If File Wasn't Found Time to Quit
@@ -1597,7 +1590,6 @@ def loadPNGToMemory(Filename):
 
     # Check if We've loaded a Valid PNG File
     if pattern is None:
-        #log(f"File: {WORKING_FILENAME} is not a valid PNG File")
         log(f"File: {Filename} is not a valid PNG File")
         return False
 
@@ -1717,6 +1709,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     try:
         if Debug_Txt_File:
            fp_txt=open(txt_file,'w')
+           log(f"Creating Debug File: {txt_file}")
     except Exception as error:
         print(f"Failed to Create Debug file: {txt_file}\n")
         exit(0)
@@ -1724,7 +1717,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     try:
         # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
         with open(obj_file,'w') as fp_obj:
-
+            log(f"Creating Object File: {obj_file}")
                 # Create Header for OBJ File
             header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
             header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
@@ -1884,7 +1877,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
             fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
 
-
+            log(f"Successfully Created Object File: {obj_file}\n")
 
     except Exception as error:
     # Bad Practice I know...
@@ -1897,7 +1890,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
     if not ColoursOnSingleLayerHeight:
         #CurrentZOffset += (abs(Primitive_Multipler*primitive_y_multiplier*CUBE_Y)) # Shift Vertices Up a Layer...
-        CurrentZOffset += Primitive_Layer_Depth
+        CurrentZOffset += Primitive_Layer_Depth * Primitive_Multiplier_Layers
 
         # Bit of a bodge, but set the next layer height depth going forward.
         if Primitive_Initial_Layer_Depth != 0.0:
@@ -1960,6 +1953,8 @@ def checkNextPixelProcessingRules(allowedColours, currentColour):
 #
 def load_pattern(pattern_name):
     pattern_file = os.path.join(PATTERNS, "{}.png".format(Path(pattern_name).with_suffix('')))
+
+    log(f"Attempting to pre-process file: {pattern_file}")
     if os.path.isfile(pattern_file):
         r = png.Reader(file=open(pattern_file, 'rb'))
         pattern_w, pattern_h, pattern, pattern_meta = r.read()
@@ -1978,8 +1973,8 @@ def CreateMasterMaterialFileMaster(filename):
 
     try:
         with open(filename,'w') as fp_mtl:
-            fp_mtl.write("# Created with PNG2OBJ.PY (C) Jason Brooks\n")
-            fp_mtl.write("# See www.muckypaws.com\n")
+            fp_mtl.write("# Created with PNG2ObjV3.PY (C) Jason Brooks\n")
+            fp_mtl.write("# See www.muckypaws.com and www.muckypawslabs.com\n")
             fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
 
             # write the material list.
@@ -1987,7 +1982,7 @@ def CreateMasterMaterialFileMaster(filename):
                 fp_mtl.write(f"{string[1]}")
 
             # Write the Trailer portion of the file (Not needed just for reference really)
-            fp_mtl.write(f"#\n# Total Material Colours Created: {len(mtl_colour_dict)}\n#\n")
+            fp_mtl.write(f"#\n# Total Material Colours Created: {len(mtl_final_list)}\n#\n")
             fp_mtl.flush()
             fp_mtl.close()
             
@@ -2002,7 +1997,7 @@ def CreateMasterMaterialFileMaster(filename):
 # Default Logging Code
 #
 def log(msg):
-    sys.stdout.write("\n")
+    #sys.stdout.write("\n")
     sys.stdout.write(str(datetime.now()))
     sys.stdout.write(": ")
     sys.stdout.write(msg)
@@ -2205,8 +2200,7 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
             # Check if We're Adding extra space between each sprite based
             #   on fixed pixel width per sprite.
             if x > 0 and not(x % Pixel_W):
-                if Debug_Txt_File:
-                    fp_txt.write("|")
+                start_x += 1
 
             # Get Pixel from Row
             pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
@@ -2247,7 +2241,6 @@ def CreateOBJFileFromDictionary(Filename, vertDict, primitive_y_multiplier, Last
                 colourIndex = value[3]
 
                 fp_obj.write( create_primitive(x, y, 1, 1, value[0], value[1], value[2], False , colourIndex, primitive_y_multiplier * LastTowerMultiplier, False))
-                 
 
             fp_obj.flush()
             fp_obj.close()
@@ -2257,7 +2250,7 @@ def CreateOBJFileFromDictionary(Filename, vertDict, primitive_y_multiplier, Last
         print(f"Failed to write file: {obj_file}",obj_file)
         print(f"Exception: {error}")
         return False
-    
+
 #
 # Add default Materials to MTL File
 #
@@ -2278,8 +2271,6 @@ def addDefaultMaterialColours():
     addMaterialToFile(0,255,255,0)
     # White
     addMaterialToFile(255,255,255,0)
-
-
 
 #
 # Can we create a simple parametric set of shapes?
@@ -2395,16 +2386,36 @@ def ParametricTest(Filename):
     CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier)
     CreateMasterMaterialFileMaster(mtl_filename)
 
-
 #
 # Process SVG Options
 #
 def process_SVG_File(args):
+    global SVG_ILLUSION_COLOUR_TABLE
+    global ILLUSION_TYPE_CIRCLE
+    global ILLUSION_MAX_STREAK
+
     if len(args.illusioncolourtable) == 4:
         SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
 
     if args.colourset > -1:
         SVG_ILLUSION_COLOUR_TABLE = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
+
+    if args.maxstreak > 0:
+        ILLUSION_MAX_STREAK = args.maxstreak
+
+    if len(args.outfilename[0]) > 0:
+        outfilename = os.path.join("{}.svg".format(Path(''.join(args.outfilename)).with_suffix('')))
+    else:
+        outfilename = os.path.join("{}.svg".format(Path(''.join(args.filename)).with_suffix('')))
+
+    if args.svg_radius_percent_x < 0.0:
+        args.svg_radius_percent_x = 0.0
+    if args.svg_radius_percent_y < 0.0:
+        args.svg_radius_percent_y = 0
+    if args.svg_radius_percent_x > 100.0:
+        args.svg_radius_percent_x = 100.0
+    if args.svg_radius_percent_y > 100.0:
+        args.svg_radius_percent_y = 100.0
 
     print("              SVG Parameters : ")
     print("              ---------------\n")
@@ -2427,19 +2438,18 @@ def process_SVG_File(args):
             print(f"               Illusion Type : Diagonals")
         else:
             print(f"               Illusion Type : Circular")
+        print(f"         Maximum Illusion Streak : {ILLUSION_MAX_STREAK}")
         print(f"   Minimum Border to Add PNG : {args.minimumborder}")
         print(f"          Minimum Grid Width : {args.minimumgridwidth}")
         print(f"         Minimum Grid Height : {args.minimumgridheight}")
         if args.colourset >= 0:
             print(f"        Colour Set Requested : {args.colourset % len(SVG_COLOUR_SETS)}")
-            
+
     print(f"              Create Outline : {args.outlineOnly}")
-    print(f"             Output Filename : {''.join(args.svgfilename)}")
+    print(f"             Output Filename : {outfilename}")
     print(f"Open SVG File after creation : {args.svgopen}\n")
-            
-    
-    if args.maxstreak > 0:
-        ILLUSION_MAX_STREAK = args.maxstreak
+
+
 
     ILLUSION_TYPE_CIRCLE = args.illusioncircle
 
@@ -2447,14 +2457,13 @@ def process_SVG_File(args):
         # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
         # Creates the grid of pieces with PNG Image pieces represented by circles
         # and adds the registration marks for cutting mountboard using a Maped Ruler and Cutter (60mm offsets)
-        create_svg_frame400(args.outlineOnly, args.svgaddpng, args.svg_radius_percent_x, args.svg_radius_percent_y)
+        create_svg_frame400(args.outlineOnly, args.svgaddpng,
+                            args.svg_radius_percent_x,
+                            args.svg_radius_percent_y)
 
     elif args.illusion:
         # Create the Optical Illusion Images using two contrasting colours for the tiles
         # and two contrasting tiles for the PNG Image
-
-
-        
 
         # Create the Optical Illusion, using
         #   Number of block horizontal, vertical
@@ -2466,13 +2475,16 @@ def process_SVG_File(args):
         create_svg(blocks_horizontal, blocks_vertical,
                     args.outlineOnly,
                     not args.usegridcolours,
-                    args.svgaddpng)
+                    args.svgaddpng ,
+                    0.0, 0.0,
+                    args.svg_pixel_width, args.svg_pixel_height,
+                    args.svg_radius_percent_x, args.svg_radius_percent_y)
     else:
         # Simply create an SVG Block File from a PNG no other features.
         print ("Creating SVG File from PNG: ")
-        create_svg_from_PNG(args.outlineOnly, not args.usegridcolours, 
-                            args.svg_pixel_width,args.svg_pixel_height, 
-                            args.svg_radius_percent_x,args.svg_radius_percent_y)
+        create_svg_from_PNG(args.outlineOnly, not args.usegridcolours,
+                            args.svg_pixel_width,args.svg_pixel_height,
+                            args.svg_radius_percent_x, args.svg_radius_percent_y)
 
     # Report the Stats
     print(f'     Total PNG Pixels : {SVG_PNG_PIXEL_COUNT}')
@@ -2486,19 +2498,19 @@ def process_SVG_File(args):
         print(f'   Total Dark Inserts : {SVG_DARK_COUNT}')
 
     # Create the Final SVG File.
-    svgFilename = ''.join(args.svgfilename)
-    svg_savefile(svgFilename)
+
+    svg_savefile(outfilename)
 
     # Open file automatically?
     if args.svgopen:
         # Open file Automatically
-        print(f"\nAttempting to open file: {svgFilename}")
+        print(f"\nAttempting to open file: {outfilename}")
         if platform.system() == 'Darwin':       # macOS
-            subprocess.call(('open', svgFilename))
+            subprocess.call(('open', outfilename))
         elif platform.system() == 'Windows':    # Windows
-            os.startfile(svgFilename)
+            os.startfile(outfilename)
         else:                                   # linux variants
-            subprocess.call(('xdg-open', svgFilename))
+            subprocess.call(('xdg-open', outfilename))
 #
 # The actual start of Python Code.
 #
@@ -2552,15 +2564,14 @@ if __name__ == "__main__":
     parser.add_argument("-illusion","--illusion",help="Create an SVG File with an optical illusion",action="store_true",default=False)
     parser.add_argument("-f400","--frame400",help="Create an SVG File designed for Frames of 400mm internal",action="store_true",default=False)
   
-    parser.add_argument("-ptn","--parametricFilename",help="Filename of Parametric File to Generate",nargs=1,type=str, default=["ParamtericTestFile"])
-    parser.add_argument("-outfile","--svgfilename",help="Filename of the SVG File to Generate",nargs=1,type=str, default=["SVGTestFile.svg"])
+    parser.add_argument("-outfile","--outfilename",help="Filename of the SVG File to Generate",nargs=1,type=str, default=[""])
     parser.add_argument("-outline","--outlineOnly",help="Draw Outline only ready for machining",action="store_true",default=False)
     parser.add_argument("-svgaddpng","--svgaddpng",help="Add loaded PNG to SVG Output",action="store_true",default=False)
     parser.add_argument("-svgopen",help="Open SVG File with Default Application",action="store_true",default=False)
-    parser.add_argument("-ict","--illusioncolourtable",help="Colour Table for Optical Illusion",nargs="*",type=str, default=["#3F53FF","#020078","#D93C41","#781314"])
-    parser.add_argument("-mb","--minimumborder", help="Minimum Border to add to PNG Image",type=int,default=2)
-    parser.add_argument("-mbw","--minimumgridwidth", help="Minimum Border to add to PNG Image",type=int,default=20)
-    parser.add_argument("-mbh","--minimumgridheight", help="Minimum Border to add to PNG Image",type=int,default=16)
+    parser.add_argument("-ict","--illusioncolourtable",help="Colour Table for Optical Illusion",nargs=4,type=str, default=["#3F53FF","#020078","#D93C41","#781314"])
+    parser.add_argument("-mb","--minimumborder", help="Minimum Border to add to PNG Image",type=int,default=0)
+    parser.add_argument("-mgw","--minimumgridwidth", help="Minimum Border to add to PNG Image",type=int,default=4)
+    parser.add_argument("-mgh","--minimumgridheight", help="Minimum Border to add to PNG Image",type=int,default=4)
     parser.add_argument("-ilc","--illusioncircle", help="Illusion type circle not diagonals",action="store_true",default=False)
     parser.add_argument("-cset","--colourset", help="Which Colour Set to Use for Illusion",type=int,default=-1)
     parser.add_argument("-stmax","--maxstreak", help="Set Maximum Colour Run Streak for Optical Illusion",type=int,default=-1)
@@ -2568,6 +2579,10 @@ if __name__ == "__main__":
     group2=parser.add_mutually_exclusive_group()
     group2.add_argument("-urc","--userealcolours", help="Use PNG Actual Colours?",action="store_true",default=True)
     group2.add_argument("-ugc","--usegridcolours", help="Use PNG Grid Colours?",action="store_true",default=False)
+
+    # Paramteric Options
+    parser.add_argument("-ptn","--parametricFilename",help="Filename of Parametric File to Generate",nargs=1,type=str, default=["ParamtericTestFile"])
+
     args=parser.parse_args()
 
     # Are we processing 3D or 2D?
@@ -2598,10 +2613,14 @@ if __name__ == "__main__":
 
     # Ensure we're sorting if only one of the sort flags provided.
     if args.reversesort:
-        Sort_Colours_Flag=True
+        Sort_Colours_Flag = True
+        Sort_Direction = True
 
     # Ensure the Working Filename Has No Extension.
-    WORKING_FILENAME = Path(args.filename).with_suffix('')
+    if len(args.outfilename[0]) > 0:
+        WORKING_FILENAME = Path(args.outfilename[0]).with_suffix('')
+    else:
+        WORKING_FILENAME = Path(args.filename).with_suffix('')
 
     # Set Material Filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
@@ -2633,7 +2652,7 @@ if __name__ == "__main__":
 
     # Attempt to Load the PNG to memory.
     if loadPNGToMemory(args.filename) == False:
-        print(f"Unable to open file: {WORKING_FILENAME}.png")
+        print(f"Unable to open file: {args.filename}.png")
         exit (0)
     
     if Image_Real_Height < 1 or Image_Real_Width < 1:
@@ -2643,7 +2662,7 @@ if __name__ == "__main__":
     print("")
     print(f"    Image Information :")
     print("    -------------------\n")
-    print(f"           Image File : {WORKING_FILENAME}")
+    print(f"           Image File : {args.filename}")
     print(f"       PNG Image Size : {pattern_w}px (width), {pattern_h}px (height)")
     print(f"   Number of Channels : {channels}")
     print("")
@@ -2711,7 +2730,7 @@ if __name__ == "__main__":
 
         if args.startZ != 0.0:
             CurrentZOffset = args.startZ
-        
+
         print(f"Background Multiplier : {Primitive_Multiplier_Background:.2f}")
         print(f"     Layer Multiplier : {Primitive_Multiplier_Layers:.2f}")
         print(f"       Object Start Z : {args.startZ:.2f}mm")
