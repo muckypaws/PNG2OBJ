@@ -1522,9 +1522,13 @@ def main(noframeRequired):
             ToSort[Colour_Process_Only_list[x]] = x
     else:
         # Set the Sorted Colours Dictionary to Default
+        # Remove any layes that have no pixels
+        # Colour layers that are all below the Alpha Threshold will have a count of 0
         for key in mtl_colour_dict:
             if mtl_colour_dict[key] > 0:
                 ToSort[key] = mtl_colour_dict[key]
+            else:
+                print(f"Removing Colour: {key} from processing, pixel count of Zero Detected (Check Alpha Threshold If Required)")
 
     # Check if we want to sort by Highest Colour Count First
     if Sort_Colours_Flag:
@@ -2585,6 +2589,8 @@ if __name__ == "__main__":
 
     args=parser.parse_args()
 
+
+
     # Are we processing 3D or 2D?
     ThreeD = not args.svg
 
@@ -2625,6 +2631,17 @@ if __name__ == "__main__":
     # Set Material Filename
     mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
 
+
+    # First Stage, Get Colours In Memory first and see if we have something
+    # Attempt to Load the PNG to memory.
+    if loadPNGToMemory(args.filename) == False:
+        print(f"Unable to open file: {args.filename}.png")
+        exit (0)
+    
+    if Image_Real_Height < 1 or Image_Real_Width < 1:
+        print(f"No Image Data to Process, Quitting...")
+        exit(0)
+
     # Remove Excluded Colours from Process Colours List
     # If user provides both in both tables, we'll force exclusion!
     totalColours = len(mtl_colour_dict)
@@ -2650,14 +2667,7 @@ if __name__ == "__main__":
 
     ColoursOnSingleLayerHeight = args.nextlayeronly
 
-    # Attempt to Load the PNG to memory.
-    if loadPNGToMemory(args.filename) == False:
-        print(f"Unable to open file: {args.filename}.png")
-        exit (0)
-    
-    if Image_Real_Height < 1 or Image_Real_Width < 1:
-        print(f"No Image Data to Process, Quitting...")
-        exit(0)
+
 
     print("")
     print(f"    Image Information :")
@@ -2720,11 +2730,12 @@ if __name__ == "__main__":
                     #Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
                     CurrentZOffset = 0.0
                 else:
-                    if len(Colour_Process_Only_list) > 0:
-                        if len(Colour_Process_Only_list):
-                            Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
-                        else:
-                            Primitive_Layer_Depth = args.maxdepth
+                    #if len(Colour_Process_Only_list) > 0:
+                    if len(Colour_Process_Only_list):
+                        Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+                    else:
+                        Primitive_Layer_Depth = args.maxdepth / totalColours
+
         else:
             Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
 
