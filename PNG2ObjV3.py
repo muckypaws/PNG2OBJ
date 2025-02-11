@@ -2385,7 +2385,7 @@ def ParametricTest(Filename):
 
     # Apply PNG Process
     #ApplyPNGColoursToParametricObjects(VerticesDict,-2,-2, Colour_Process_Only_list, Colour_Exclusion_List)
-    ApplyPNGColoursToParametricObjects(VerticesDict, -GridWidth, -GridHeight, Colour_Process_Only_list, Colour_Exclusion_List)
+    ApplyPNGColoursToParametricObjects(VerticesDict, 0, 0, Colour_Process_Only_list, Colour_Exclusion_List)
 
     CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier)
     CreateMasterMaterialFileMaster(mtl_filename)
@@ -2401,25 +2401,21 @@ def process_SVG_File(args):
     if len(args.illusioncolourtable) == 4:
         SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
 
+    if len(args.illusioncolourtable) == 4:
+        SVG_ILLUSION_COLOUR_TABLE = args.illusioncolourtable
+
     if args.colourset > -1:
         SVG_ILLUSION_COLOUR_TABLE = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
 
-    if args.maxstreak > 0:
-        ILLUSION_MAX_STREAK = args.maxstreak
+    ILLUSION_MAX_STREAK = args.maxstreak if args.maxstreak > 0 else ILLUSION_MAX_STREAK
 
     if len(args.outfilename[0]) > 0:
         outfilename = os.path.join("{}.svg".format(Path(''.join(args.outfilename)).with_suffix('')))
     else:
         outfilename = os.path.join("{}.svg".format(Path(''.join(args.filename)).with_suffix('')))
-
-    if args.svg_radius_percent_x < 0.0:
-        args.svg_radius_percent_x = 0.0
-    if args.svg_radius_percent_y < 0.0:
-        args.svg_radius_percent_y = 0
-    if args.svg_radius_percent_x > 100.0:
-        args.svg_radius_percent_x = 100.0
-    if args.svg_radius_percent_y > 100.0:
-        args.svg_radius_percent_y = 100.0
+    
+    args.svg_radius_percent_x = max(0.0, min(args.svg_radius_percent_x, 100.0))
+    args.svg_radius_percent_y = max(0.0, min(args.svg_radius_percent_y, 100.0))
 
     print("              SVG Parameters : ")
     print("              ---------------\n")
@@ -2430,6 +2426,7 @@ def process_SVG_File(args):
     print(f"         SVG Corner Radius X : {args.svg_radius_percent_x}%")
     print(f"         SVG Corner Radius Y : {args.svg_radius_percent_y}%")
     print(f"              Add loaded PNG : {args.svgaddpng}")
+
     if args.usegridcolours:
         print(f"            Use Grid Colours : {args.usegridcolours}")
     else:
@@ -2442,7 +2439,7 @@ def process_SVG_File(args):
             print(f"               Illusion Type : Diagonals")
         else:
             print(f"               Illusion Type : Circular")
-        print(f"         Maximum Illusion Streak : {ILLUSION_MAX_STREAK}")
+        print(f"     Maximum Illusion Streak : {ILLUSION_MAX_STREAK}")
         print(f"   Minimum Border to Add PNG : {args.minimumborder}")
         print(f"          Minimum Grid Width : {args.minimumgridwidth}")
         print(f"         Minimum Grid Height : {args.minimumgridheight}")
@@ -2452,8 +2449,6 @@ def process_SVG_File(args):
     print(f"              Create Outline : {args.outlineOnly}")
     print(f"             Output Filename : {outfilename}")
     print(f"Open SVG File after creation : {args.svgopen}\n")
-
-
 
     ILLUSION_TYPE_CIRCLE = args.illusioncircle
 
@@ -2731,10 +2726,11 @@ if __name__ == "__main__":
                     CurrentZOffset = 0.0
                 else:
                     #if len(Colour_Process_Only_list) > 0:
-                    if len(Colour_Process_Only_list):
-                        Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
-                    else:
-                        Primitive_Layer_Depth = args.maxdepth / totalColours
+                    if Primitive_Layer_Depth == 0.0:
+                        if len(Colour_Process_Only_list):
+                            Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+                        else:
+                            Primitive_Layer_Depth = args.maxdepth / totalColours
 
         else:
             Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)

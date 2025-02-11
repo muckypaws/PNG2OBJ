@@ -103,8 +103,8 @@
             //"args": ["-svgopen","-el","#000000","--svgfilename","./SVG/WillyAsSVG.svg","-svg","--svgaddpng","./JSWStride.png"],
             //"args": ["-illusion","-ilc", "-svgaddpng", "-ugc", "-svgopen","-el","#000000","-svg","-ict","#0092FF", "#6600FF", "#F82AB9", "#B70A2B","-mgw","20","-mgh","20","./JSWStride"],
             //"args": [ "-svgopen","-el","#000000","-svg","-svgrpx","101","-svgrpy","50","./JSWStride"],
-            //"args": ["-svgopen","-el","#000000","-svg","-illusion","./PlatformWilly","-svgrpx","100.0"],
-            "args": ["./PlatformWilly","--mtl","-mw","240.0","-mh","240.0","-md","12.0","--layered"],
+            "args": ["-svgopen","-el","#000000","-svg","-illusion","./PlatformWilly","-svgrpx","100.0"],
+            //"args": ["./PlatformWilly","--mtl","-ild","3.2","-md","6.0","-nf","--layered"],
             "justMyCode": true
         }
     ]

@@ -6,6 +6,7 @@
 *.3mf
 TestCircle.py
 *.svg 
+*.zip 
 
 2023/*
 Amstrad/
@@ -27,6 +28,8 @@ Manual/*
 OBJTests/*
 SVGTests/*
 Demo/*
+RetroPrintProjects/*
+Silhouette/*
 
 
 
