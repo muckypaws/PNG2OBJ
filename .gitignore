@@ -7,7 +7,7 @@
 TestCircle.py
 *.svg 
 *.zip 
-
+.DS_Store
 2023/*
 Amstrad/
 Commodore/
