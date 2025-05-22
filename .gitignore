@@ -30,7 +30,8 @@ SVGTests/*
 Demo/*
 RetroPrintProjects/*
 Silhouette/*
-
+CustomWork/
+venv/
 
 
 ## Ignore Visual Studio temporary files, build results, and
