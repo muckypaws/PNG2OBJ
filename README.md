@@ -1,3 +1,7 @@
+![License: Custom MIT](https://img.shields.io/badge/license-MIT--NC-blue.svg)
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Raspberry%20Pi-lightgrey)
+
 # PNG2ObjV3
 
 Convert PNG images into 3D printable `.OBJ` files or scalable `.SVG` vectors — with support for sprite slicing, optical illusions, physical layering, and more.

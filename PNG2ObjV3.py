@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# PNG2ObjV3
+# Version: 3.0.0
+# Author: Jason Brooks (muckypaws)
+# License: MIT with additional non-commercial use restriction
+# https://github.com/muckypaws/PNG2OBJ
 #
 # Created by Jason Brooks: www.muckypaws.com and www.wonkypix.com
 #            3rd June 2022
@@ -54,7 +59,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Application Defaults
-
+DEBUG = False
 # Default location for File
 PATTERNS=""
 
@@ -601,36 +606,36 @@ def print_array(array):
 #
 # Write the Final SVG File from Data in the List.
 #
+from pathlib import Path
+
 def svg_savefile(savename):
     global SVG_CANVAS_WIDTH
     global SVG_CANVAS_HEIGHT
 
     try:
-        with open(savename, 'w', encoding="utf-8") as fp:
-            # Write the Header
+        output_path = Path(savename).resolve()
+
+        with output_path.open('w', encoding="utf-8") as fp:
             fp.write(SVG_HEADER)
             fp.write(f'<svg width="{SVG_CANVAS_WIDTH:.2f}mm" height="{SVG_CANVAS_HEIGHT:.2f}mm" xmlns="http://www.w3.org/2000/svg">\n')
-
             fp.write(''.join(SVG_DATA_LIST))
-
-            # Finalize SVG
             fp.write('</svg>\n')
-        
-            # Flush the buffer
-            fp.flush()
-            # Close the file.
-            fp.close()
 
-            print(f"\nWritten file: {savename}")
+        print(f"\n✅ Written file: {output_path}")
 
-    # Exception Time...
+    except PermissionError:
+        print(f"❌ Permission denied when writing to {savename}. Is it open in another application?")
+        if DEBUG:
+            print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
     except IOError as error:
-        print(f"File error: {error}")
-        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
-
+        print(f"❌ File I/O error: {error}")
+        if DEBUG:
+            print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
     except Exception as error:
-        print(f"Unexpected error: {error}")
-        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
+        print(f"❌ Unexpected error: {error}")
+        if DEBUG:
+            print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
+
 
 #
 # Update Canvas Width/Height
@@ -751,7 +756,8 @@ def create_svg_frame400(Outline_Only = True,
     print(f"       Internal Frame : {useableArea}mm x {useableArea}mm")
     print(f"          Outer Frame : {outerFrame}mm x {outerFrame}mm")
     print(f"   Pixel Width/Height : {rect_width:.2f}mm x {rect_height:.2f}mm")
-    print(f"          Rect Radius : {args.svg_radius_percent_x:.2f}% x {args.svg_radius_percent_y:.2f}%")
+    #print(f"          Rect Radius : {args.svg_radius_percent_x:.2f}% x {args.svg_radius_percent_y:.2f}%")
+    print(f"          Rect Radius : {rect_radius_x:.2f}% x {rect_radius_y:.2f}%")
 
 
     create_svg(multiplier, multiplier, Outline_Only,  True, add_PNG, offset, offset, rect_width, rect_height, rect_radius_x, rect_radius_y )
@@ -1976,25 +1982,29 @@ def CreateMasterMaterialFileMaster(filename):
     global mtl_final_list
 
     try:
-        with open(filename,'w') as fp_mtl:
+        output_path = Path(filename).resolve()
+
+        with output_path.open('w', encoding='utf-8') as fp_mtl:
             fp_mtl.write("# Created with PNG2ObjV3.PY (C) Jason Brooks\n")
             fp_mtl.write("# See www.muckypaws.com and www.muckypawslabs.com\n")
             fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
 
-            # write the material list.
-            for string in enumerate(mtl_final_list):
-                fp_mtl.write(f"{string[1]}")
+            for _, line in enumerate(mtl_final_list):
+                fp_mtl.write(f"{line}")
 
-            # Write the Trailer portion of the file (Not needed just for reference really)
             fp_mtl.write(f"#\n# Total Material Colours Created: {len(mtl_final_list)}\n#\n")
-            fp_mtl.flush()
-            fp_mtl.close()
-            
-    except Exception as error:
-        print(f"Failed to create Material File: {filename}")
-        print(f"Error: {error}")
-        exit(0)
 
+        print(f"✅ Material file written: {output_path}")
+
+    except PermissionError:
+        print(f"❌ Cannot write to {filename} — file is locked or open in another application.")
+    except Exception as error:
+        print(f"❌ Failed to create Material File: {filename}")
+        print(f"Error: {error}")
+        if DEBUG:
+            import sys
+            print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
+        sys.exit(1)
 
                     
 #
@@ -2224,7 +2234,50 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
 #
 #
 #
-def CreateOBJFileFromDictionary(Filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
+def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
+    try:
+        if Create_Layered_File:
+            obj_file = Path(PATTERNS) / f"{filename}_Y{FILE_COUNTER}{colourMatch}.obj"
+        else:
+            obj_file = Path(PATTERNS) / f"{filename}_Y{FILE_COUNTER}.obj"
+
+        obj_file = obj_file.resolve()
+
+        with obj_file.open("w", encoding="utf-8") as fp_obj:
+            header = (
+                "# Creator PNG2OBJ.py - © Jason Brooks 2022\n"
+                f"# {datetime.now()}\n"
+                f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+            )
+            fp_obj.write(header)
+
+            for key, value in vertDict.items():
+                x, y = map(int, key.split(":"))
+                colourIndex = value[3]
+                fp_obj.write(
+                    create_primitive(
+                        x, y, 1, 1,
+                        value[0], value[1], value[2],
+                        False, colourIndex,
+                        primitive_y_multiplier * LastTowerMultiplier,
+                        False
+                    )
+                )
+
+        print(f"✅ OBJ file written: {obj_file}")
+        return True
+
+    except PermissionError:
+        print(f"❌ Cannot write to OBJ file — it may be open or locked: {obj_file}")
+    except Exception as error:
+        print(f"❌ Failed to write OBJ file: {obj_file}")
+        print(f"Error: {error}")
+        if DEBUG:
+            import sys
+            print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
+    return False
+
+def CreateOBJFileFromDictionary_old(Filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
     if Create_Layered_File:
         obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(Filename,FILE_COUNTER,str(colourMatch)))
     else:
@@ -2502,14 +2555,22 @@ def process_SVG_File(args):
 
     # Open file automatically?
     if args.svgopen:
-        # Open file Automatically
-        print(f"\nAttempting to open file: {outfilename}")
-        if platform.system() == 'Darwin':       # macOS
-            subprocess.call(('open', outfilename))
-        elif platform.system() == 'Windows':    # Windows
-            os.startfile(outfilename)
-        else:                                   # linux variants
-            subprocess.call(('xdg-open', outfilename))
+        try:
+            svg_path = Path(outfilename).resolve()
+            print(f"\nAttempting to open file: {svg_path}")
+
+            if platform.system() == 'Darwin':  # macOS
+                subprocess.call(('open', str(svg_path)))
+            elif platform.system() == 'Windows':  # Windows
+                os.startfile(svg_path)
+            else:  # Linux variants
+                subprocess.call(('xdg-open', str(svg_path)))
+        except Exception as error:
+            print(f"⚠️ Failed to open file: {outfilename}")
+            print(f"Reason: {error}")
+            if DEBUG:
+                print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
+
 #
 # The actual start of Python Code.
 #
