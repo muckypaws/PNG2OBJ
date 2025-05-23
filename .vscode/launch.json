@@ -7,11 +7,11 @@
         
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["Doom"],
+            "args": ["./PlatformWilly","--mtl","-ild","3.2","-md","6.0","-nf","--layered"],
             "justMyCode": true
         }
     ]
