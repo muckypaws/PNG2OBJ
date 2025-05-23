@@ -142,7 +142,7 @@ Unzip this to explore the features described in the PDF manual.
 ## 👨‍💻 Author
 
 Created by [Jason Brooks](https://www.muckypaws.com)  
-Twitter/X: [@MuckyPaws](https://x.com/muckypaws)  
+Twitter/X: [@MuckyPaws](https://x.com/muckypause)  
 GitHub: [github.com/muckypaws](https://github.com/muckypaws)
 
 ---
