@@ -6,6 +6,6 @@ PNG2ObjV3 is an offline tool with a very limited attack surface. All parsing is 
 
 ## Reporting Vulnerabilities
 
-If you discover a potential security issue, please email Jason Brooks directly at: muckypaws (at) muckypaws (dot) com
+If you discover a potential security issue, please email Jason Brooks directly at: bugs (at) muckypaws (dot) com
 
 We take all reports seriously, even for low-risk issues.

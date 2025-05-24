@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""PNG2ObjV3: Convert pixel PNGs into 3D OBJ or SVG files with optional layering and illusion support."""
 # PNG2ObjV3
 # Version: 3.0.0
 # Author: Jason Brooks (muckypaws)
@@ -495,27 +496,63 @@ DARK_PIXEL_INDEX = 3
 # Create Circles instead of Diagonals?
 ILLUSION_TYPE_CIRCLE = False
 
-
 # Custom ArgumentParser to make option flags case-insensitive
 class CaseInsensitiveArgumentParser(argparse.ArgumentParser):
-    """ Override to Argparse to enable case insensitive arguments """
+    """
+    Override argparse.ArgumentParser to support case-insensitive option flags.
+
+    This subclass normalises all option strings to lowercase before matching,
+    allowing users to specify flags such as -SVG or --Layered without worrying
+    about case sensitivity.
+
+    Example:
+        parser = CaseInsensitiveArgumentParser()
+        parser.add_argument('--example')
+        args = parser.parse_args(['--EXAMPLE', 'value'])  # Valid
+
+    """
+
     def _get_option_tuples(self, option_string):
         # Normalize the option string to lowercase for case-insensitive matching
         option_string = option_string.lower()
         return super()._get_option_tuples(option_string)
 
+
 #
 # Create an Array we use for the Optical Illusion Data
 #
 def create_array(size :int):
-    """Create a 2D array of given size filled with spaces."""
+    """
+    Create a square 2D array (size x size) filled with space characters.
+
+    Args:
+        size (int): The number of rows and columns for the square array.
+
+    Returns:
+        list[list[str]]: A 2D array (list of lists) filled with ' ' (space) characters.
+    """
     return [[' ' for _ in range(size)] for _ in range(size)]
 
 #
 # Plot Circle Points based on each quadrant and opposite faces.
 #
 def plot_circle_points(array, cx, cy, x, y):
-    """Plot circle points in all octants with boundary checks."""
+    """
+    Plot a symmetrical set of 8 points around the center (cx, cy) to form part of a circle.
+
+    This function uses Bresenham's symmetry to mark pixels on all eight octants,
+    updating the given 2D character array in-place.
+
+    Args:
+        array (list[list[str]]): The 2D drawing canvas.
+        cx (int): X-coordinate of the circle center.
+        cy (int): Y-coordinate of the circle center.
+        x (int): Offset from center along the X-axis.
+        y (int): Offset from center along the Y-axis.
+
+    Returns:
+        None. Modifies the array in-place.
+    """
     max_y = len(array)
     max_x = len(array[0])
 
@@ -546,7 +583,18 @@ def plot_circle_points(array, cx, cy, x, y):
 # Use Bresenhams Algorithm to create the points
 #
 def draw_circle(array, center_x, center_y, radius):
-    """Draw a circle on the 2D array using Bresenham's circle algorithm."""
+    """
+    Draw a full circle on a 2D character array using Bresenham's circle algorithm.
+
+    Args:
+        array (list[list[str]]): The 2D canvas to draw the circle on (modified in-place).
+        center_x (int): X-coordinate of the circle's center.
+        center_y (int): Y-coordinate of the circle's center.
+        radius (int): Radius of the circle in array units.
+
+    Returns:
+        None. Modifies the array in-place by plotting '*' at appropriate points.
+    """
     x = radius
     y = 0
     p = 1 - radius  # Initial decision parameter
@@ -564,6 +612,19 @@ def draw_circle(array, center_x, center_y, radius):
         plot_circle_points(array, center_x, center_y, x, y)
 
 def draw_diagonals_in_array(width :int, height: int):
+    """
+    Populate a global SVG_ILLUSION_ARRAY with randomly staggered diagonal lines (*) for use in pixel-based optical illusions.
+
+    The pattern is generated across a 2D square array, simulating visual streaks
+    that create depth illusions when layered behind or around foreground objects.
+
+    Args:
+        width (int): Width of the array/grid in pixels.
+        height (int): Height of the array/grid in pixels.
+
+    Returns:
+        None. Modifies global SVG_ILLUSION_ARRAY in-place.
+    """
     global SVG_ILLUSION_ARRAY
 
     size = max(width, height)
@@ -609,16 +670,43 @@ def draw_diagonals_in_array(width :int, height: int):
 # Debugging purposes to see the array...
 #
 def print_array(array):
-    """Print the 2D array."""
+    """
+    Print a 2D character array row by row as a visual grid.
+
+    Args:
+        array (list[list[str]]): The array to print. Each sublist represents a row.
+
+    Returns:
+        None. Output is sent directly to standard output.
+    """
     for row in array:
         print(''.join(row))
 
 #
 # Write the Final SVG File from Data in the List.
 #
-from pathlib import Path
-
+# TODO: Refactor to accept canvas size and data as parameters for testability
+# TODO: Externalise header and root <svg> attributes for templating flexibility
 def svg_savefile(savename):
+    """
+    Save the SVG content to a file using current canvas dimensions and data.
+
+    This function uses global canvas size values and the accumulated SVG output
+    list, and writes the final SVG file to disk with proper error handling.
+
+    Args:
+        savename (str): Output path and filename for the SVG file.
+
+    Returns:
+        None. Writes the file to disk.
+
+    Globals:
+        SVG_CANVAS_WIDTH (float): Width of the canvas in mm.
+        SVG_CANVAS_HEIGHT (float): Height of the canvas in mm.
+        SVG_DATA_LIST (list[str]): List of SVG fragments to embed in the final file.
+        SVG_HEADER (str): XML + DOCTYPE declaration.
+        DEBUG (bool): Controls detailed error output.
+    """
     global SVG_CANVAS_WIDTH
     global SVG_CANVAS_HEIGHT
 
@@ -650,7 +738,26 @@ def svg_savefile(savename):
 #
 # Update Canvas Width/Height
 #
+# TODO: Remove or explain the `if width > 405: print` line
+# TODO: Consider returning updated dimensions instead of using globals
 def update_svg_canvas_dimensions(width, height):
+    """
+    Update the global SVG canvas dimensions if the new dimensions are larger.
+
+    This ensures that the final SVG canvas is large enough to accommodate all
+    generated elements across multiple operations.
+
+    Args:
+        width (float): Proposed new canvas width in mm.
+        height (float): Proposed new canvas height in mm.
+
+    Returns:
+        None. Modifies global variables in-place.
+
+    Globals:
+        SVG_CANVAS_WIDTH (float): Current maximum canvas width.
+        SVG_CANVAS_HEIGHT (float): Current maximum canvas height.
+    """
     global SVG_CANVAS_WIDTH
     global SVG_CANVAS_HEIGHT
 
@@ -665,8 +772,21 @@ def update_svg_canvas_dimensions(width, height):
 #
 # Add Centred Text
 #
+# TODO: Make font-size and stroke-width configurable parameters
+# TODO: Consider accepting a style dict or class for future flexibility
 def add_svg_centeredText(x, y, text, fill_colour):
+    """
+    Generate a centered SVG <text> element with stroke-based outlining.
 
+    Args:
+        x (float): The x-coordinate in mm for the text anchor point.
+        y (float): The y-coordinate in mm for the text anchor point.
+        text (str): The text content to display.
+        fill_colour (str): Stroke colour for the text outline (e.g. "#000000").
+
+    Returns:
+        str: A formatted SVG <text> tag with positioning, alignment, and stroke styling.
+    """
     text_str = (f'\t\t<text x="{x:.3f}mm" y="{y:.3f}mm" text-anchor="middle" '
                 f'dominant-baseline="central" fill="none" stroke = "{fill_colour}" '
                 f'stroke-width="0.5px" alignment-baseline="middle" font-size="24pt"'
@@ -679,7 +799,24 @@ def add_svg_centeredText(x, y, text, fill_colour):
 # Add Centred Text
 #
 def add_svg_centeredCircle(x, y, radius = 5.0, fill_colour = "#000000", stroke_width = 0.0, stroke = "#000000"):
+    """
+    Generate an SVG <circle> element centered at (x, y) with optional stroke and fill.
 
+    Args:
+        x (float): X-coordinate of the circle center in mm.
+        y (float): Y-coordinate of the circle center in mm.
+        radius (float, optional): Radius of the circle in mm. Default is 5.0.
+        fill_colour (str, optional): Fill colour of the circle (e.g. "#FF0000").
+        stroke_width (float, optional): Width of the stroke in mm. If 0.0, stroke is omitted.
+        stroke (str, optional): Stroke colour. Ignored if stroke_width is 0.
+
+    Returns:
+        str: A formatted SVG <circle> tag.
+    
+    TODO:
+        - Consider adding support for additional SVG attributes via kwargs or a style object.
+        - Optionally validate inputs to prevent invalid SVG formatting.
+    """
     circle_str = (f'\t\t<circle cx="{x:.3f}mm" cy="{y:.3f}mm" r="{radius:.3f}mm" fill="{fill_colour}" ')
     if stroke_width != 0.0:
         circle_str += f'stroke="{stroke}" stroke-width="{stroke_width}mm" '
@@ -691,7 +828,30 @@ def add_svg_centeredCircle(x, y, radius = 5.0, fill_colour = "#000000", stroke_w
 # Add rectangle
 #
 def add_svg_rectangle(id, x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000", opacity = 100.0, stroke_width = 0.0, stroke_colour = "#000000"):
-    # Base rectangle attributes
+    """
+    Generate an SVG <rect> element with optional rounded corners, fill, and stroke.
+
+    Args:
+        id (str): Optional ID to assign to the rect.
+        x (float): X-position of the rectangle's top-left corner in mm.
+        y (float): Y-position of the rectangle's top-left corner in mm.
+        width (float): Width of the rectangle in mm.
+        height (float): Height of the rectangle in mm.
+        rx (float): Optional rounding percentage for x-radius (0–100).
+        ry (float): Optional rounding percentage for y-radius (0–100).
+        fill_colour (str): Fill colour in hex or named format.
+        opacity (float): Fill opacity as a percentage (0–100).
+        stroke_width (float): Stroke width in mm. 0 disables stroke.
+        stroke_colour (str): Stroke colour.
+
+    Returns:
+        str: SVG-compliant <rect> string with given attributes.
+    
+    TODO:
+        - Allow setting stroke opacity separately.
+        - Extract style string to helper/template function.
+        - Re-enable canvas dimension tracking when refactoring.
+    """    # Base rectangle attributes
     rect_str = ('\t\t<rect ')
 
     if len(id)>0:
@@ -737,11 +897,37 @@ def create_svg_frame400(Outline_Only = True,
                         add_PNG = False, 
                         rect_radius_x = 25, 
                         rect_radius_y = 25):
-    """Create the SVG File data to create guides and cutmarks for a 400mm frame supplied
-        by The Range... They ofer a few, the latest one has a useable 
-        inner area of 397mm
-        outer area of 405mm (Maximum for the Mountboard to fit)
-        This will need updating when I add more frames"""
+    """
+    Create SVG data and cut guides for mounting art in a 400mm x 400mm frame (as sold by The Range).
+
+    The layout includes:
+    - Usable inner area: 397mm x 397mm
+    - Outer mount board size: 405mm x 405mm
+    - Optional background and corner radius parameters
+    - Optional PNG layer
+    - Optional cut guides for MAPED mountboard cutter
+
+    Args:
+        Outline_Only (bool): If True, suppress SVG fill elements and render only outlines.
+        add_PNG (bool): If True, include the in-memory PNG rendering into the layout.
+        rect_radius_x (float): Horizontal corner radius as a percentage.
+        rect_radius_y (float): Vertical corner radius as a percentage.
+
+    Globals:
+        Image_Real_Width (int): Width of the loaded PNG in pixels.
+        Image_Real_Height (int): Height of the loaded PNG in pixels.
+        SVG_CANVAS_WIDTH (float): Used when placing cut guides.
+        SVG_CANVAS_HEIGHT (float): Used when placing cut guides.
+        SVG_DATA_LIST (list[str]): Appended with SVG group markup for cut guides.
+
+    Returns:
+        None. Appends formatted SVG elements directly to SVG_DATA_LIST.
+
+    TODO:
+        - Generalise for other frame sizes (currently hardcoded to 400mm/405mm)
+        - Accept frame model name or dimensions as input
+        - Consider separating visual elements and guide logic
+    """
     global SVG_DATA_LIST
 
     # Useable Area of the Frame
@@ -813,7 +999,39 @@ def create_svg(width, height,
                startX = 0.0, startY = 0.0, 
                rect_width=20.0, rect_height=20.0, 
                rect_radius_x = 25.0, rect_radius_y = 25.0):
-    
+    """
+    Create optical illusion-style SVG data using either diagonal or circular patterns.
+
+    Optionally overlays a sprite image (from loaded PNG) and includes calculated offsets 
+    and styling based on real-world dimensions.
+
+    Args:
+        width (int): Grid width in number of rectangles.
+        height (int): Grid height in number of rectangles.
+        outline_only (bool): If True, omits fill colours and only renders borders.
+        use_real_colours (bool): If True, retains original pixel colour information.
+        add_PNG (bool): If True, overlays a sprite image onto the SVG illusion.
+        startX (float): Starting X offset in mm.
+        startY (float): Starting Y offset in mm.
+        rect_width (float): Width of each rectangle in mm.
+        rect_height (float): Height of each rectangle in mm.
+        rect_radius_x (float): Corner radius X (% of width).
+        rect_radius_y (float): Corner radius Y (% of height).
+
+    Returns:
+        None. Appends data directly to SVG_DATA_LIST.
+
+    Globals:
+        SVG_DATA_LIST (list[str]): The main buffer collecting final SVG fragment data.
+        ILLUSION_TYPE_CIRCLE (bool): Switch between circular vs diagonal grid illusion.
+        Image_Real_Width (int): Width of loaded PNG (for offsetting sprite overlay).
+        Image_Real_Height (int): Height of loaded PNG.
+
+    TODO:
+        - Parameterise illusion type via argument instead of global
+        - Add validation for grid/offset sizes
+        - Split fill/light/dark logic into helper functions
+    """
     global SVG_DATA_LIST, ILLUSION_TYPE_CIRCLE
 
     totalWidth = rect_width * width + abs(startX * 2)
@@ -863,6 +1081,36 @@ def create_svg_rect_Grid(outline_only = False,
                          offsetX = 0.0, offsetY = 0.0,
                          fillcolour1 = "#020078",
                          fillcolour2 = "#3F53FF"):
+    """
+    Generate a rectangular grid of SVG <rect> elements, with alternating fill colours.
+
+    Used to build visual background or illusion patterns by alternating between two
+    colour values and separating them into 'light' and 'dark' groups.
+
+    Args:
+        outline_only (bool): If True, disables fill and applies stroke-only style.
+        width (int): Number of rectangles across the X-axis.
+        height (int): Number of rectangles down the Y-axis.
+        rect_width (float): Width of each rectangle in mm.
+        rect_height (float): Height of each rectangle in mm.
+        rect_radius_x (float): Rounded corner radius X (%).
+        rect_radius_y (float): Rounded corner radius Y (%).
+        offsetX (float): Horizontal offset in mm.
+        offsetY (float): Vertical offset in mm.
+        fillcolour1 (str): Primary colour hex code.
+        fillcolour2 (str): Secondary colour hex code.
+
+    Returns:
+        tuple: Two lists of SVG strings — (light_group, dark_group)
+
+    Globals:
+        SVG_GRID_COUNT (int): Tracks total number of rectangles generated.
+
+    TODO:
+        - Consider splitting light/dark group logic into a reusable helper
+        - Allow `fillcolour1` and `fillcolour2` to accept lists for multi-colour cycling
+        - Evaluate performance on very large grids
+    """
     global SVG_GRID_COUNT
     # Dark and Light Groups
     dark_group = ['\t<g id="DarkGroup">\n']
@@ -905,6 +1153,31 @@ def create_svg_rect_Grid(outline_only = False,
 # clip the coords for inside the canvas.
 #
 def ClipDimensions(rect_x, rect_y, rect_width, rect_height, offsetX, offsetY):
+    """
+    Clip a rectangle's dimensions to ensure it stays within the valid SVG canvas boundaries.
+
+    This function adjusts the rectangle's position and size based on the provided offset
+    and current global SVG canvas dimensions.
+
+    Args:
+        rect_x (float): X-coordinate of the rectangle's top-left corner.
+        rect_y (float): Y-coordinate of the rectangle's top-left corner.
+        rect_width (float): Requested width of the rectangle in mm.
+        rect_height (float): Requested height of the rectangle in mm.
+        offsetX (float): Horizontal margin in mm.
+        offsetY (float): Vertical margin in mm.
+
+    Returns:
+        tuple: (adjusted_x, adjusted_y, clipped_width, clipped_height)
+
+    Globals:
+        SVG_CANVAS_WIDTH (float): Total width of the SVG canvas.
+        SVG_CANVAS_HEIGHT (float): Total height of the SVG canvas.
+
+    TODO:
+        - Move SVG_CANVAS_WIDTH/HEIGHT to parameters for testability
+        - Document caller behaviour for rectangles that get fully clipped
+    """
     req_width = rect_width
     req_height = rect_height
 
@@ -930,6 +1203,39 @@ def ClipDimensions(rect_x, rect_y, rect_width, rect_height, offsetX, offsetY):
 # Create SVG Data for the Optical Illusion - circles...
 #
 def create_svg_illusion_data_circular(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", offsetX = 0.0, offsetY = 0.0):
+    """
+    Generate an SVG data grid with a circular optical illusion effect using concentric raster lines.
+    
+    Alternates between visible and skipped circles to create a vibration-like illusion.
+
+    Args:
+        outline_only (bool): If True, disables fill and renders stroke-only rectangles.
+        width (int): Grid width in cells.
+        height (int): Grid height in cells.
+        rect_width (float): Width of each rectangle in mm.
+        rect_height (float): Height of each rectangle in mm.
+        rect_radius_x (str): Corner rounding percentage on X (e.g., "25%").
+        rect_radius_y (str): Corner rounding percentage on Y (e.g., "25%").
+        offsetX (float): Horizontal offset in mm.
+        offsetY (float): Vertical offset in mm.
+
+    Returns:
+        tuple: (fill_group, light_group, dark_group) — SVG <g> sections.
+
+    Globals:
+        SVG_ILLUSION_ARRAY (list): 2D array of raster pattern.
+        SVG_DARK_COUNT (int): Total number of dark illusion blocks drawn.
+        SVG_LIGHT_COUNT (int): Total number of light blocks.
+        ILLUSION_MAX_STREAK (int): Max run of lines before toggling.
+        SVG_ILLUSION_COLOUR_TABLE (list): Colour palette.
+        DARK_BLOCK_INDEX (int): Index of dark block colour.
+        LIGHT_BLOCK_INDEX (int): Index of light block colour.
+
+    TODO:
+        - Parameterise ILLUSION_MAX_STREAK instead of relying on global
+        - Move ClipDimensions() and rectangle calc into reusable helper
+        - Refactor to separate illusion generation from rendering loop
+    """
     global SVG_ILLUSION_ARRAY, SVG_DARK_COUNT, SVG_LIGHT_COUNT
 
     width = int(width)
@@ -1021,7 +1327,38 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
 # Create SVG Data for the Optical Illusion
 #
 def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height = 20, rect_width=20.0, rect_height=20.0, rect_radius_x = "25%", rect_radius_y = "25%", offsetX = 0.0, offsetY = 0.0):
+    """
+    Generate SVG illusion data based on diagonal line patterns.
 
+    Creates a grid of rectangles where each diagonal is conditionally filled or skipped
+    to produce a wobble or flicker illusion effect. The output is structured in groups
+    labelled by coordinate for post-processing or SVG manipulation.
+
+    Args:
+        outline_only (bool): If True, uses stroke-only rectangles.
+        width (int): Number of rectangles across.
+        height (int): Number of rectangles down.
+        rect_width (float): Width of each rectangle in mm.
+        rect_height (float): Height of each rectangle in mm.
+        rect_radius_x (str): Horizontal corner radius as percentage string.
+        rect_radius_y (str): Vertical corner radius as percentage string.
+        offsetX (float): Horizontal grid offset.
+        offsetY (float): Vertical grid offset.
+
+    Returns:
+        tuple: (fill_group, light_group, dark_group)
+
+    Globals:
+        SVG_DARK_COUNT (int): Counter for dark block rectangles.
+        SVG_LIGHT_COUNT (int): Counter for light block rectangles.
+        SVG_ILLUSION_COLOUR_TABLE (list[str]): Colour options.
+        ILLUSION_MAX_STREAK (int): Controls visual rhythm of the pattern.
+
+    TODO:
+        - Add parameter to control diagonal direction (currently fixed)
+        - Refactor inner loop and draw decision logic into helper
+        - Consider exposing fill/stroke style per-diagonal group
+    """
     global SVG_LIGHT_COUNT, SVG_DARK_COUNT
 
     width = int(width)
@@ -1138,7 +1475,35 @@ def create_svg_from_PNG(outlineOnly, use_real_colours,
                         rect_width=20.0, rect_height=20.0,
                         rect_radius_x = 25.0, rect_radius_y = 25.0,
                         startX = 0.0, startY = 0.0):
-    
+    """
+    Create SVG elements that represent each pixel of the loaded PNG image.
+
+    This function prepares an SVG sprite layer by converting pixel positions into
+    rounded rectangles (or outlines only). It sets up the canvas size and calls a
+    lower-level function to generate the actual drawing instructions.
+
+    Args:
+        outlineOnly (bool): If True, renders stroke outlines only.
+        use_real_colours (bool): If False, substitutes pixel colours with illusion palette.
+        rect_width (float): Width of each rectangle in mm.
+        rect_height (float): Height of each rectangle in mm.
+        rect_radius_x (float): Rounded corner radius on the X axis (%).
+        rect_radius_y (float): Rounded corner radius on the Y axis (%).
+        startX (float): Horizontal shift in mm.
+        startY (float): Vertical shift in mm.
+
+    Returns:
+        None. Appends SVG group content to the global SVG_DATA_LIST.
+
+    Globals:
+        SVG_DATA_LIST (list[str]): Aggregates the visual content of the SVG output.
+        Image_Real_Width (int): Pixel width of loaded PNG.
+        Image_Real_Height (int): Pixel height of loaded PNG.
+
+    TODO:
+        - Consider returning the generated SVG group instead of appending globally
+        - Parameterise input pattern image instead of assuming current global
+    """
     global SVG_DATA_LIST
 
     width = Image_Real_Width
@@ -1167,8 +1532,40 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
                                    rect_radius_x = "25%",
                                    rect_radius_y = "25%",
                                    start_X = 0.0, start_Y = 0.0):
-    """ Create the SVG Data for the currently loaded PNG Image """
+    """
+    Create SVG data corresponding to each pixel of the loaded PNG image.
 
+    This function overlays the sprite or image grid based on real pixel data,
+    mapped to a rectangular tile grid for scalable printing or cutting. Optionally
+    uses alternating colours instead of real colours to produce illusions.
+
+    Args:
+        outline_only (bool): If True, draws outlines only (circles or text instead of rectangles).
+        use_real_colours (bool): If False, replaces real colours with illusion palette.
+        offset_X (float): Horizontal shift of pixel grid in grid units.
+        offset_Y (float): Vertical shift of pixel grid in grid units.
+        rect_width (float): Width of each grid cell in mm.
+        rect_height (float): Height of each grid cell in mm.
+        rect_radius_x (str): Corner radius X (percentage).
+        rect_radius_y (str): Corner radius Y (percentage).
+        start_X (float): Additional horizontal offset in mm.
+        start_Y (float): Additional vertical offset in mm.
+
+    Returns:
+        list[str]: List of SVG fragment strings forming the sprite overlay group.
+
+    Globals:
+        SVG_PNG_PIXEL_COUNT (int): Accumulates the number of drawn pixels.
+        pattern, pattern_w, pattern_h: Used to read and wrap pixel data.
+        Image_MinX, Image_MinY, Image_Real_Width, Image_Real_Height: Sprite dimensions.
+        SVG_ILLUSION_COLOUR_TABLE: Used when not using real colours.
+        DARK_PIXEL_INDEX, LIGHT_PIXEL_INDEX: Used to alternate colour blocks.
+
+    TODO:
+        - Move `pattern`/image data to passed parameters
+        - Consider merging sprite draw logic into generalised SVG pixel engine
+        - Add opacity toggle or pixel thresholding
+    """
     global SVG_PNG_PIXEL_COUNT
     
     width = Image_Real_Width
@@ -1230,6 +1627,23 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
 # Currently Assumes, 0 - Left, non-Zero right
 #
 def update_vert(val, r1, r2):
+    """
+    Select one of two values based on whether the input is zero or positive.
+
+    This is a simple conditional utility typically used to determine which X or Y
+    coordinate to use depending on a directional sign or polarity.
+
+    Args:
+        val (float): A directional or comparative value (usually a delta or sign).
+        r1 (Any): Value returned when val is 0 or negative.
+        r2 (Any): Value returned when val is positive.
+
+    Returns:
+        Any: r2 if val > 0.0, else r1.
+
+    TODO:
+        - Rename function to clarify purpose (e.g. select_by_sign, pick_side_based_on_direction)
+    """
     if val > 0.0:
         return r2
     return r1
@@ -1246,7 +1660,44 @@ def create_primitive(primitive_x, primitive_y,
                      jointFlag, material_index,
                      primitive_y_multiplier=1.0,
                      modify_Flag = True):
-    
+    """
+    Construct the OBJ data string for a single primitive (pixel/cube section).
+
+    including vertex definitions, normals, and faces. Supports optional extrusion,
+    join alignment logic, and material tagging.
+
+    Args:
+        primitive_x (int): X index in the pixel grid.
+        primitive_y (int): Y index in the pixel grid.
+        width (int): Width multiplier (usually 1).
+        height (int): Height multiplier (usually 1).
+        primitive_vert (list): List of vertex coordinate tuples.
+        primitive_face (list): List of face definitions (each a list of vertex indices).
+        primitive_normals (list): List of normal vectors.
+        jointFlag (int or bool): If non-zero, alters how joining faces are placed.
+        material_index (int): Material ID for usemtl.
+        primitive_y_multiplier (float): Used to scale Z for height illusion effects.
+        modify_Flag (bool): If True, apply bounding adjustments using `update_vert`.
+
+    Returns:
+        str: OBJ-format string containing vertex, normal, face, and material lines.
+
+    Globals:
+        Current_Face (int): Running counter for face IDs.
+        Current_Opposite_Face (int): Offset for alternate normal indexing.
+        CurrentZOffset (float): Z-axis depth accumulator.
+        CUBE_X, CUBE_Y (float): Global size constants.
+        Primitive_Layer_Depth (float): Used in Z extrusion.
+        Primitive_Multipler (float): Overall pixel-to-mm scale.
+        CREATE_MTL_FILE (bool): Controls whether to emit `mtllib` / `usemtl`.
+        mtl_filename (str): File basename for MTL reference.
+
+    TODO:
+        - Clean up legacy commented face logic
+        - Clarify jointFlag meaning and ensure 0/1 vs signed int is consistent
+        - Replace raw string formatting with f-string block builders for clarity
+        - Split into helper functions for face block, normal block, and vertex block
+    """
     global Current_Face
     global Current_Opposite_Face
     global CurrentZOffset
@@ -1363,6 +1814,30 @@ def create_primitive(primitive_x, primitive_y,
 # Define Material Colour
 #
 def MaterialColourAsString(r,g,b):
+    """
+    Generate an MTL-format material string from RGB values, scaled to 0.0–1.0.
+
+    This defines the 'Kd' (diffuse) property of a new material and appends it to the
+    global material list. Colour values are converted from 0–255 to floating point.
+
+    Args:
+        r (int): Red component (0–255)
+        g (int): Green component (0–255)
+        b (int): Blue component (0–255)
+
+    Returns:
+        str: A formatted MTL material string including diffuse colour and default parameters.
+
+    Globals:
+        mtl_final_list (list): Global list of all emitted material strings.
+        mtl_current_index (int): Name label for the material.
+        default_mtl_params (str): Standard trailing parameters for every material block.
+
+    TODO:
+        - Move formatter and multiplier to reusable helper
+        - Add alpha support or named material aliasing
+        - Remove reliance on global mtl_final_list for testability
+    """
     global mtl_final_list
 
     myFormatter = "{0:.6f}"
@@ -1382,6 +1857,34 @@ def MaterialColourAsString(r,g,b):
 # Add material colour to Material File
 #
 def addMaterialToFile(r, g, b, pixel =-1):
+    """
+    Register a new material colour (RGB) if not already in use or excluded.
+
+    This function converts an RGB colour to hex, checks inclusion/exclusion lists,
+    and optionally creates a new material block via `MaterialColourAsString()`.
+
+    Args:
+        r (int): Red component (0–255)
+        g (int): Green component (0–255)
+        b (int): Blue component (0–255)
+        pixel (int): Index of pixel for material tracking. Required for material creation.
+
+    Returns:
+        tuple:
+            - bool: True if material was registered or already present; False if excluded.
+            - str: The hex colour code of the material.
+
+    Globals:
+        mtl_current_index (int): Tracks the active material index.
+        Colour_Exclusion_List (list[str]): Colours to skip during processing.
+        Colour_Process_Only_list (list[str]): Optional allowlist of colours to include.
+        mtl_colour_dict (dict): Tracks known registered colour codes.
+
+    TODO:
+        - Refactor to separate logic for inclusion checks and material creation
+        - Make exclusion lists injectable or passed as arguments
+        - Move ColourCode generation to shared utility
+    """
     global mtl_current_index
 
     # Check to see if we already have this material.
@@ -1413,6 +1916,36 @@ def addMaterialToFile(r, g, b, pixel =-1):
 # Convert Colour To Pixel - Can extend this to exclude colour ranges in future updates.
 #
 def getPixelFromRow(x, row, channels, rowWidth):
+    """
+    Extract a pixel's RGB(A) data from a given row of image data and determine material index.
+
+    This function interprets raw pixel data (indexed or RGB/RGBA), evaluates transparency,
+    and registers a colour as a material if valid. It returns the pixel intensity,
+    the assigned material index, and the hex colour code.
+
+    Args:
+        x (int): Horizontal pixel index within the row.
+        row (list[int]): Flattened image row data (byte list).
+        channels (int): Number of channels per pixel (1=Indexed, 3=RGB, 4=RGBA).
+        rowWidth (int): Total number of pixels in the row.
+
+    Returns:
+        tuple:
+            - int: Pixel value (0-255) or -1 for transparent/invalid
+            - int: Index of material in material dictionary, or -1 if invalid
+            - str: Hex colour code (e.g. "#ffcc00") or default "#000000"
+
+    Globals:
+        ALPHACUTOFF (int): Threshold below which alpha is considered transparent.
+        mtl_colour_dict (dict): Maps colour hex codes to usage count.
+        mtl_current_index (int): Material creation tracker.
+        Create_Towered_File (bool): Affects towered output behaviour.
+
+    TODO:
+        - Refactor RGB/Alpha logic into a reusable pixel parser
+        - Expose ALPHACUTOFF and Create_Towered_File as arguments or config
+        - Add support for 16-bit PNGs or grayscale+alpha channels
+    """
     # Calculate the offset into the ROW for pixel information
     offset_x = (x * channels) % (rowWidth * channels)
     pixel = 0
@@ -1466,6 +1999,43 @@ def getPixelFromRow(x, row, channels, rowWidth):
 # That is missing diagonal pixes.  It's crude and needs refinement.
 #
 def CheckJointRequired(x ,y ,row, nextRow, channels, pattern_w):
+    """
+    Check if a pixel joint is needed to strengthen corner-only diagonal connections in the print.
+
+    This is used to detect weak diagonals where two pixels only touch at the corner,
+    with adjacent spaces in between. Such configurations (e.g. XO/OX or OX/XO)
+    result in fragile prints, especially on flat or thin-layered models.
+
+    The function inspects a 2x2 pixel area and identifies situations where a
+    small strengthening joint should be added between opposing corners.
+
+    Args:
+        x (int): Pixel's X-coordinate in the current row.
+        y (int): Pixel's Y-coordinate in the image.
+        row (list[int]): Flattened list of pixel data for the current row.
+        nextRow (list[int]): Flattened list of pixel data for the next row.
+        channels (int): Number of channels in the image data (e.g. 3 = RGB).
+        pattern_w (int): Width of the pixel row.
+
+    Returns:
+        int:
+            - 0 = No joint needed
+            - 1 = Add joint (↘ diagonal from top-left to bottom-right)
+            - -1 = Add joint (↙ diagonal from top-right to bottom-left)
+
+    Globals:
+        Pixel_W (int): Width of a sprite frame (used to avoid placing joints at sprite edges).
+        Pixel_H (int): Height of a sprite frame.
+
+    Note:
+        This logic is used regardless of print mode (flat, layered, or towered) to ensure print
+        strength and prevent brittle isolated pixels with corner-only contact.
+
+    TODO:
+        - Make `Pixel_W` and `Pixel_H` configurable or passed in
+        - Consider returning a label/enum for joint type instead of int
+        - Add optional debug visual output to preview joints pre-print
+    """
     isJointRequired = 0
 
     # Check if we've Reached the boundary of the Sprite Sheet Sprite
@@ -1497,7 +2067,37 @@ def CheckJointRequired(x ,y ,row, nextRow, channels, pattern_w):
 #   A real Python Programmer can probably optimise this using some Python Magic.
 #
 def main(noframeRequired):
+    """
+    Execute the main program logic for layered PNG-to-OBJ conversion.
 
+    Depending on the selected mode, this function optionally generates a flat background layer,
+    sorts colour layers by count or explicit order, filters colours based on inclusion/exclusion
+    lists, and processes the image into multiple 3D printable OBJ layers.
+
+    Args:
+        noframeRequired (bool): If True, skips generating the flat background OBJ.
+
+    Globals:
+        WORKING_FILENAME (str): Base filename for output OBJ files.
+        Colour_Exclusion_List (list[str]): Colours to skip.
+        Colour_Process_Only_list (list[str]): Colours to force inclusion.
+        Sort_Colours_Flag (bool): Whether to sort colours by count.
+        Sort_Direction (bool): If True, sort descending; otherwise ascending.
+        FILE_COUNTER (int): Counter to track how many layers have been generated.
+        Primitive_Multiplier_Background (float): Z depth multiplier for background layer.
+        Primitive_Multiplier_Layers (float): Z depth multiplier for each coloured layer.
+        Create_Layered_File (bool): Whether to generate OBJ per colour.
+        ColoursOnSingleLayerHeight (bool): Treat all layers as same height.
+        mtl_colour_dict (dict): Maps colour hex codes to pixel counts.
+
+    Returns:
+        None. Writes OBJ files to disk.
+    
+    TODO:
+        - Move layer selection and sorting logic to a helper
+        - Refactor background flat layer creation into `write_background_layer()`
+        - Separate print output from logic for clean testing
+    """
     global WORKING_FILENAME
     global Colour_Exclusion_List
     global Debug_Txt_File
@@ -1594,6 +2194,31 @@ def main(noframeRequired):
 #   Check number of Channels, is Alpha Available, discover all colours in image
 #
 def loadPNGToMemory(Filename):
+    """
+    Load a PNG file from disk into memory and validate its structure.
+
+    This function reads the image file, checks the bit depth, detects alpha channel presence,
+    and assigns global pattern data required for further processing. It also triggers
+    discovery of colour layers used for slicing or object generation.
+
+    Args:
+        Filename (str): Path to the PNG file to load.
+
+    Returns:
+        bool: True if file loaded and passed basic checks; False if unsupported or missing.
+
+    Globals:
+        pattern (list[list[int]]): Raw pixel data grid.
+        pattern_w (int): Width in pixels.
+        pattern_h (int): Height in pixels.
+        pattern_meta (dict): Metadata including planes and alpha presence.
+        channels (int): Number of channels (3 = RGB, 4 = RGBA).
+
+    TODO:
+        - Refactor to return pattern metadata instead of using globals
+        - Consider supporting more colour modes or bit depths
+        - Expand error reporting to include file format and image mode issues
+    """
     # Load the PNG File, Check if Valid
     global pattern, pattern_w, pattern_h, pattern_meta, channels
 
@@ -1624,6 +2249,33 @@ def loadPNGToMemory(Filename):
 # Work out the number of colours in the PNG
 # Also the True Width/Height taking out Pixels with Alpha Channels
 def discoverPixelLayers():
+    """
+    Analyse the loaded PNG pattern to find the bounding box of active pixels.
+
+    This function calculates the minimum and maximum X/Y coordinates of all visible
+    pixels (i.e., those above the alpha cutoff) and stores them in global variables.
+    These bounds define the real sprite dimensions used for layout and scaling.
+
+    Returns:
+        None. Updates global image metrics in-place.
+
+    Globals:
+        pattern (list[list[int]]): Loaded image data.
+        pattern_w (int): Width of the loaded PNG.
+        pattern_h (int): Height of the loaded PNG.
+        channels (int): Number of channels per pixel.
+        Image_MinX (int): Minimum X of visible area.
+        Image_MaxX (int): Maximum X of visible area.
+        Image_MinY (int): Minimum Y of visible area.
+        Image_MaxY (int): Maximum Y of visible area.
+        Image_Real_Width (int): Width of bounding box.
+        Image_Real_Height (int): Height of bounding box.
+
+    TODO:
+        - Support trimming transparent borders automatically
+        - Move pixel logic to a re-usable pixel scanner
+        - Consider returning a bounding box object
+    """
     # Work our way through each row of the PNG File.
     global Image_MinX
     global Image_MaxX
@@ -1663,6 +2315,23 @@ def discoverPixelLayers():
     Image_Real_Height = maxy - miny + 1
 
 def displayColourInformation():
+    """
+    Print a summary of all detected colours and their associated pixel counts.
+
+    This function sorts the colours found in the loaded PNG based on how frequently
+    they occur, and displays the hex code alongside the pixel count for each.
+
+    Returns:
+        None. Output is printed to stdout.
+
+    Globals:
+        mtl_colour_dict (dict): Dictionary mapping hex colour codes to pixel usage counts.
+
+    TODO:
+        - Add CSV or JSON export option for colour statistics
+        - Allow filtering or sorting by hex code
+        - Consider aligning this with layer preview generation
+    """
     SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
     
     print("         Layer Order :")
@@ -1677,6 +2346,38 @@ def displayColourInformation():
 
     
 def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_multiplier=1.0):
+    """
+    Process a single colour or sprite into an OBJ file, writing its 3D geometry.
+
+    This function generates OBJ data row-by-row for the currently loaded image. It tracks
+    colour usage, ensures consistent layer height, and applies optional bridging joints
+    between diagonally adjacent pixels to strengthen print adhesion.
+
+    Args:
+        colourMatch (str): The hex code of the colour to process (or '' for all).
+        allowedDictionary (dict): Colour keys to allow for inclusion.
+        excludedColours (list): List of hex codes to exclude from processing.
+        primitive_y_multiplier (float): Y scaling factor for vertical print depth.
+
+    Returns:
+        bool: True if file written successfully, False on error.
+
+    Globals:
+        pattern, pattern_w, pattern_h (image grid data)
+        Image_MinX, Image_MaxX, Image_MinY, Image_MaxY (bounding box)
+        mtl_colour_dict, mtl_current_index (material data)
+        Debug_Txt_File, WORKING_FILENAME, FILE_COUNTER (output state)
+        Create_Towered_File, Create_Layered_File, ColoursOnSingleLayerHeight (mode flags)
+        cube_vertices, cube_faces, cube_normals (OBJ geometry templates)
+        joint_verticies, joint_faces, joint_normals (optional joint templates)
+        CurrentZOffset, Primitive_Layer_Depth, Primitive_Initial_Layer_Depth (layering)
+
+    TODO:
+        - Break out inner row loop into reusable `processRow()` helper
+        - Refactor joint-check logic into `applyDiagonalJointsIfNeeded()`
+        - Use dataclass or config object for global state
+        - Add verbose mode and structured logging
+    """
     global WORKING_FILENAME
     global Debug_Txt_File
     global CurrentZOffset
@@ -1937,6 +2638,31 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 # Check Processing Rule to Create Objects
 #
 def checkProcessingRules(allowedColours, currentColour, excludedColours, pixel):
+    """
+    Determine if a pixel colour should be processed based on current filtering rules.
+
+    This is used during image traversal to apply inclusion/exclusion logic
+    for multi-layer or filtered rendering. It can enforce user-specified colour
+    limits or prevent redundant layer output.
+
+    Args:
+        allowedColours (dict or list): Set of colours permitted for processing.
+        currentColour (str): The current pixel's colour code (hex).
+        excludedColours (list): Colour hex codes explicitly skipped.
+        pixel (int): Pixel intensity index or count (-1 for invalid/transparent).
+
+    Returns:
+        bool: True if the colour should be processed, False otherwise.
+
+    Globals:
+        lastPixelFound (str): Stores the most recent valid pixel for layered mode.
+        Create_Layered_File (bool): Mode flag indicating per-layer processing.
+
+    TODO:
+        - Consider using a structured config or state object
+        - Consolidate logic with higher-level decision flow
+        - Replace pixel < 0 check with named constant or utility
+    """
     global lastPixelFound
 
     if pixel <0:
@@ -1959,6 +2685,29 @@ def checkProcessingRules(allowedColours, currentColour, excludedColours, pixel):
     return False
 
 def checkNextPixelProcessingRules(allowedColours, currentColour):
+    """
+    Determine if the next pixel's colour should be processed under current layer rules.
+
+    This function is typically called after a previous pixel has passed inclusion tests.
+    It enforces consistency in layer colour when `Create_Layered_File` is enabled,
+    and avoids repeated processing of the same colour if not intended.
+
+    Args:
+        allowedColours (list or dict): Set of colours currently permitted for processing.
+        currentColour (str): Hex code of the colour being evaluated.
+
+    Returns:
+        bool: True if the pixel should be processed, False otherwise.
+
+    Globals:
+        lastPixelFound (str): Tracks the last processed colour layer.
+        Create_Layered_File (bool): Determines if individual colour layers are used.
+
+    TODO:
+        - Make `lastPixelFound` tracking optional or per-instance
+        - Clarify distinction between first-pass and next-pass validation
+        - Refactor to a more descriptive function name (e.g., `isColourRepeatAllowed`)
+    """
     global lastPixelFound
 
     if Create_Layered_File:
@@ -1978,6 +2727,31 @@ def checkNextPixelProcessingRules(allowedColours, currentColour):
 # Load a PNG File
 #
 def load_pattern(pattern_name):
+    """
+    Load a pre-saved PNG pattern file from the local pattern directory.
+
+    This is used for frame overlays, template elements, or repeatable embedded
+    components. The function attempts to read the file, parse its PNG metadata,
+    and convert the result to a usable list.
+
+    Args:
+        pattern_name (str): Name of the pattern PNG file (without extension).
+
+    Returns:
+        tuple:
+            - pattern (list): Raw pixel data from PNG
+            - pattern_w (int): Width of the pattern
+            - pattern_h (int): Height of the pattern
+            - pattern_meta (dict): PNG metadata (e.g. bit depth, channels)
+
+    Globals:
+        PATTERNS (str): Path to the folder where pattern PNGs are stored.
+
+    TODO:
+        - Add error handling for non-PNG file types
+        - Allow extension override or auto-detect
+        - Cache last-read pattern for re-use
+    """
     pattern_file = os.path.join(PATTERNS, "{}.png".format(Path(pattern_name).with_suffix('')))
 
     log(f"Attempting to pre-process file: {pattern_file}")
@@ -1995,6 +2769,28 @@ def load_pattern(pattern_name):
 # Write Cached Material Information to Material File if Required
 #
 def CreateMasterMaterialFileMaster(filename):
+    """
+    Write the full MTL (Material Library) file to disk containing all colours used.
+
+    This function outputs all entries in `mtl_final_list` to a `.mtl` file with headers,
+    attribution, and a count summary at the end. It includes error handling for file access
+    issues and logs output status.
+
+    Args:
+        filename (str): Full path or filename for the output `.mtl` file.
+
+    Returns:
+        None. Writes file to disk and prints status messages.
+
+    Globals:
+        mtl_final_list (list[str]): All formatted material entries (MTL strings).
+        DEBUG (bool): Enables detailed exception logging.
+
+    TODO:
+        - Add option to overwrite or append mode
+        - Move header string to a centralised template
+        - Support previewing colour summary as table or HTML
+    """
     global mtl_final_list
 
     try:
@@ -2027,6 +2823,24 @@ def CreateMasterMaterialFileMaster(filename):
 # Default Logging Code
 #
 def log(msg):
+    """
+    Print a timestamped message to standard output.
+
+    This utility logger writes the current datetime followed by the given message.
+    It bypasses `print()` to ensure clean, flushed, unbuffered output in terminal
+    or redirected logs.
+
+    Args:
+        msg (str): The message to log.
+
+    Returns:
+        None. Output is written to stdout.
+
+    TODO:
+        - Add optional log level (info/warn/error)
+        - Allow toggling or redirecting log to file
+        - Move to logging module for configurable verbosity
+    """
     #sys.stdout.write("\n")
     sys.stdout.write(str(datetime.now()))
     sys.stdout.write(": ")
@@ -2039,6 +2853,28 @@ def log(msg):
 # And Currently Scaling Factors
 #
 def PositionDesign(vertices,x,y):
+    """
+    Translate a list of vertex coordinates by X and Y multipliers based on cube size.
+
+    Applies positional offsets to a list of 3D vertices, typically used to shift a cube
+    or block instance into its correct location in the grid space.
+
+    Args:
+        vertices (list[list[float]]): A list of [x, y, z] vertex coordinates.
+        x (int): Grid X-index for placement.
+        y (int): Grid Y-index for placement.
+
+    Returns:
+        list[list[float]]: A new list of adjusted vertices.
+
+    Globals:
+        CUBE_X (float): Physical cube width (used for translation).
+        CUBE_Y (float): Physical cube height (used for translation).
+
+    TODO:
+        - Accept cube size as parameter instead of relying on globals
+        - Consider vector or numpy-based operations for performance
+    """
     nextVertices = []
     for index, vertex in list(enumerate(vertices)):
         # Get vertices
@@ -2059,7 +2895,28 @@ def PositionDesign(vertices,x,y):
 #       Radius Of Circle
 #
 def createDesign2(new_vertices,x,cx,cy,Radius):
+    """
+    Create a warped cube-like structure by manipulating its top vertices.
 
+    along a circular arc to simulate a rotated trapezoidal prism.
+
+    This is often used in wave-like optical distortion or parametric shaping.
+
+    Args:
+        new_vertices (list): List of 8 vertex coordinates (expected base cube).
+        x (float): Horizontal offset from center for distortion calculation.
+        cx (float): Center X position.
+        cy (float): Center Y position.
+        Radius (float): Radius of curvature for the top arc.
+
+    Returns:
+        list: List of 8 updated vertex positions with transformed top surface.
+
+    TODO:
+        - Make trapezoid height (`v3`) a parameter
+        - Add fallback or raise Exception instead of `exit(0)`
+        - Document visual transformation with diagram or inline visual preview
+    """
     if len(new_vertices) != 8:
         print(f"Sorry Wrong Input Data: {new_vertices}")
         exit(0)
@@ -2102,7 +2959,29 @@ def createDesign2(new_vertices,x,cx,cy,Radius):
 #       Depth = Height of TrapezoidalPrism (Default 10.0)
 #
 def createDesignTrapezoidalPrismTopRotation(new_vertices, Angle, cx, cy, Radius, Depth=10.0):
+    """
+    Create a trapezoidal prism by rotating the top face around the Z-axis with circular projection.
 
+    The function modifies the top four vertices of a cube to follow a rotational
+    arc based on the specified angle and radius, producing a skewed or twisted
+    top face — useful for simulating waveforms or parametric distortion.
+
+    Args:
+        new_vertices (list): List of 8 base vertex coordinates (expects a full cube).
+        Angle (float): Rotation angle in degrees, used to define curvature.
+        cx (float): X-center of rotation.
+        cy (float): Y-center of rotation.
+        Radius (float): Radius of curvature or arc circle.
+        Depth (float, optional): Z-depth of extrusion. Defaults to 10.0.
+
+    Returns:
+        list: New list of 8 transformed vertex coordinates.
+
+    TODO:
+        - Raise a proper exception instead of `exit(0)` on malformed input
+        - Consider generalising arc control (skew, taper, etc.)
+        - Add input validation for angle, radius, and Depth
+    """
     if len(new_vertices) != 8:
         print(f"Sorry Wrong Input Data: {new_vertices}")
         exit(0)
@@ -2144,6 +3023,32 @@ def createDesignTrapezoidalPrismTopRotation(new_vertices, Angle, cx, cy, Radius,
 # Apply Sine Wave to Z Axis
 #
 def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0, offsetX = 0.0, offsetY = 0.0):
+    """
+    Apply a sine-based parametric surface warp to the Z-coordinates of vertices.
+
+    This function creates a distorted, wave-like surface by adjusting Z-values
+    using a sinusoidal function based on X/Y position. Typically used for dynamic
+    surface shaping in illusion or audio-reactive print designs.
+
+    Args:
+        interimDesign (list): List of 8 vertex coordinates from a base or modified cube.
+        Amplitude (float): Strength of the sine deformation.
+        divisor (float): Scaling factor for spatial frequency of the sine wave.
+        offsetX (float): Positional offset applied to X-axis for wave shaping.
+        offsetY (float): Positional offset applied to Y-axis for wave shaping.
+
+    Returns:
+        list: Transformed list of vertex coordinates with adjusted Z-values.
+
+    Notes:
+        - Vertices with Z=0.0 are considered base-level and left untouched.
+        - Output ensures non-zero volume by forcing minimum Z of 0.1 when deformation is too shallow.
+
+    TODO:
+        - Replace `exit(0)` with exception
+        - Allow waveform type selection (sine, square, triangle, etc.)
+        - Accept custom phase offset or wave center
+    """
     if len(interimDesign) < 4:
         print(f"Sorry Wrong Input Data: {interimDesign}")
         exit(0)
@@ -2173,6 +3078,30 @@ def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0, offsetX = 0.
 # Apply Hemisphere Wave to Z Axis
 #
 def ApplyHemiSphereToVertices(interimDesign, Radius, divisor=40.0, offsetX = 0.0, offsetY = 0.0, offsetZ = 0.0):
+    """
+    Apply a hemispherical surface deformation to the upper vertices of a 3D shape.
+
+    For each vertex with Z > 0.0, this function checks if it lies within a given radius
+    from a center point and adjusts its Z-height based on the geometry of a hemisphere.
+    Useful for creating dome-like distortions or bulges in parametric designs.
+
+    Args:
+        interimDesign (list[list[float]]): List of 3D vertex coordinates.
+        Radius (float): Radius of the hemisphere to project within.
+        divisor (float): Unused in current version (reserved for possible scaling).
+        offsetX (float): Horizontal offset of hemisphere center.
+        offsetY (float): Vertical offset of hemisphere center.
+        offsetZ (float): Additional vertical displacement applied to curved vertices.
+
+    Returns:
+        list[list[float]]: Modified list of vertices with hemisphere Z-adjustment applied.
+
+    TODO:
+        - Replace sys.exit(0) with exception handling
+        - Allow full sphere deformation for 360° wrapping
+        - Add preview mode for visual verification
+        - Remove unused `divisor` or apply for curve falloff
+    """
     if len(interimDesign) < 4:
         print(f"Sorry Wrong Input Data: {interimDesign}")
         sys.exit(0)
@@ -2213,6 +3142,34 @@ def ApplyHemiSphereToVertices(interimDesign, Radius, divisor=40.0, offsetX = 0.0
 # Change the Colours of the Parametric Object to that of a PNG image... 
 #
 def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictionary, excludedColours):
+    """
+    Apply material indices to a vertex dictionary based on corresponding pixel colours in a PNG.
+
+    This function overlays the pixel grid from a loaded PNG onto a dictionary of
+    3D geometry positions and injects the correct material index (`mi`) into each
+    corresponding vertex entry based on colour filtering logic.
+
+    Args:
+        vertDict (dict): Dictionary of vertex keys (e.g. "0023:0041") mapped to vertex data arrays.
+        offsetX (int): Horizontal offset applied to the pixel lookup.
+        offsetY (int): Vertical offset applied to the pixel lookup.
+        allowedDictionary (dict): Dictionary of colours to include.
+        excludedColours (list): Colours to skip.
+
+    Returns:
+        None. Modifies vertDict in-place by updating the colour/material index in entry [3].
+
+    Globals:
+        pattern, pattern_h, pattern_w (image data)
+        channels (int): Number of colour channels in the PNG.
+        Image_MinX, Image_MaxX, Image_MinY, Image_MaxY: Bounding box.
+        Pixel_W, Pixel_H: Used for sprite sheet separation logic.
+
+    TODO:
+        - Refactor to support parametric key generators
+        - Replace `print` placeholder with meaningful logging
+        - Consider modularising sprite-spacing logic
+    """
     start_y = offsetY
     for y in range(Image_MinY, Image_MaxY + 1):
         row = pattern[int(y % pattern_h)]
@@ -2251,6 +3208,36 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
 #
 #
 def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
+    """
+    Write a complete `.obj` file from a dictionary of vertex primitives.
+
+    This function iterates over a dictionary of vertex data keyed by position,
+    formats each into an OBJ-formatted string using `create_primitive()`, and writes
+    the result to an output file. It also adds a header including creator info and source image.
+
+    Args:
+        Filename (str): Base filename (without extension) for the output OBJ.
+        vertDict (dict): Dictionary of pixel keys (x:y) to lists of [verts, faces, normals, colour_index].
+        primitive_y_multiplier (float): Multiplier for depth scaling of primitives.
+        LastTowerMultiplier (float): Tower height multiplier for layered mode.
+
+    Returns:
+        bool: True on success, False on write error.
+
+    Globals:
+        Create_Layered_File (bool): Affects filename output structure.
+        PATTERNS (str): Output folder path.
+        FILE_COUNTER (int): Index to distinguish multiple outputs.
+        colourMatch (str): Name of current colour layer (used in layered mode).
+        WORKING_FILENAME (str): Name of input file for header.
+        pattern_w (int): Width of source PNG.
+        pattern_h (int): Height of source PNG.
+
+    TODO:
+        - Add proper file existence checks before writing
+        - Improve filename handling to avoid global pollution
+        - Separate header formatting into its own reusable helper
+    """
     try:
         if Create_Layered_File:
             obj_file = Path(PATTERNS) / f"{filename}_Y{FILE_COUNTER}{colourMatch}.obj"
@@ -2294,6 +3281,36 @@ def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, Last
     return False
 
 def CreateOBJFileFromDictionary_old(Filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
+    """
+    Write an OBJ file from a dictionary of vertex primitives using legacy filename logic.
+
+    This is an older version of the OBJ output generator that includes optional
+    filename tagging for layered output modes. It writes geometry generated from
+    stored vertex, face, and normal lists and adds metadata headers.
+
+    Args:
+        Filename (str): Base name (without extension) for the output OBJ file.
+        vertDict (dict): Dictionary of pixel keys (e.g., "12:42") to vertex/face data.
+        primitive_y_multiplier (float): Multiplier for Z-depth scaling.
+        LastTowerMultiplier (float): Stacking multiplier for layered or towered prints.
+
+    Returns:
+        bool: True on success, False if writing fails.
+
+    Globals:
+        Create_Layered_File (bool): If True, alters filename to include colourMatch.
+        PATTERNS (str): Output directory.
+        FILE_COUNTER (int): Index used to distinguish file variants.
+        colourMatch (str): Active colour layer (used in naming).
+        WORKING_FILENAME (str): Base input image name.
+        pattern_w (int): Width of source image in pixels.
+        pattern_h (int): Height of source image in pixels.
+
+    TODO:
+        - Remove redundant copy once new `CreateOBJFileFromDictionary()` is stable
+        - Refactor header builder into helper
+        - Add write confirmation logging
+    """
     if Create_Layered_File:
         obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(Filename,FILE_COUNTER,str(colourMatch)))
     else:
@@ -2328,7 +3345,31 @@ def CreateOBJFileFromDictionary_old(Filename, vertDict, primitive_y_multiplier, 
 # Add default Materials to MTL File
 #
 def addDefaultMaterialColours():
-# Black
+    """
+    Preload the most common RGB primary and secondary colours into the material dictionary.
+
+    This is used to ensure that basic colours are always available in MTL output even
+    if not found directly in the loaded PNG image.
+
+    Colours added:
+        - Black
+        - Red
+        - Green
+        - Blue
+        - Yellow
+        - Purple
+        - Cyan
+        - White
+
+    Returns:
+        None. Updates the global material list via `addMaterialToFile()`.
+
+    TODO:
+        - Parameterise the palette or load from external config
+        - Extend to include greyscale and tertiary tones
+        - Add option to tag with use context (e.g., outline, highlight)
+    """
+    # Black
     addMaterialToFile(0,0,0,0)
     # Red
     addMaterialToFile(255,0,0,0)
@@ -2349,6 +3390,36 @@ def addDefaultMaterialColours():
 # Can we create a simple parametric set of shapes?
 #
 def ParametricTest(Filename):
+    """
+    Generate a parametric test grid using custom-shaped 3D primitives and apply multiple.
+
+    waveform-based surface distortions, then write the result to an OBJ file.
+
+    This function creates a tiled grid of trapezoidal prisms, applies sine wave
+    and hemispherical deformations to their Z surfaces, and optionally colours them
+    based on a loaded PNG overlay using spatial key matching.
+
+    Args:
+        Filename (str): Output file name for the final OBJ.
+
+    Returns:
+        None. Writes OBJ and MTL files to disk.
+
+    Globals:
+        cube_normals (list): Normal data reused across all primitives.
+        Colour_Process_Only_list (list): List of colours allowed for processing.
+        Colour_Exclusion_List (list): Colours to be skipped from processing.
+        mtl_filename (str): Base filename used for the MTL output.
+        Primitive_Layer_Depth (float): Extrusion Z depth of each cube.
+        Primitive_Multipler (float): Scaling applied to cube dimensions.
+        fp_obj (file-like, optional): May be used in live preview version (commented).
+    
+    TODO:
+        - Externalise wave parameters into config or CLI input
+        - Refactor into separate generator and transformer phases
+        - Add preview/export toggle for colour overlay pass
+        - Clean up old commented code paths for rotation variants
+    """
     global Primitive_Layer_Depth
     global Primitive_Multipler
 
@@ -2463,6 +3534,43 @@ def ParametricTest(Filename):
 # Process SVG Options
 #
 def process_SVG_File(args):
+    """
+    Display selected runtime arguments, configure SVG rendering mode, and generate SVG output.
+
+    This function is responsible for:
+    - Displaying key user-selected parameters (for debugging and confirmation)
+    - Routing to the appropriate SVG output mode (illusion, frame, or pixel block)
+    - Performing canvas size calculations and layout decision logic
+    - Writing the final SVG file and optionally opening it post-generation
+
+    Args:
+        args (Namespace): Parsed command-line arguments passed from main().
+
+    Responsibilities:
+        - Logs current configuration to stdout for verification.
+        - Selects between:
+            - `create_svg_frame400()` for 400mm frame layout
+            - `create_svg()` for optical illusion mode
+            - `create_svg_from_PNG()` for basic pixel-to-SVG conversion
+        - Tracks and prints pixel, grid, light/dark tile statistics.
+        - Calls `svg_savefile()` and optionally opens the file on the system.
+
+    Returns:
+        None. Outputs SVG to disk and may open it in the default viewer.
+
+    Globals:
+        Image_Real_Width / Height (int): Used for layout calculations.
+        ILLUSION_TYPE_CIRCLE (bool): Switch between diagonal or circular illusion rendering.
+        SVG_PNG_PIXEL_COUNT (int): Foreground pixel tile count.
+        SVG_GRID_COUNT (int): Total tile count (optional).
+        SVG_LIGHT_COUNT / SVG_DARK_COUNT (int): Light/dark tile metrics.
+        DEBUG (bool): Enables error trace reporting during file opening.
+
+    TODO:
+        - Split this into `describe_runtime_config()`, `select_svg_render_mode()`, and `finalise_output()`
+        - Support output of runtime parameters as JSON/LOG for automated batch tooling
+        - Allow skipping visual preview with silent mode flag
+    """
     global SVG_ILLUSION_COLOUR_TABLE
     global ILLUSION_TYPE_CIRCLE
     global ILLUSION_MAX_STREAK
@@ -2591,6 +3699,24 @@ def process_SVG_File(args):
 # The actual start of Python Code.
 #
 if __name__ == "__main__":
+    """
+    Command-line entry point for PNG2OBJ.
+
+    This block:
+    - Defines all accepted arguments (3D, SVG, sprite, colour control)
+    - Applies default logic and mode switches (towered, layered, flat, SVG)
+    - Displays summarised runtime config to help users confirm setup
+    - Dispatches to:
+        - ParametricTest() (waveform mode)
+        - process_SVG_File() (SVG generator)
+        - main() (standard 3D OBJ modes)
+    - Writes MTL file if required at end of processing
+
+    TODO:
+    - Break argument setup into a reusable function (e.g., `parse_arguments()`)
+    - Move config initialisation to its own `init_runtime_state()` method
+    - Refactor to allow this to be called programmatically (e.g., from GUI or REST API)
+    """
     # Add user options to the code
     #parser = argparse.ArgumentParser(description="Convert PNG Images to OBJ or SVG - Jason Brooks",
     #                                 epilog='https://github.com/muckypaws/PNG2OBJ')
