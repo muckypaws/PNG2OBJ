@@ -331,7 +331,7 @@ def svg_savefile(savename):
 
         print(f"\n✅ Written file: {output_path}")
 
-    except PermissionError:
+    except PermissionError as error:
         print(f"❌ Permission denied when writing to {savename}. Is it open in another application?")
         if DEBUG:
             print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
@@ -1484,7 +1484,7 @@ def main(noframeRequired):
         except Exception as error:
         # Bad Practice I know...
             print(f"Failed to create Initial file: {obj_file}, error: {error}")
-            exit(0)
+            sys.exit(1)
 
 
     ToSort = {}
@@ -1537,7 +1537,7 @@ def main(noframeRequired):
                 
                 if resp == False:
                     print("Failed to process file:")
-                    exit (0)
+                    sys.exit(1)
             else:
                 print(f"Colour: {nextLayer} is not present, skipping...")
             # Add colour to excluded list to avoid repeat processing
@@ -1783,7 +1783,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
            log(f"Creating Debug File: {txt_file}")
     except Exception as error:
         print(f"Failed to Create Debug file: {txt_file}\n")
-        exit(0)
+        sys.exit(1)
 
     try:
         # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
@@ -2268,7 +2268,7 @@ def createDesign2(new_vertices,x,cx,cy,Radius):
     """
     if len(new_vertices) != 8:
         print(f"Sorry Wrong Input Data: {new_vertices}")
-        exit(0)
+        sys.exit(1)
 
     # First four Vertices are the base of the design
     nextVertices = []
@@ -2333,7 +2333,7 @@ def createDesignTrapezoidalPrismTopRotation(new_vertices, Angle, cx, cy, Radius,
     """
     if len(new_vertices) != 8:
         print(f"Sorry Wrong Input Data: {new_vertices}")
-        exit(0)
+        sys.exit(1)
 
     # First four Vertices are the base of the design
     nextVertices = []
@@ -2400,7 +2400,7 @@ def ApplySineWaveToVertices(interimDesign, Amplitude, divisor=40.0, offsetX = 0.
     """
     if len(interimDesign) < 4:
         print(f"Sorry Wrong Input Data: {interimDesign}")
-        exit(0)
+        sys.exit(1)
 
     # First four Vertices are the base of the design
     nextVertices = []
@@ -2453,7 +2453,7 @@ def ApplyHemiSphereToVertices(interimDesign, Radius, divisor=40.0, offsetX = 0.0
     """
     if len(interimDesign) < 4:
         print(f"Sorry Wrong Input Data: {interimDesign}")
-        sys.exit(0)
+        sys.exit(1)
 
     nextVertices = []
 
@@ -3115,11 +3115,11 @@ if __name__ == "__main__":
     # Attempt to Load the PNG to memory.
     if loadPNGToMemory(args.filename) == False:
         print(f"Unable to open file: {args.filename}.png")
-        exit (0)
+        sys.exit(1)
     
     if IMAGE.real_height < 1 or IMAGE.real_width < 1:
         print(f"No Image Data to Process, Quitting...")
-        exit(0)
+        sys.exit(1)
 
     # Remove Excluded Colours from Process Colours List
     # If user provides both in both tables, we'll force exclusion!
@@ -3266,6 +3266,9 @@ if __name__ == "__main__":
 
     print("\n")
 
+    # Note: -lc / --listColours prints the discovered-colour summary and then
+    # continues to normal conversion (it is not an informational-only switch);
+    # the OBJ/MTL/SVG output is still produced.
     if args.listColours:
         displayColourInformation()
 
