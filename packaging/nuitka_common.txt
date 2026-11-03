@@ -1,0 +1,71 @@
+# =============================================================================
+# packaging/nuitka_common.txt
+# -----------------------------------------------------------------------------
+# SINGLE SOURCE OF TRUTH for the Nuitka flags shared by every OS build.
+#
+# Each per-OS build script (build_linux.sh, build_macos.sh, build_windows.ps1)
+# reads this file, drops blank lines and lines starting with '#', and appends
+# the remaining flags to its own OS-specific flags. Keeping the common flags
+# here means a change (e.g. enabling the future GUI) is made in ONE place.
+#
+# Format: one Nuitka command-line flag per line. No shell/PowerShell quoting is
+# needed — each line is passed to Nuitka as a single argument verbatim.
+#
+# Entry point for all builds: PNG2ObjV3.py (argparse CLI; it imports the
+# `png2obj` package and `png` / pypng). Nuitka runs it as __main__, so the
+# CLI's `if __name__ == "__main__":` block executes normally.
+# =============================================================================
+
+# --- Core build mode --------------------------------------------------------
+# Standalone: bundle the Python interpreter + every dependency into a
+# self-contained folder (no system Python required at runtime).
+--standalone
+
+# Follow all imports so every png2obj submodule is pulled in. Under
+# --standalone Nuitka already follows imports, but we request it explicitly
+# (per the packaging spec) to be unambiguous.
+--follow-imports
+
+# Belt-and-braces: force the whole png2obj package in even if some submodule
+# is only imported lazily/conditionally, and ensure pypng's top-level `png`
+# module is included.
+--include-package=png2obj
+--include-module=png
+
+# --- Non-interactive / CI friendliness --------------------------------------
+# Let Nuitka download its needed bits (e.g. dependency walker, ccache) without
+# prompting — required for unattended CI builds.
+--assume-yes-for-downloads
+
+# PNG2OBJ's CLI legitimately accepts a `-m` flag (create a material file).
+# Nuitka's onefile "self-execution" deployment guard otherwise intercepts a
+# leading `-m` (thinking the binary is being re-run like `python -m ...`) and
+# aborts with exit code 2. Disable just that guard so our own flags pass
+# through untouched. (No effect for plain --standalone builds.)
+--no-deployment-flag=self-execution
+
+# --- Product metadata (shown in OS file properties / about dialogs) ---------
+--company-name=muckypaws
+--product-name=PNG2OBJ
+--product-version=3.0.0
+--file-version=3.0.0
+--file-description=Convert pixel PNG images into 3D OBJ or 2D SVG files
+
+# =============================================================================
+# FUTURE GUI EXTENSION POINT (PySide6 + VTK)
+# -----------------------------------------------------------------------------
+# When the PySide6/VTK GUI lands, enable it by UNCOMMENTING the lines below
+# (and nothing else needs to change in the per-OS scripts — they all read this
+# file). Keep these commented until the GUI entry point exists, otherwise the
+# plugins add large, unused payloads to the CLI build.
+#
+#   --enable-plugin=pyside6
+#   # Qt plugins actually needed by the GUI (trim to taste):
+#   --include-qt-plugins=platforms,styles,imageformats
+#   # VTK ships large data/shader files and C extensions that Nuitka's import
+#   # following misses; include the package wholesale plus its data files:
+#   --include-package=vtkmodules
+#   --include-package-data=vtkmodules
+#   # If a dedicated GUI entry module is added (e.g. png2obj_gui.py), point the
+#   # build scripts at it instead of PNG2ObjV3.py. Do NOT edit the engine CLI.
+# =============================================================================

@@ -1,0 +1,4 @@
+# Build artifacts produced by packaging/build_*.sh / build_windows.ps1.
+# Everything here is generated; keep the directory, ignore its contents.
+*
+!.gitignore

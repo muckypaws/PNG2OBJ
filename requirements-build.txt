@@ -1,0 +1,15 @@
+# Build-only dependencies for packaging the PNG2OBJ CLI with Nuitka.
+#
+# These are NOT runtime dependencies of the application itself (see
+# requirements.txt for those). Install them only when you want to compile
+# standalone executables / installers, e.g.:
+#
+#     python -m pip install -r requirements.txt -r requirements-build.txt
+#
+# Nuitka is the compiler used to produce the standalone builds. ordered-set
+# and zstandard are optional Nuitka accelerators (faster onefile compression
+# and C module handling); they are pulled in automatically by recent Nuitka
+# but pinned here so CI builds are reproducible.
+nuitka>=2.4,<3.0
+ordered-set>=4.1.0
+zstandard>=0.22.0
