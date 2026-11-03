@@ -296,6 +296,52 @@ if __name__ == "__main__":
 
     args=parser.parse_args()
 
+    # --- Scope C: validate / clamp numeric arguments ---------------------
+    # Valid inputs are left untouched; only out-of-range values are corrected
+    # (alphacutoff) or rejected with a clear message. Rejections go through
+    # parser.error(), which prints to stderr and exits with code 2.
+    _arg_errors = []
+
+    # alphacutoff is a 0-255 byte threshold; clamp anything outside that range.
+    if args.alphacutoff < 0 or args.alphacutoff > 255:
+        _clamped = max(0, min(255, args.alphacutoff))
+        print(
+            f"Warning: --alphacutoff {args.alphacutoff} is outside 0-255; "
+            f"clamping to {_clamped}."
+        )
+        args.alphacutoff = _clamped
+
+    # Dimensions / depths / Z start must not be negative.
+    for _flag, _val in (
+        ("--maxwidth", args.maxwidth),
+        ("--maxheight", args.maxheight),
+        ("--maxdepth", args.maxdepth),
+        ("--initialLayerDepth", args.initialLayerDepth),
+        ("--startZ", args.startZ),
+    ):
+        if _val < 0:
+            _arg_errors.append(f"{_flag} must not be negative (got {_val})")
+
+    # Sprite tile sizes must be a positive number of pixels. A value of 0 would
+    # trigger a modulo-by-zero while scanning sprite boundaries, so reject < 1.
+    for _flag, _val in (
+        ("--spriteWidth", args.spriteWidth),
+        ("--spriteHeight", args.spriteHeight),
+    ):
+        if _val < 1:
+            _arg_errors.append(f"{_flag} must be a positive integer (got {_val})")
+
+    # Height multipliers must be non-negative to produce sane geometry.
+    for _flag, _val in (
+        ("--backgroundheight", args.backgroundheight),
+        ("--layermultiplier", args.layermultiplier),
+    ):
+        if _val < 0:
+            _arg_errors.append(f"{_flag} must not be negative (got {_val})")
+
+    if _arg_errors:
+        parser.error("invalid argument value(s): " + "; ".join(_arg_errors))
+
 
 
     # Are we processing 3D or 2D?
