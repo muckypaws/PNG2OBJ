@@ -7,6 +7,7 @@ populated at load time; defaults match the original pre-load global values (0).
 """
 
 import os
+import sys
 import png
 from pathlib import Path
 
@@ -228,15 +229,71 @@ def load_pattern(pattern_name):
     pattern_file = os.path.join(runtime.PATTERNS, "{}.png".format(Path(pattern_name).with_suffix('')))
 
     runtime.log(f"Attempting to pre-process file: {pattern_file}")
-    if os.path.isfile(pattern_file):
-        r = png.Reader(file=open(pattern_file, 'rb'))
-        pattern_w, pattern_h, pattern, pattern_meta = r.read()
-        pattern = list(pattern)
-        runtime.log("Loaded PNG file: {}".format(pattern_file))
-        return pattern, pattern_w, pattern_h, pattern_meta
-    else:
+    if not os.path.isfile(pattern_file):
         runtime.log("Invalid PNG file: {}".format(pattern_file))
         return None, 0, 0, None
+
+    # Scope B/D: read the PNG defensively. The file handle is managed by a
+    # context manager (closed even on error), the header is validated and the
+    # dimensions are size-checked BEFORE the decoded rows are allocated, and
+    # any decode failure (corrupt / truncated / non-PNG data) is reported as a
+    # clean message with a non-zero exit instead of a raw traceback.
+    try:
+        with open(pattern_file, 'rb') as fp_png:
+            reader = png.Reader(file=fp_png)
+            pattern_w, pattern_h, rows, pattern_meta = reader.read()
+
+            # Guard against dimension / decompression bombs before we
+            # materialise (and therefore allocate) the full pixel grid.
+            _check_image_size(pattern_file, pattern_w, pattern_h)
+
+            # Materialise the lazy row iterator while the file is still open.
+            # Matches the original `list(...)` behaviour exactly.
+            pattern = list(rows)
+    except SystemExit:
+        # _check_image_size / a nested guard already reported and is exiting.
+        raise
+    except Exception as error:
+        runtime.log(
+            f"Error: '{pattern_file}' could not be read as a valid PNG "
+            f"({type(error).__name__}: {error})"
+        )
+        sys.exit(1)
+
+    runtime.log("Loaded PNG file: {}".format(pattern_file))
+    return pattern, pattern_w, pattern_h, pattern_meta
+
+
+def _check_image_size(pattern_file, width, height):
+    """Reject oversized PNGs before their pixel data is allocated.
+
+    Enforces the ``runtime.MAX_IMAGE_DIMENSION`` per-axis cap and the
+    ``runtime.MAX_IMAGE_PIXELS`` total-pixel cap as a defence against crafted
+    dimension / decompression-bomb images. On violation it logs a clear
+    message and exits non-zero (sys.exit(1)); normal images pass untouched.
+    """
+    if width <= 0 or height <= 0:
+        runtime.log(
+            f"Error: '{pattern_file}' has invalid dimensions "
+            f"({width}x{height})"
+        )
+        sys.exit(1)
+
+    if width > runtime.MAX_IMAGE_DIMENSION or height > runtime.MAX_IMAGE_DIMENSION:
+        runtime.log(
+            f"Error: '{pattern_file}' dimensions {width}x{height} exceed the "
+            f"maximum allowed dimension of {runtime.MAX_IMAGE_DIMENSION}px per "
+            f"side; refusing to load."
+        )
+        sys.exit(1)
+
+    if width * height > runtime.MAX_IMAGE_PIXELS:
+        runtime.log(
+            f"Error: '{pattern_file}' has {width * height} pixels "
+            f"({width}x{height}), exceeding the maximum of "
+            f"{runtime.MAX_IMAGE_PIXELS}; refusing to load."
+        )
+        sys.exit(1)
 
 
 
