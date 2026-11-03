@@ -59,6 +59,17 @@ import platform
 from pathlib import Path
 from datetime import datetime
 
+# --- Phase 1: geometry tables and pure SVG primitives now live in png2obj ---
+from png2obj.geometry import (
+    cube_vertices, cube_normals, cube_faces,
+    joint_verticies, joint_normals, joint_faces,
+    default_mtl_params, update_vert,
+)
+from png2obj.svg_primitives import (
+    create_array, plot_circle_points, draw_circle, print_array,
+    add_svg_centeredText, add_svg_centeredCircle, add_svg_rectangle,
+)
+
 # Application Defaults
 DEBUG = False
 # Default location for File
@@ -268,130 +279,21 @@ cube_faces = (  [ 1,  2,  4],
 '''
 
 #
-# This is optimal from a vertex point of view, and resolves the issue of "Non-Manifold Edge" Errors
-# Observed in some slicer and 3D Software, however the surface normals result in "Missing edges"
-# when being rendered.  As described in Section 14.2.2 Surface Normals of 3D Math Primer for
-# Graphics and Game Develpoment (Fletcher Dunn and Ian Parberry) ISBN 1-55622-911-9
-# wordware publishing Inc, https://gamemath.com now discontinued.
-# Take a look here https://gamemath.com/book/intro.html the online version describes the issue
-# https://gamemath.com/book/graphics.html 10.4.2 (Fig 10.14)
-#
-cube_vertices = (   [  0.000000,  0.000000, 10.000000],
-                    [ 10.000000,  0.000000, 10.000000],
-                    [ 10.000000,  0.000000,  0.000000],
-                    [  0.000000,  0.000000,  0.000000],
-
-                    [ 10.000000, 10.000000, 10.000000],
-                    [ 10.000000, 10.000000,  0.000000],
-                    [  0.000000, 10.000000, 10.000000],
-                    [  0.000000, 10.000000,  0.000000]
-)
-
-cube_normals = ( [ -1.000000,  1.000000,  1.000000],
-                    [  1.000000,  1.000000,  1.000000],
-                    [  1.000000,  1.000000, -1.000000],
-                    [ -1.000000,  1.000000, -1.000000],
-                    [  1.000000, -1.000000,  1.000000],
-                    [  1.000000, -1.000000, -1.000000],
-                    [ -1.000000, -1.000000,  1.000000],
-                    [ -1.000000, -1.000000, -1.000000]
-)
-
-cube_faces = (  [ 1, 2, 4],
-                [ 4, 2, 3],     # Bottom Face
-                [ 2, 5, 3],
-                [ 3, 5, 6],     # Right Face
-                [ 5, 7, 6],
-                [ 6, 7, 8],     # Top Face
-                [ 7, 1, 8],
-                [ 8, 1, 4],     # Left Face
-                [ 2, 1, 5],
-                [ 5, 1, 7],     # Rear Face
-                [ 4, 3, 8],
-                [ 8, 3, 6]      # Front Face
-)
-
-
-
-# Basic Definition for a Jointer Cube Where Pixels are connected by Corners Only
-# This is needed if there's no overlap on your printer and want to ensure a 
-# a connection that should lift off the printer.
-
-
-joint_verticies = ( [ -3.00000, -0.000000,  0.000000],
-                    [ -3.00000, -0.000000, 10.000000],
-                    [  0.000000, -0.000000,  0.000000],
-                    [  0.000000, -0.000000, 10.000000],
-                    [  0.000000,  3.00000, 10.000000],
-                    [  0.000000,  3.00000,  0.000000],
-                    [  3.00000, -0.000000,  0.000000],
-                    [  0.000000, -3.00000,  0.000000],
-                    [  0.000000, -3.00000, 10.000000],
-                    [  3.00000, -0.000000, 10.000000])
-
-
-
-
-joint_normals = (   [ -1.110721,  0.460076, -0.785398],
-                    [ -1.110721,  0.460075,  0.785398],
-                    [  0.000000, -0.000000, -3.141593],
-                    [  0.000000,  0.000000,  3.141593],
-                    [ -0.460075,  1.110720,  0.785398],
-                    [ -0.460075,  1.110721, -0.785398],
-                    [  1.110721, -0.460076, -0.785398],
-                    [  0.460075, -1.110721, -0.785398],
-                    [  0.460075, -1.110720,  0.785398],
-                    [  1.110721, -0.460075,  0.785398])
-
-
-joint_faces = ( [1, 2, 3],
-                [3, 2, 4],
-                [5, 6, 4],
-                [4, 6, 3],
-                [3, 6, 7],
-                [1, 3, 8],
-                [4, 2, 9],
-                [5, 4, 10],
-                [7, 10, 3],
-                [3, 10, 4],
-                [9, 8, 4],
-                [4, 8, 3],
-                [2, 1, 9],
-                [9, 1, 8],
-                [10, 7 , 5],
-                [5, 7, 6])
-
-
-
-# Define the default Parameters for each new Material
-#   See: https://www.loc.gov/preservation/digital/formats/fdd/fdd000508.shtml
-#
-default_mtl_params =    "\nKs 0.000000 0.000000 0.000000\n" \
-                        "Tf 0.000000 0.000000 0.000000\n" \
-                        "illum 4 \n" \
-                        "d 1.0 \n" \
-                        "Ns 100 \n" \
-                        "sharpness 100 \n" \
-                        "Ni 1\n" 
-
-#
 # Define the Colour Material Dictionary
 #
-mtl_colour_dict   = {}
-mtl_final_list = []
-mtl_current_index = 0
+# --- Phase 2a: material + colour-filter state now lives in png2obj.materials ---
+from png2obj.materials import MaterialRegistry
+MATERIALS = MaterialRegistry()
 mtl_filename = ""
 mtl_lib_filename = ""
 
 #
 # Colour Exclusion List
 #
-Colour_Exclusion_List = []
 
 #
 # Colour Process List
 #
-Colour_Process_Only_list = []
 #
 # Colours Require Sorting?
 #
@@ -517,100 +419,6 @@ class CaseInsensitiveArgumentParser(argparse.ArgumentParser):
         option_string = option_string.lower()
         return super()._get_option_tuples(option_string)
 
-
-#
-# Create an Array we use for the Optical Illusion Data
-#
-def create_array(size :int):
-    """
-    Create a square 2D array (size x size) filled with space characters.
-
-    Args:
-        size (int): The number of rows and columns for the square array.
-
-    Returns:
-        list[list[str]]: A 2D array (list of lists) filled with ' ' (space) characters.
-    """
-    return [[' ' for _ in range(size)] for _ in range(size)]
-
-#
-# Plot Circle Points based on each quadrant and opposite faces.
-#
-def plot_circle_points(array, cx, cy, x, y):
-    """
-    Plot a symmetrical set of 8 points around the center (cx, cy) to form part of a circle.
-
-    This function uses Bresenham's symmetry to mark pixels on all eight octants,
-    updating the given 2D character array in-place.
-
-    Args:
-        array (list[list[str]]): The 2D drawing canvas.
-        cx (int): X-coordinate of the circle center.
-        cy (int): Y-coordinate of the circle center.
-        x (int): Offset from center along the X-axis.
-        y (int): Offset from center along the Y-axis.
-
-    Returns:
-        None. Modifies the array in-place.
-    """
-    max_y = len(array)
-    max_x = len(array[0])
-
-    cx = int(cx)
-    cy = int(cy)
-    x = int(x)
-    y= int(y)
-
-    # Bresenhams Opposite points...
-    if 0 <= cx + x < max_x and 0 <= cy + y < max_y:
-        array[cy + y][cx + x] = '*'
-    if 0 <= cx - x < max_x and 0 <= cy + y < max_y:
-        array[cy + y][cx - x] = '*'
-    if 0 <= cx + x < max_x and 0 <= cy - y < max_y:
-        array[cy - y][cx + x] = '*'
-    if 0 <= cx - x < max_x and 0 <= cy - y < max_y:
-        array[cy - y][cx - x] = '*'
-    if 0 <= cx + y < max_x and 0 <= cy + x < max_y:
-        array[cy + x][cx + y] = '*'
-    if 0 <= cx - y < max_x and 0 <= cy + x < max_y:
-        array[cy + x][cx - y] = '*'
-    if 0 <= cx + y < max_x and 0 <= cy - x < max_y:
-        array[cy - x][cx + y] = '*'
-    if 0 <= cx - y < max_x and 0 <= cy - x < max_y:
-        array[cy - x][cx - y] = '*'
-
-#
-# Use Bresenhams Algorithm to create the points
-#
-def draw_circle(array, center_x, center_y, radius):
-    """
-    Draw a full circle on a 2D character array using Bresenham's circle algorithm.
-
-    Args:
-        array (list[list[str]]): The 2D canvas to draw the circle on (modified in-place).
-        center_x (int): X-coordinate of the circle's center.
-        center_y (int): Y-coordinate of the circle's center.
-        radius (int): Radius of the circle in array units.
-
-    Returns:
-        None. Modifies the array in-place by plotting '*' at appropriate points.
-    """
-    x = radius
-    y = 0
-    p = 1 - radius  # Initial decision parameter
-
-    # Draw circle
-    plot_circle_points(array, center_x, center_y, x, y)
-
-    while x > y:
-        y += 1
-        if p <= 0:
-            p += 2 * y + 1
-        else:
-            x -= 1
-            p += 2 * y - 2 * x + 1
-        plot_circle_points(array, center_x, center_y, x, y)
-
 def draw_diagonals_in_array(width :int, height: int):
     """
     Populate a global SVG_ILLUSION_ARRAY with randomly staggered diagonal lines (*) for use in pixel-based optical illusions.
@@ -662,25 +470,6 @@ def draw_diagonals_in_array(width :int, height: int):
                         SVG_ILLUSION_ARRAY[start_y][xpos] = '*'
                                 
                 start_y += 1
-
-#    print_array(SVG_ILLUSION_ARRAY)
-
-
-#
-# Debugging purposes to see the array...
-#
-def print_array(array):
-    """
-    Print a 2D character array row by row as a visual grid.
-
-    Args:
-        array (list[list[str]]): The array to print. Each sublist represents a row.
-
-    Returns:
-        None. Output is sent directly to standard output.
-    """
-    for row in array:
-        print(''.join(row))
 
 #
 # Write the Final SVG File from Data in the List.
@@ -768,125 +557,6 @@ def update_svg_canvas_dimensions(width, height):
 
     if height > SVG_CANVAS_HEIGHT:
         SVG_CANVAS_HEIGHT = height
-
-#
-# Add Centred Text
-#
-# TODO: Make font-size and stroke-width configurable parameters
-# TODO: Consider accepting a style dict or class for future flexibility
-def add_svg_centeredText(x, y, text, fill_colour):
-    """
-    Generate a centered SVG <text> element with stroke-based outlining.
-
-    Args:
-        x (float): The x-coordinate in mm for the text anchor point.
-        y (float): The y-coordinate in mm for the text anchor point.
-        text (str): The text content to display.
-        fill_colour (str): Stroke colour for the text outline (e.g. "#000000").
-
-    Returns:
-        str: A formatted SVG <text> tag with positioning, alignment, and stroke styling.
-    """
-    text_str = (f'\t\t<text x="{x:.3f}mm" y="{y:.3f}mm" text-anchor="middle" '
-                f'dominant-baseline="central" fill="none" stroke = "{fill_colour}" '
-                f'stroke-width="0.5px" alignment-baseline="middle" font-size="24pt"'
-                f'>{text} </text>\n'
-    )
-
-    return text_str
-
-#
-# Add Centred Text
-#
-def add_svg_centeredCircle(x, y, radius = 5.0, fill_colour = "#000000", stroke_width = 0.0, stroke = "#000000"):
-    """
-    Generate an SVG <circle> element centered at (x, y) with optional stroke and fill.
-
-    Args:
-        x (float): X-coordinate of the circle center in mm.
-        y (float): Y-coordinate of the circle center in mm.
-        radius (float, optional): Radius of the circle in mm. Default is 5.0.
-        fill_colour (str, optional): Fill colour of the circle (e.g. "#FF0000").
-        stroke_width (float, optional): Width of the stroke in mm. If 0.0, stroke is omitted.
-        stroke (str, optional): Stroke colour. Ignored if stroke_width is 0.
-
-    Returns:
-        str: A formatted SVG <circle> tag.
-    
-    TODO:
-        - Consider adding support for additional SVG attributes via kwargs or a style object.
-        - Optionally validate inputs to prevent invalid SVG formatting.
-    """
-    circle_str = (f'\t\t<circle cx="{x:.3f}mm" cy="{y:.3f}mm" r="{radius:.3f}mm" fill="{fill_colour}" ')
-    if stroke_width != 0.0:
-        circle_str += f'stroke="{stroke}" stroke-width="{stroke_width}mm" '
-
-
-    return circle_str + "/> \n"
-
-#
-# Add rectangle
-#
-def add_svg_rectangle(id, x, y, width, height, rx=0.0, ry=0.0, fill_colour="#000000", opacity = 100.0, stroke_width = 0.0, stroke_colour = "#000000"):
-    """
-    Generate an SVG <rect> element with optional rounded corners, fill, and stroke.
-
-    Args:
-        id (str): Optional ID to assign to the rect.
-        x (float): X-position of the rectangle's top-left corner in mm.
-        y (float): Y-position of the rectangle's top-left corner in mm.
-        width (float): Width of the rectangle in mm.
-        height (float): Height of the rectangle in mm.
-        rx (float): Optional rounding percentage for x-radius (0–100).
-        ry (float): Optional rounding percentage for y-radius (0–100).
-        fill_colour (str): Fill colour in hex or named format.
-        opacity (float): Fill opacity as a percentage (0–100).
-        stroke_width (float): Stroke width in mm. 0 disables stroke.
-        stroke_colour (str): Stroke colour.
-
-    Returns:
-        str: SVG-compliant <rect> string with given attributes.
-    
-    TODO:
-        - Allow setting stroke opacity separately.
-        - Extract style string to helper/template function.
-        - Re-enable canvas dimension tracking when refactoring.
-    """    # Base rectangle attributes
-    rect_str = ('\t\t<rect ')
-
-    if len(id)>0:
-        rect_str += f'id="{id}" '
-
-    rect_str += (f'width="{width:.3f}mm" height="{height:.3f}mm" '
-                f'x="{x:.3f}mm" y="{y:.3f}mm" ')
-    
-    # Add rx and ry only if they're non-zero
-    if rx != 0.0:
-        fx = abs(width * (rx/100.0) / 2)
-        rect_str += f'rx="{fx:.3f}mm" '
-    if ry != 0.0:
-        fy = abs(height * (ry/100.0) / 2)
-        rect_str += f'ry="{fy:.3f}mm" '
-
-    # Add stroke attributes if stroke width is not 0
-    if stroke_width != 0.0:
-        #rect_str += f'stroke-width="{stroke_width}" stroke="{stroke_colour}" stroke-opacity="100%" '
-        rect_str += f'style="fill:none;stroke:{stroke_colour};stroke-width:{stroke_width}mm; " '
-    else:
-        # Add opacity only if it's not 100%
-        if opacity != 100.0:
-            rect_str += f'opacity="{opacity}" '
-
-        rect_str += f'fill="{fill_colour}" '
-        #style="fill:none;stroke:rgb(35,31,32);stroke-width:12.5px;"
-
-    # Close the rect tag
-    rect_str += '/>\n'
-    
-    # Update canvas dimensions if needed
-    #update_svg_canvas_dimensions(x + width, y + height)
-    
-    return rect_str
 
 #
 # Create an SVG File sized for the Range 400mm Frames
@@ -1623,31 +1293,6 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
 
     return sprite_group
 
-# Update Verticies depending on position (0 or non 0)
-# Currently Assumes, 0 - Left, non-Zero right
-#
-def update_vert(val, r1, r2):
-    """
-    Select one of two values based on whether the input is zero or positive.
-
-    This is a simple conditional utility typically used to determine which X or Y
-    coordinate to use depending on a directional sign or polarity.
-
-    Args:
-        val (float): A directional or comparative value (usually a delta or sign).
-        r1 (Any): Value returned when val is 0 or negative.
-        r2 (Any): Value returned when val is positive.
-
-    Returns:
-        Any: r2 if val > 0.0, else r1.
-
-    TODO:
-        - Rename function to clarify purpose (e.g. select_by_sign, pick_side_based_on_direction)
-    """
-    if val > 0.0:
-        return r2
-    return r1
-
 #
 # Create a Primitive, in this example a Cube, but could be swapped for
 # Any primitive type
@@ -1813,104 +1458,10 @@ def create_primitive(primitive_x, primitive_y,
 #
 # Define Material Colour
 #
-def MaterialColourAsString(r,g,b):
-    """
-    Generate an MTL-format material string from RGB values, scaled to 0.0–1.0.
-
-    This defines the 'Kd' (diffuse) property of a new material and appends it to the
-    global material list. Colour values are converted from 0–255 to floating point.
-
-    Args:
-        r (int): Red component (0–255)
-        g (int): Green component (0–255)
-        b (int): Blue component (0–255)
-
-    Returns:
-        str: A formatted MTL material string including diffuse colour and default parameters.
-
-    Globals:
-        mtl_final_list (list): Global list of all emitted material strings.
-        mtl_current_index (int): Name label for the material.
-        default_mtl_params (str): Standard trailing parameters for every material block.
-
-    TODO:
-        - Move formatter and multiplier to reusable helper
-        - Add alpha support or named material aliasing
-        - Remove reliance on global mtl_final_list for testability
-    """
-    global mtl_final_list
-
-    myFormatter = "{0:.6f}"
-
-    mult = 1.0/255.0
-
-    Material = f"\nnewmtl {mtl_current_index}\n" + \
-            f"Kd " + str(myFormatter.format(mult * r)) + " " + \
-            str(myFormatter.format(mult * g)) + " " + \
-            str(myFormatter.format(mult * b)) + " " + \
-            default_mtl_params + "\n"
-    
-    mtl_final_list.append(Material)
-    return Material
 
 #
 # Add material colour to Material File
 #
-def addMaterialToFile(r, g, b, pixel =-1):
-    """
-    Register a new material colour (RGB) if not already in use or excluded.
-
-    This function converts an RGB colour to hex, checks inclusion/exclusion lists,
-    and optionally creates a new material block via `MaterialColourAsString()`.
-
-    Args:
-        r (int): Red component (0–255)
-        g (int): Green component (0–255)
-        b (int): Blue component (0–255)
-        pixel (int): Index of pixel for material tracking. Required for material creation.
-
-    Returns:
-        tuple:
-            - bool: True if material was registered or already present; False if excluded.
-            - str: The hex colour code of the material.
-
-    Globals:
-        mtl_current_index (int): Tracks the active material index.
-        Colour_Exclusion_List (list[str]): Colours to skip during processing.
-        Colour_Process_Only_list (list[str]): Optional allowlist of colours to include.
-        mtl_colour_dict (dict): Tracks known registered colour codes.
-
-    TODO:
-        - Refactor to separate logic for inclusion checks and material creation
-        - Make exclusion lists injectable or passed as arguments
-        - Move ColourCode generation to shared utility
-    """
-    global mtl_current_index
-
-    # Check to see if we already have this material.
-    ColourCode = "#"+'{:02x}'.format(r)+'{:02x}'.format(g)+'{:02x}'.format(b)
-
-    # Is Pixel in excluded list?
-    if ColourCode in Colour_Exclusion_List:
-        return False, ColourCode
-    
-    if len(Colour_Process_Only_list) > 0:
-        if ColourCode not in Colour_Process_Only_list:
-            return False, ColourCode
-
-    if not ColourCode in mtl_colour_dict and not ColourCode in Colour_Exclusion_List:
-        mtl_colour_dict[ColourCode] = 0
-
-
-        #if CREATE_MTL_FILE == True and pixel >= 0:
-        if pixel >= 0:
-            
-            Material = MaterialColourAsString(r,g,b)
-            mtl_current_index += 1
-            #WriteToMTLFile(Material)
-            return True, ColourCode
-        
-    return True, ColourCode
 
 #
 # Convert Colour To Pixel - Can extend this to exclude colour ranges in future updates.
@@ -1937,8 +1488,8 @@ def getPixelFromRow(x, row, channels, rowWidth):
 
     Globals:
         ALPHACUTOFF (int): Threshold below which alpha is considered transparent.
-        mtl_colour_dict (dict): Maps colour hex codes to usage count.
-        mtl_current_index (int): Material creation tracker.
+        MATERIALS.colours (dict): Maps colour hex codes to usage count.
+        MATERIALS.index (int): Material creation tracker.
         Create_Towered_File (bool): Affects towered output behaviour.
 
     TODO:
@@ -1952,7 +1503,6 @@ def getPixelFromRow(x, row, channels, rowWidth):
     ColourCode = "#000000"
 
     # Need the current Index of Colour or do we? Could use dict len?
-    global mtl_current_index
     global Create_Towered_File
 
     TowerMultiplier = 1.0
@@ -1979,7 +1529,7 @@ def getPixelFromRow(x, row, channels, rowWidth):
             g = 0
             b = 0
 
-    valid, ColourCode = addMaterialToFile(r, g, b, pixel)
+    valid, ColourCode = MATERIALS.register(r, g, b, pixel)
 
     if not valid:
         pixel =-1
@@ -1988,9 +1538,9 @@ def getPixelFromRow(x, row, channels, rowWidth):
     material_index = -1
     
     # Retrieve the index of the Colour Code from the Dictionary
-    if ColourCode in mtl_colour_dict and pixel > -1:
-        material_index = list(mtl_colour_dict).index(ColourCode)
-        mtl_colour_dict[ColourCode] += 1
+    if ColourCode in MATERIALS.colours and pixel > -1:
+        material_index = list(MATERIALS.colours).index(ColourCode)
+        MATERIALS.colours[ColourCode] += 1
 
     return pixel, material_index, ColourCode
 
@@ -2079,8 +1629,8 @@ def main(noframeRequired):
 
     Globals:
         WORKING_FILENAME (str): Base filename for output OBJ files.
-        Colour_Exclusion_List (list[str]): Colours to skip.
-        Colour_Process_Only_list (list[str]): Colours to force inclusion.
+        MATERIALS.exclusion (list[str]): Colours to skip.
+        MATERIALS.process_only (list[str]): Colours to force inclusion.
         Sort_Colours_Flag (bool): Whether to sort colours by count.
         Sort_Direction (bool): If True, sort descending; otherwise ascending.
         FILE_COUNTER (int): Counter to track how many layers have been generated.
@@ -2088,7 +1638,7 @@ def main(noframeRequired):
         Primitive_Multiplier_Layers (float): Z depth multiplier for each coloured layer.
         Create_Layered_File (bool): Whether to generate OBJ per colour.
         ColoursOnSingleLayerHeight (bool): Treat all layers as same height.
-        mtl_colour_dict (dict): Maps colour hex codes to pixel counts.
+        MATERIALS.colours (dict): Maps colour hex codes to pixel counts.
 
     Returns:
         None. Writes OBJ files to disk.
@@ -2099,7 +1649,6 @@ def main(noframeRequired):
         - Separate print output from logic for clean testing
     """
     global WORKING_FILENAME
-    global Colour_Exclusion_List
     global Debug_Txt_File
     global Sort_Colours_Flag
     global Sort_Direction
@@ -2132,29 +1681,29 @@ def main(noframeRequired):
 
     ToSort = {}
 
-    if len(Colour_Process_Only_list) > 0:
-        SortedColours = list(Colour_Process_Only_list)
-        for x in range(0,len(Colour_Process_Only_list)):
-            ToSort[Colour_Process_Only_list[x]] = x
+    if len(MATERIALS.process_only) > 0:
+        SortedColours = list(MATERIALS.process_only)
+        for x in range(0,len(MATERIALS.process_only)):
+            ToSort[MATERIALS.process_only[x]] = x
     else:
         # Set the Sorted Colours Dictionary to Default
         # Remove any layes that have no pixels
         # Colour layers that are all below the Alpha Threshold will have a count of 0
-        for key in mtl_colour_dict:
-            if mtl_colour_dict[key] > 0:
-                ToSort[key] = mtl_colour_dict[key]
+        for key in MATERIALS.colours:
+            if MATERIALS.colours[key] > 0:
+                ToSort[key] = MATERIALS.colours[key]
             else:
                 print(f"Removing Colour: {key} from processing, pixel count of Zero Detected (Check Alpha Threshold If Required)")
 
     # Check if we want to sort by Highest Colour Count First
     if Sort_Colours_Flag:
-        #SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=Sort_Direction)}
+        #SortedColours = {key: val for key, val in sorted(MATERIALS.colours.items(), key = lambda ele: ele[1], reverse=Sort_Direction)}
         SortedColours = {key: val for key, val in sorted(ToSort.items(), key = lambda ele: ele[1], reverse=Sort_Direction)}
     else:
         SortedColours = dict(ToSort)
 
     # Remove Colours from Excluded List 
-    for excluded in Colour_Exclusion_List:
+    for excluded in MATERIALS.exclusion:
         if excluded in SortedColours:
             del SortedColours[excluded]
 
@@ -2162,7 +1711,7 @@ def main(noframeRequired):
     for nextLayer in SortedColours:
         print(f"{nextLayer}")
 
-    print(f"       Found : {len(mtl_colour_dict)} Colours")
+    print(f"       Found : {len(MATERIALS.colours)} Colours")
     print(f"Working with : {len(SortedColours)} Colours\n")
 
     FILE_COUNTER +=1
@@ -2172,11 +1721,11 @@ def main(noframeRequired):
             nextLayer = list(SortedColours.keys())[0]
             log(f"Processing Colour: {nextLayer}")
 
-            if nextLayer in mtl_colour_dict:
+            if nextLayer in MATERIALS.colours:
                 if ColoursOnSingleLayerHeight:
-                    resp = processFile(nextLayer, nextLayer, Colour_Exclusion_List, Primitive_Multiplier_Layers)
+                    resp = processFile(nextLayer, nextLayer, MATERIALS.exclusion, Primitive_Multiplier_Layers)
                 else:
-                    resp = processFile(nextLayer, SortedColours, Colour_Exclusion_List, Primitive_Multiplier_Layers)
+                    resp = processFile(nextLayer, SortedColours, MATERIALS.exclusion, Primitive_Multiplier_Layers)
                 
                 if resp == False:
                     print("Failed to process file:")
@@ -2184,10 +1733,10 @@ def main(noframeRequired):
             else:
                 print(f"Colour: {nextLayer} is not present, skipping...")
             # Add colour to excluded list to avoid repeat processing
-            Colour_Exclusion_List+=[nextLayer]
+            MATERIALS.exclusion+=[nextLayer]
             del SortedColours[nextLayer]
     else:
-        resp = processFile(list(SortedColours.keys())[0], SortedColours, Colour_Exclusion_List)
+        resp = processFile(list(SortedColours.keys())[0], SortedColours, MATERIALS.exclusion)
 
 #
 # Load PNG File to Memory and perform some initial processing
@@ -2325,14 +1874,14 @@ def displayColourInformation():
         None. Output is printed to stdout.
 
     Globals:
-        mtl_colour_dict (dict): Dictionary mapping hex colour codes to pixel usage counts.
+        MATERIALS.colours (dict): Dictionary mapping hex colour codes to pixel usage counts.
 
     TODO:
         - Add CSV or JSON export option for colour statistics
         - Allow filtering or sorting by hex code
         - Consider aligning this with layer preview generation
     """
-    SortedColours = {key: val for key, val in sorted(mtl_colour_dict.items(), key = lambda ele: ele[1], reverse=True)}
+    SortedColours = {key: val for key, val in sorted(MATERIALS.colours.items(), key = lambda ele: ele[1], reverse=True)}
     
     print("         Layer Order :")
     print("         -------------")
@@ -2342,7 +1891,7 @@ def displayColourInformation():
     for nextLayer in SortedColours:
         print(f"             {nextLayer} : {SortedColours[nextLayer]}")
 
-    print(f"\n               Found : {len(mtl_colour_dict)} Colours")
+    print(f"\n               Found : {len(MATERIALS.colours)} Colours")
 
     
 def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_multiplier=1.0):
@@ -2365,7 +1914,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     Globals:
         pattern, pattern_w, pattern_h (image grid data)
         Image_MinX, Image_MaxX, Image_MinY, Image_MaxY (bounding box)
-        mtl_colour_dict, mtl_current_index (material data)
+        MATERIALS.colours, MATERIALS.index (material data)
         Debug_Txt_File, WORKING_FILENAME, FILE_COUNTER (output state)
         Create_Towered_File, Create_Layered_File, ColoursOnSingleLayerHeight (mode flags)
         cube_vertices, cube_faces, cube_normals (OBJ geometry templates)
@@ -2502,7 +2051,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                         if pixel_found:
                             thisColour = pixel_found_colour_index
                             if Create_Layered_File:
-                                thisColour = list(mtl_colour_dict).index(colourMatch)
+                                thisColour = list(MATERIALS.colours).index(colourMatch)
                             pixel_found = False
                             fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                             Total_Primitives += 1
@@ -2543,7 +2092,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                                 if not checkNextPixelProcessingRules(allowedDictionary, mm):
                                     thisColour = pixel_found_colour_index
                                     if Create_Layered_File:
-                                        thisColour = list(mtl_colour_dict).index(colourMatch)
+                                        thisColour = list(MATERIALS.colours).index(colourMatch)
                                     #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                                     #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier, Primitive_Multiplier_Layers) )
                                     fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier))
@@ -2560,7 +2109,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                         if pixel_found:
                             thisColour = pixel_found_colour_index
                             if Create_Layered_File:
-                                thisColour = list(mtl_colour_dict).index(colourMatch)
+                                thisColour = list(MATERIALS.colours).index(colourMatch)
                             #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                             fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier) )
                             pixel_found = False
@@ -2588,7 +2137,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                 if pixel_found:
                     thisColour = pixel_found_colour_index
                     if Create_Layered_File:
-                        thisColour = list(mtl_colour_dict).index(colourMatch)
+                        thisColour = list(MATERIALS.colours).index(colourMatch)
                     fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                     pixel_found = False
                     primitive_width = 0
@@ -2772,7 +2321,7 @@ def CreateMasterMaterialFileMaster(filename):
     """
     Write the full MTL (Material Library) file to disk containing all colours used.
 
-    This function outputs all entries in `mtl_final_list` to a `.mtl` file with headers,
+    This function outputs all entries in `MATERIALS.materials` to a `.mtl` file with headers,
     attribution, and a count summary at the end. It includes error handling for file access
     issues and logs output status.
 
@@ -2783,7 +2332,7 @@ def CreateMasterMaterialFileMaster(filename):
         None. Writes file to disk and prints status messages.
 
     Globals:
-        mtl_final_list (list[str]): All formatted material entries (MTL strings).
+        MATERIALS.materials (list[str]): All formatted material entries (MTL strings).
         DEBUG (bool): Enables detailed exception logging.
 
     TODO:
@@ -2791,7 +2340,6 @@ def CreateMasterMaterialFileMaster(filename):
         - Move header string to a centralised template
         - Support previewing colour summary as table or HTML
     """
-    global mtl_final_list
 
     try:
         output_path = Path(filename).resolve()
@@ -2801,10 +2349,10 @@ def CreateMasterMaterialFileMaster(filename):
             fp_mtl.write("# See www.muckypaws.com and www.muckypawslabs.com\n")
             fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
 
-            for _, line in enumerate(mtl_final_list):
+            for _, line in enumerate(MATERIALS.materials):
                 fp_mtl.write(f"{line}")
 
-            fp_mtl.write(f"#\n# Total Material Colours Created: {len(mtl_final_list)}\n#\n")
+            fp_mtl.write(f"#\n# Total Material Colours Created: {len(MATERIALS.materials)}\n#\n")
 
         print(f"✅ Material file written: {output_path}")
 
@@ -3362,7 +2910,7 @@ def addDefaultMaterialColours():
         - White
 
     Returns:
-        None. Updates the global material list via `addMaterialToFile()`.
+        None. Updates the global material list via `MATERIALS.register()`.
 
     TODO:
         - Parameterise the palette or load from external config
@@ -3370,21 +2918,21 @@ def addDefaultMaterialColours():
         - Add option to tag with use context (e.g., outline, highlight)
     """
     # Black
-    addMaterialToFile(0,0,0,0)
+    MATERIALS.register(0,0,0,0)
     # Red
-    addMaterialToFile(255,0,0,0)
+    MATERIALS.register(255,0,0,0)
     # Green
-    addMaterialToFile(0,255,0,0)
+    MATERIALS.register(0,255,0,0)
     # Blue
-    addMaterialToFile(0,0,255,0)
+    MATERIALS.register(0,0,255,0)
     # Yellow
-    addMaterialToFile(255,255,0,0)
+    MATERIALS.register(255,255,0,0)
     # Purple
-    addMaterialToFile(255,0,255,0)
+    MATERIALS.register(255,0,255,0)
     # Cyan
-    addMaterialToFile(0,255,255,0)
+    MATERIALS.register(0,255,255,0)
     # White
-    addMaterialToFile(255,255,255,0)
+    MATERIALS.register(255,255,255,0)
 
 #
 # Can we create a simple parametric set of shapes?
@@ -3407,8 +2955,8 @@ def ParametricTest(Filename):
 
     Globals:
         cube_normals (list): Normal data reused across all primitives.
-        Colour_Process_Only_list (list): List of colours allowed for processing.
-        Colour_Exclusion_List (list): Colours to be skipped from processing.
+        MATERIALS.process_only (list): List of colours allowed for processing.
+        MATERIALS.exclusion (list): Colours to be skipped from processing.
         mtl_filename (str): Base filename used for the MTL output.
         Primitive_Layer_Depth (float): Extrusion Z depth of each cube.
         Primitive_Multipler (float): Scaling applied to cube dimensions.
@@ -3524,8 +3072,8 @@ def ParametricTest(Filename):
                 #fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
 
     # Apply PNG Process
-    #ApplyPNGColoursToParametricObjects(VerticesDict,-2,-2, Colour_Process_Only_list, Colour_Exclusion_List)
-    ApplyPNGColoursToParametricObjects(VerticesDict, 0, 0, Colour_Process_Only_list, Colour_Exclusion_List)
+    #ApplyPNGColoursToParametricObjects(VerticesDict,-2,-2, MATERIALS.process_only, MATERIALS.exclusion)
+    ApplyPNGColoursToParametricObjects(VerticesDict, 0, 0, MATERIALS.process_only, MATERIALS.exclusion)
 
     CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier)
     CreateMasterMaterialFileMaster(mtl_filename)
@@ -3842,18 +3390,18 @@ if __name__ == "__main__":
 
     # Remove Excluded Colours from Process Colours List
     # If user provides both in both tables, we'll force exclusion!
-    totalColours = len(mtl_colour_dict)
-    for excluded in Colour_Exclusion_List:
-        if excluded in mtl_colour_dict:
+    totalColours = len(MATERIALS.colours)
+    for excluded in MATERIALS.exclusion:
+        if excluded in MATERIALS.colours:
             totalColours -= 1
 
     if args.excludelist and not args.listColours:
         print(f"Excluding the following colours: {args.excludelist}\n")
-        Colour_Exclusion_List = args.excludelist
+        MATERIALS.exclusion = args.excludelist
 
     if args.processcolours:
         print(f"Only Processing the following colours: {args.processcolours}")
-        Colour_Process_Only_list = args.processcolours
+        MATERIALS.process_only = args.processcolours
 
     Debug_Txt_File = args.debug
 
@@ -3913,7 +3461,7 @@ if __name__ == "__main__":
                     # How many colours are we processing?
                     # If more than one, set layer heights accordingly.
                     if totalColours > 1:
-                        Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth)/(len(mtl_colour_dict)-1)
+                        Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth)/(len(MATERIALS.colours)-1)
                         Primitive_Layer_Depth = args.initialLayerDepth
                     else:
                         # Only one colour to process so has to be maximum height.
@@ -3921,17 +3469,17 @@ if __name__ == "__main__":
                         Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
                     CurrentZOffset = 0.0
 
-                if args.initialLayerDepth != 0.0 and len(Colour_Process_Only_list) > 1 and len(args.processcolours) > 0:
+                if args.initialLayerDepth != 0.0 and len(MATERIALS.process_only) > 1 and len(args.processcolours) > 0:
                     # Set height of initial layer depth
                     Primitive_Layer_Depth = args.initialLayerDepth
-                    Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(Colour_Process_Only_list) - 1)
+                    Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(MATERIALS.process_only) - 1)
                     #Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
                     CurrentZOffset = 0.0
                 else:
-                    #if len(Colour_Process_Only_list) > 0:
+                    #if len(MATERIALS.process_only) > 0:
                     if Primitive_Layer_Depth == 0.0:
-                        if len(Colour_Process_Only_list):
-                            Primitive_Layer_Depth = args.maxdepth / len(Colour_Process_Only_list)
+                        if len(MATERIALS.process_only):
+                            Primitive_Layer_Depth = args.maxdepth / len(MATERIALS.process_only)
                         else:
                             Primitive_Layer_Depth = args.maxdepth / totalColours
 
@@ -3952,8 +3500,8 @@ if __name__ == "__main__":
         else:
             print(f"     Each Layer Depth : {Primitive_Layer_Depth:.2f}mm")
 
-        if len(Colour_Process_Only_list) > 0:
-            print(f"     Requested Layers : {len(Colour_Process_Only_list)}")
+        if len(MATERIALS.process_only) > 0:
+            print(f"     Requested Layers : {len(MATERIALS.process_only)}")
 
         print(f"     Background Frame : {not args.noframe}")
 
@@ -3978,10 +3526,10 @@ if __name__ == "__main__":
     if Debug_Txt_File:
         print(f"\n      Debug Text File : {Debug_Txt_File}\n")
 
-    if len(Colour_Exclusion_List) > 0:
-        print(f"\nColour list to exclude: {Colour_Exclusion_List}")
-    if len(Colour_Process_Only_list) > 0:
-        print(f"\n   Colours to process : {Colour_Process_Only_list}")
+    if len(MATERIALS.exclusion) > 0:
+        print(f"\nColour list to exclude: {MATERIALS.exclusion}")
+    if len(MATERIALS.process_only) > 0:
+        print(f"\n   Colours to process : {MATERIALS.process_only}")
 
     print("\n")
 

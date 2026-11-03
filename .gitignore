@@ -392,3 +392,6 @@ MigrationBackup/
 MMS*.*
 Zub*.*
 Test
+
+# Golden-output regression harness artifacts (regenerable)
+tests/_golden/
