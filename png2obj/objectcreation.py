@@ -88,8 +88,6 @@ def create_primitive(primitive_x, primitive_y,
     rx2 = rx + (runtime.CUBE_X * width * runtime.Primitive_Multipler)
     ry2 = ry + (runtime.CUBE_Y * height * runtime.Primitive_Multipler)
 
-    myFormatter = "{0:.6f}"
-
     #
     # Generate the Basic Primitive for the Model
     #
@@ -115,8 +113,7 @@ def create_primitive(primitive_x, primitive_y,
             v1 = (jointFlag * v1) + rx + (runtime.CUBE_X * runtime.Primitive_Multipler)
             v2 = v2 + ry
 
-        strVertices = strVertices + "v " + str(myFormatter.format(v1)) + " " + \
-                        str(myFormatter.format(v2)) + " " + str(myFormatter.format(v3)) + "\n"
+        strVertices = strVertices + f"v {v1:.6f} {v2:.6f} {v3:.6f}\n"
 
     strVertices = strVertices + "# "+str(vert_len)+f" Vertices\n"
 
@@ -126,7 +123,7 @@ def create_primitive(primitive_x, primitive_y,
         n1 = primitive_normals[index][0]
         n2 = primitive_normals[index][1]
         n3 = primitive_normals[index][2]
-        strNormals = strNormals + "vn " + str(myFormatter.format(n1)) + " " + str(myFormatter.format(n2)) + " " + str(myFormatter.format(n3)) + "\n"
+        strNormals = strNormals + f"vn {n1:.6f} {n2:.6f} {n3:.6f}\n"
 
     strNormals = strNormals + "# "+str(len(primitive_normals))+f" Normals\n"
 
@@ -374,6 +371,14 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
     thisColour = 1
 
+    # Layered mode tags every primitive with one fixed material index. colourMatch
+    # is constant for this call and the colour set is stable here, so resolve the
+    # index once instead of rebuilding a key list per primitive.
+    layered_colour_index = (
+        list(runtime.MATERIALS.colours).index(colourMatch)
+        if runtime.Create_Layered_File else None
+    )
+
     # Total Number of Primitives Created
     Total_Primitives = 0
 
@@ -477,7 +482,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                         if pixel_found:
                             thisColour = pixel_found_colour_index
                             if runtime.Create_Layered_File:
-                                thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
+                                thisColour = layered_colour_index
                             pixel_found = False
                             fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                             Total_Primitives += 1
@@ -518,7 +523,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                                 if not checkNextPixelProcessingRules(allowedDictionary, mm):
                                     thisColour = pixel_found_colour_index
                                     if runtime.Create_Layered_File:
-                                        thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
+                                        thisColour = layered_colour_index
                                     #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                                     #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier, Primitive_Multiplier_Layers) )
                                     fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier))
@@ -535,7 +540,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                         if pixel_found:
                             thisColour = pixel_found_colour_index
                             if runtime.Create_Layered_File:
-                                thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
+                                thisColour = layered_colour_index
                             #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                             fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier) )
                             pixel_found = False
@@ -563,7 +568,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                 if pixel_found:
                     thisColour = pixel_found_colour_index
                     if runtime.Create_Layered_File:
-                        thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
+                        thisColour = layered_colour_index
                     fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                     pixel_found = False
                     primitive_width = 0

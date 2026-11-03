@@ -34,15 +34,13 @@ class MaterialRegistry:
         Returns the material string. Does not advance ``index`` itself (the
         caller does, matching the original two-step behaviour).
         """
-        myFormatter = "{0:.6f}"
-
         mult = 1.0 / 255.0
 
-        Material = f"\nnewmtl {self.index}\n" + \
-            f"Kd " + str(myFormatter.format(mult * r)) + " " + \
-            str(myFormatter.format(mult * g)) + " " + \
-            str(myFormatter.format(mult * b)) + " " + \
-            default_mtl_params + "\n"
+        Material = (
+            f"\nnewmtl {self.index}\n"
+            f"Kd {mult * r:.6f} {mult * g:.6f} {mult * b:.6f} "
+            + default_mtl_params + "\n"
+        )
 
         self.materials.append(Material)
         return Material
@@ -56,7 +54,7 @@ class MaterialRegistry:
         a real pixel (pixel >= 0).
         """
         # Check to see if we already have this material.
-        ColourCode = "#" + '{:02x}'.format(r) + '{:02x}'.format(g) + '{:02x}'.format(b)
+        ColourCode = f"#{r:02x}{g:02x}{b:02x}"
 
         # Is Pixel in excluded list?
         if ColourCode in self.exclusion:
