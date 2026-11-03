@@ -84,11 +84,9 @@ Pixel_W = DEFAULT_PIXEL_WIDTH
 Pixel_H = DEFAULT_PIXEL_HEIGHT
 
 # PNG Data for Image loaded
-pattern = 0
-pattern_w = 0
-pattern_h = 0
-pattern_meta = 0
-channels = 0
+# --- Phase 2b: PNG + bounding-box state now lives in png2obj.imageprocessing ---
+from png2obj.imageprocessing import LoadedImage
+IMAGE = LoadedImage()
 
 CurrentZOffset = 0.0
 
@@ -323,15 +321,9 @@ Debug_Txt_File = False
 #
 # Actual Pixels Found Details.
 #
-Image_MinX = 0
-Image_MaxX = 0
-Image_MinY = 0
-Image_MaxY = 0
 #
 # Actual Image Found when removing Transparent Pixels
 #
-Image_Real_Width = 0
-Image_Real_Height = 0
 
 # Object X/Y Multiplier
 Primitive_Multipler = 0.1
@@ -605,8 +597,8 @@ def create_svg_frame400(Outline_Only = True,
     outerFrame  = 405.00
 
     # Get the number of Pixels plus border of 2
-    if Image_Real_Width > 0:
-        multiplier = int(max (Image_Real_Width + 4, Image_Real_Height + 4))
+    if IMAGE.real_width > 0:
+        multiplier = int(max (IMAGE.real_width + 4, IMAGE.real_height + 4))
         if multiplier < 20: 
             multiplier = 20
         rect_width = useableArea / multiplier
@@ -732,8 +724,8 @@ def create_svg(width, height,
     SVG_DATA_LIST.append(''.join(light_group))
 
     if add_PNG:
-        offsetX = math.ceil((width - Image_Real_Width) / 2)
-        offsetY = math.ceil((height - Image_Real_Height) / 2)
+        offsetX = math.ceil((width - IMAGE.real_width) / 2)
+        offsetY = math.ceil((height - IMAGE.real_height) / 2)
         sprite_Data = create_svg_data_for_loaded_PNG(outline_only, use_real_colours,
                                                      offsetX, offsetY,
                                                      rect_width , rect_height,
@@ -1176,8 +1168,8 @@ def create_svg_from_PNG(outlineOnly, use_real_colours,
     """
     global SVG_DATA_LIST
 
-    width = Image_Real_Width
-    height = Image_Real_Height
+    width = IMAGE.real_width
+    height = IMAGE.real_height
 
     totalWidth = rect_width * width + abs(startX)
     totalHeight = rect_height * height + abs(startY)
@@ -1238,8 +1230,8 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
     """
     global SVG_PNG_PIXEL_COUNT
     
-    width = Image_Real_Width
-    height = Image_Real_Height
+    width = IMAGE.real_width
+    height = IMAGE.real_height
 
     half_w = rect_width / 2
     half_h = rect_height / 2
@@ -1259,9 +1251,9 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
     
     # Loop Across the Object
     for y in range(height):
-        row = pattern[int((y+Image_MinY) % pattern_h)]
+        row = IMAGE.pattern[int((y+IMAGE.min_y) % IMAGE.height)]
         for x in range(width):
-            pixel, index, fill_color = getPixelFromRow(x + Image_MinX,row,channels, pattern_w )
+            pixel, index, fill_color = getPixelFromRow(x + IMAGE.min_x,row,IMAGE.channels, IMAGE.width )
             # Only Add Pixel if in the Allowed Colour List
             if pixel >=0:
                 if not use_real_colours:
@@ -1665,7 +1657,7 @@ def main(noframeRequired):
         try:
             # TODO: Add some error checking here, rather than rely on TRY/CATCH Scenarios.
             with open(obj_file,'w') as fp_obj:
-                    fp_obj.write(create_primitive(0, 0, pattern_w, pattern_h, cube_vertices, cube_faces, cube_normals, 0, 0, Primitive_Multiplier_Background))
+                    fp_obj.write(create_primitive(0, 0, IMAGE.width, IMAGE.height, cube_vertices, cube_faces, cube_normals, 0, 0, Primitive_Multiplier_Background))
                     fp_obj.flush()
                     fp_obj.close()
                     # Update Current Offset with multiplier requested
@@ -1769,27 +1761,26 @@ def loadPNGToMemory(Filename):
         - Expand error reporting to include file format and image mode issues
     """
     # Load the PNG File, Check if Valid
-    global pattern, pattern_w, pattern_h, pattern_meta, channels
 
-    pattern, pattern_w, pattern_h, pattern_meta = load_pattern(Filename)
+    IMAGE.pattern, IMAGE.width, IMAGE.height, IMAGE.meta = load_pattern(Filename)
 
     # If File Wasn't Found Time to Quit
-    if pattern == None:
+    if IMAGE.pattern == None:
         return False
     
     # Check we're dealing with 8 Bits per channel.
-    if pattern_meta['planes'] < 3:
+    if IMAGE.meta['planes'] < 3:
         log(f"PNG File Unsupported, convert to 8 Bits per Channel - 24 bit")
         return False
 
     # Check if We've loaded a Valid PNG File
-    if pattern is None:
+    if IMAGE.pattern is None:
         log(f"File: {Filename} is not a valid PNG File")
         return False
 
     # Check to see if Alpha Byte Present and set number of channels accordingly
-    alpha = pattern_meta['alpha']
-    channels = 4 if alpha else 3
+    alpha = IMAGE.meta['alpha']
+    IMAGE.channels = 4 if alpha else 3
 
     discoverPixelLayers()
 
@@ -1826,24 +1817,18 @@ def discoverPixelLayers():
         - Consider returning a bounding box object
     """
     # Work our way through each row of the PNG File.
-    global Image_MinX
-    global Image_MaxX
-    global Image_MinY
-    global Image_MaxY
-    global Image_Real_Width
-    global Image_Real_Height
     global Image_Total_Colours
 
     minx = 999999999
     maxx = 0
     miny = 999999999
     maxy = 0 
-    for y in range(pattern_h):
-        row = pattern[int(y % pattern_h)]
+    for y in range(IMAGE.height):
+        row = IMAGE.pattern[int(y % IMAGE.height)]
 
-        for x in range(pattern_w):
+        for x in range(IMAGE.width):
             # Get Pixel from Row
-            pixel = getPixelFromRow(x, row, channels, pattern_w)[0]
+            pixel = getPixelFromRow(x, row, IMAGE.channels, IMAGE.width)[0]
 
             # Pixel set to -1 for Transperent Pixel (Based on ALPHA Cutoff)
             if pixel >= 0:
@@ -1856,12 +1841,12 @@ def discoverPixelLayers():
                 if y > maxy:
                     maxy = y
 
-    Image_MinX = minx
-    Image_MaxX = maxx
-    Image_MinY = miny
-    Image_MaxY = maxy
-    Image_Real_Width = maxx - minx + 1
-    Image_Real_Height = maxy - miny + 1
+    IMAGE.min_x = minx
+    IMAGE.max_x = maxx
+    IMAGE.min_y = miny
+    IMAGE.max_y = maxy
+    IMAGE.real_width = maxx - minx + 1
+    IMAGE.real_height = maxy - miny + 1
 
 def displayColourInformation():
     """
@@ -1992,7 +1977,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
             header = (
                 "# Created using PNG2OBJ.py - © Jason Brooks 2022-2025\n"
                 f"# Generated on: {datetime.now()}\n"
-                f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+                f"# Original File: {WORKING_FILENAME}.png, Width: {IMAGE.width}, Height: {IMAGE.height}\n"
                 "# License: MIT-NC (Non-Commercial use only, attribution required)\n"
                 "# https://github.com/muckypaws/PNG2OBJ\n"
             )
@@ -2006,20 +1991,20 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
             # Work our way through each row of the PNG File.
             #for y in range(pattern_h):
-            for y in range(Image_MinY, Image_MaxY + 1):
-                row = pattern[int(y % pattern_h)]
+            for y in range(IMAGE.min_y, IMAGE.max_y + 1):
+                row = IMAGE.pattern[int(y % IMAGE.height)]
                 
                 # Get Next Row for Jointer Block Processing.
                 # We're cheating by MOD by the PNG Height
                 # But will set the Last row flag so we don't 
                 # Process the rules for this. 
-                nextRow = pattern[int((y+1) % pattern_h)]
+                nextRow = IMAGE.pattern[int((y+1) % IMAGE.height)]
 
                 if Debug_Txt_File:
                     fp_txt.write('\n')
 
                 # Check If We're processing the last row of Pixels
-                if y == (pattern_h-1):
+                if y == (IMAGE.height-1):
                     LastRow = True
 
                 # If we're splitting models based on pixel width and height add and extra line
@@ -2040,7 +2025,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                 TowerMultiplier = 1.0
 
                 #for x in range(pattern_w):
-                for x in range(Image_MinX,Image_MaxX + 1):
+                for x in range(IMAGE.min_x,IMAGE.max_x + 1):
                     # Check if We're Adding extra space between each sprite based
                     #   on fixed pixel width per sprite.
                     if x > 0 and not(x % Pixel_W):
@@ -2062,7 +2047,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                         lastPixelFound = -1
 
                     # Get Pixel from Row
-                    pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
+                    pixel,mi, mm = getPixelFromRow(x, row, IMAGE.channels, IMAGE.width)
 
                     if Create_Towered_File:
                         LastTowerMultiplier = TowerMultiplier
@@ -2122,7 +2107,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                     # Check if we're to add Jointer Blocks
                     if JOINTS_REQUIRED and not LastRow:
                         # Check if Blocks meet the Jointer rule
-                        newJoint = CheckJointRequired(x, y, row, nextRow, channels, pattern_w)
+                        newJoint = CheckJointRequired(x, y, row, nextRow, IMAGE.channels, IMAGE.width)
 
                         if newJoint:
                             fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, joint_normals, newJoint, thisColour, primitive_y_multiplier * LastTowerMultiplier) )
@@ -2719,8 +2704,8 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
         - Consider modularising sprite-spacing logic
     """
     start_y = offsetY
-    for y in range(Image_MinY, Image_MaxY + 1):
-        row = pattern[int(y % pattern_h)]
+    for y in range(IMAGE.min_y, IMAGE.max_y + 1):
+        row = IMAGE.pattern[int(y % IMAGE.height)]
 
         # If we're splitting models based on pixel width and height add and extra line
         #   And ensure we start the next primitive further down to enforce a gap in the model
@@ -2731,14 +2716,14 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
         start_x = offsetX
 
 
-        for x in range(Image_MinX,Image_MaxX + 1):
+        for x in range(IMAGE.min_x,IMAGE.max_x + 1):
             # Check if We're Adding extra space between each sprite based
             #   on fixed pixel width per sprite.
             if x > 0 and not(x % Pixel_W):
                 start_x += 1
 
             # Get Pixel from Row
-            pixel,mi, mm = getPixelFromRow(x, row, channels, pattern_w)
+            pixel,mi, mm = getPixelFromRow(x, row, IMAGE.channels, IMAGE.width)
 
             if checkProcessingRules(allowedDictionary, mm, excludedColours, pixel):
                 if pixel > 0:
@@ -2798,7 +2783,7 @@ def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, Last
             header = (
                 "# Creator PNG2OBJ.py - © Jason Brooks 2022\n"
                 f"# {datetime.now()}\n"
-                f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+                f"# Original File: {WORKING_FILENAME}.png, Width: {IMAGE.width}, Height: {IMAGE.height}\n"
             )
             fp_obj.write(header)
 
@@ -2869,7 +2854,7 @@ def CreateOBJFileFromDictionary_old(Filename, vertDict, primitive_y_multiplier, 
         with open(obj_file,'w') as fp_obj:
         # Create Header for OBJ File
             header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
-            header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {pattern_w}, Height: {pattern_h}\n"
+            header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {IMAGE.width}, Height: {IMAGE.height}\n"
             fp_obj.write( header )
 
             for index, (key,value) in enumerate(vertDict.items()):
@@ -3194,8 +3179,8 @@ def process_SVG_File(args):
         #   Draw Outlines Only
         #   Use the Real Colours of the PNG Image
         #   Add the PNG to the SVG File (False if you just want to create the illusion without the image.)
-        blocks_horizontal = max((args.minimumborder * 2) + Image_Real_Width, args.minimumgridwidth)
-        blocks_vertical = max((args.minimumborder * 2) + Image_Real_Height, args.minimumgridheight)
+        blocks_horizontal = max((args.minimumborder * 2) + IMAGE.real_width, args.minimumgridwidth)
+        blocks_vertical = max((args.minimumborder * 2) + IMAGE.real_height, args.minimumgridheight)
         create_svg(blocks_horizontal, blocks_vertical,
                     args.outlineOnly,
                     not args.usegridcolours,
@@ -3384,7 +3369,7 @@ if __name__ == "__main__":
         print(f"Unable to open file: {args.filename}.png")
         exit (0)
     
-    if Image_Real_Height < 1 or Image_Real_Width < 1:
+    if IMAGE.real_height < 1 or IMAGE.real_width < 1:
         print(f"No Image Data to Process, Quitting...")
         exit(0)
 
@@ -3419,8 +3404,8 @@ if __name__ == "__main__":
     print(f"    Image Information :")
     print("    -------------------\n")
     print(f"           Image File : {args.filename}")
-    print(f"       PNG Image Size : {pattern_w}px (width), {pattern_h}px (height)")
-    print(f"   Number of Channels : {channels}")
+    print(f"       PNG Image Size : {IMAGE.width}px (width), {IMAGE.height}px (height)")
+    print(f"   Number of Channels : {IMAGE.channels}")
     print("")
     print(f"     Joints Requested : {JOINTS_REQUIRED}\n Create Material File : {CREATE_MTL_FILE}")
     print(f" Reverse Sort Colours : {Sort_Colours_Flag}")
@@ -3437,8 +3422,8 @@ if __name__ == "__main__":
     if not args.svg:
         if args.maxheight != 0.0 or args.maxwidth != 0.0:
             # Need to calculate the Multipliers...
-            widthMultiplier = args.maxwidth / Image_Real_Width
-            heightMultiplier = args.maxheight / Image_Real_Height
+            widthMultiplier = args.maxwidth / IMAGE.real_width
+            heightMultiplier = args.maxheight / IMAGE.real_height
 
             if widthMultiplier == 0.0:
                 widthMultiplier = heightMultiplier
@@ -3509,12 +3494,12 @@ if __name__ == "__main__":
             print(f"\n **** Seperate Colours On Single Layer Selected ****")
 
 
-    if pattern_w != Image_Real_Width or pattern_h != Image_Real_Height:
-        print(f"\n   Actual Image Width : {Image_Real_Width} Pixels")
-        print(f"  Actual Image Height : {Image_Real_Height} Pixels")
-        print(f"        Image Start X : {Image_MinX}")
-        print(f"        Image Start Y : {Image_MinY}")
-        print(f"         Bounding Box : ({Image_MinX},{Image_MinY},{Image_MaxX},{Image_MaxY}) ")
+    if IMAGE.width != IMAGE.real_width or IMAGE.height != IMAGE.real_height:
+        print(f"\n   Actual Image Width : {IMAGE.real_width} Pixels")
+        print(f"  Actual Image Height : {IMAGE.real_height} Pixels")
+        print(f"        Image Start X : {IMAGE.min_x}")
+        print(f"        Image Start Y : {IMAGE.min_y}")
+        print(f"         Bounding Box : ({IMAGE.min_x},{IMAGE.min_y},{IMAGE.max_x},{IMAGE.max_y}) ")
 
     if ThreeD:
         print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
