@@ -30,7 +30,12 @@ truth). GUI (PySide6/VTK) flags are added there, not here.
 param(
     # Skip the onefile build and produce only the standalone folder tree
     # (which is what the WiX MSI packages).
-    [switch]$NoOnefile
+    [switch]$NoOnefile,
+
+    # Also build the MSI installer with WiX v4 after compiling. Requires the
+    # WiX CLI on PATH (`dotnet tool install wix -g`). If WiX is not found the
+    # step is skipped with a warning rather than failing the build.
+    [switch]$Msi
 )
 
 $ErrorActionPreference = 'Stop'
@@ -124,7 +129,32 @@ if (Test-Path $DistFolder) {
     Write-Host "WARNING: standalone folder not found at $DistFolder (onefile-only build?)."
 }
 
+# --- Optional: build the MSI with WiX v4 ------------------------------------
+if ($Msi) {
+    $Wxs = Join-Path $ScriptDir 'windows\PNG2OBJ.wxs'
+    $AssetsDir = Join-Path $ScriptDir 'assets'
+    $MsiOut = Join-Path $DistDir 'PNG2OBJ-3.0.0-x64.msi'
+
+    $wixCmd = Get-Command wix -ErrorAction SilentlyContinue
+    if (-not $wixCmd) {
+        Write-Warning "WiX CLI not found on PATH; skipping MSI. Install with: dotnet tool install wix -g"
+    } elseif (-not (Test-Path $DistFolder)) {
+        Write-Warning "Standalone folder $DistFolder missing; cannot build MSI. Re-run without -NoOnefile removed, i.e. ensure the .dist tree exists."
+    } else {
+        Write-Host "==> Building MSI with WiX v4..."
+        & wix build $Wxs `
+            -arch x64 `
+            -b "PublishDir=$DistFolder" `
+            -b "AssetsDir=$AssetsDir" `
+            -o $MsiOut
+        if ($LASTEXITCODE -ne 0) { throw "wix build failed with exit code $LASTEXITCODE" }
+        Write-Host "==> MSI: $MsiOut"
+    }
+}
+
 Write-Host "==> Done."
 Write-Host "    Next steps:"
-Write-Host "      - Build the MSI: see packaging/README.md 'Windows (MSI)'."
+if (-not $Msi) {
+    Write-Host "      - Build the MSI: re-run with -Msi, or see packaging/README.md 'Windows (MSI)'."
+}
 Write-Host "      - Codesign (Authenticode) requires your certificate: see README."
