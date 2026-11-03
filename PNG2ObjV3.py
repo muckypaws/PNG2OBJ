@@ -71,24 +71,20 @@ from png2obj.svg_primitives import (
 )
 
 # Application Defaults
-DEBUG = False
+from png2obj import runtime
+from png2obj.imageprocessing import (
+    getPixelFromRow, CheckJointRequired, load_pattern,
+    loadPNGToMemory, discoverPixelLayers,
+)
 # Default location for File
-PATTERNS=""
 
-DEFAULT_PIXEL_WIDTH  = 99999999
-DEFAULT_PIXEL_HEIGHT = 99999999
 
 # Set Pixel Width and Height if Sprites are fixed width within the sheet, otherwise 
 # use a high number.
-Pixel_W = DEFAULT_PIXEL_WIDTH
-Pixel_H = DEFAULT_PIXEL_HEIGHT
 
 # PNG Data for Image loaded
 # --- Phase 2b: PNG + bounding-box state now lives in png2obj.imageprocessing ---
-from png2obj.imageprocessing import LoadedImage
-IMAGE = LoadedImage()
 
-CurrentZOffset = 0.0
 
 # X is positive, Y is negative unless you want to flip the image.
 # Leave these alone, my initial mistake carried over... represents the value of the
@@ -96,53 +92,37 @@ CurrentZOffset = 0.0
 # you really don't want to... trust me...
 # unless you fix my code to handle this properly
 # so yeah... leave it alone :)
-CUBE_X = 10
-CUBE_Y = -10
 
 # Define the Alpha Value as Cut Off For the Pixel
-ALPHACUTOFF = 128
 
 # Define TRUE if Printing, FALSE if anything else as not required
-JOINTS_REQUIRED = False
 
 # Define TRUE if a corresponding MTL File is to be created for Colour Cubes
-CREATE_MTL_FILE = False
 
 # Define the Working Filename
-WORKING_FILENAME = ""
 
 # define the File Counter
-FILE_COUNTER = 0
 
 # Used to define the Current Face Counter
 # Needed to ensure Vertices are correctly defined.
-Current_Face = 0
-Current_Opposite_Face = 0
 
 #
 # The multiplier to use when creating the background object
 #
-Primitive_Multiplier_Background = 1.0
 
 #
 # The multiplier to use when creating the background object
 #
-Primitive_Multiplier_Layers = 1.0
 
 
 #
 # When processing colours, only on height above background object
 #
-ColoursOnSingleLayerHeight = False
 
 #
 # Define the Colour Material Dictionary
 #
 # --- Phase 2a: material + colour-filter state now lives in png2obj.materials ---
-from png2obj.materials import MaterialRegistry
-MATERIALS = MaterialRegistry()
-mtl_filename = ""
-mtl_lib_filename = ""
 
 #
 # Colour Exclusion List
@@ -154,28 +134,23 @@ mtl_lib_filename = ""
 #
 # Colours Require Sorting?
 #
-Sort_Colours_Flag = False
 
 #
 # Which type of Object File to Create?
 #
-Create_Layered_File = False
 
 #
 # Direction to sort the colour list for processing
 #   False = Low to High, True = High to Low...
 #
-Sort_Direction = False
 
 #
 # Last coloured Pixel Found
 #
-lastPixelFound = 0
 
 #
 # Debug TXT File Required?
 #
-Debug_Txt_File = False
 
 #
 # Actual Pixels Found Details.
@@ -185,26 +160,20 @@ Debug_Txt_File = False
 #
 
 # Object X/Y Multiplier
-Primitive_Multipler = 0.1
 
 # Object Z Multiplier for each layer
-Primitive_Layer_Depth = 0.0
 
 # If we need a specific Initial Layer, this will override.
-Primitive_Initial_Layer_Depth = 0.0
 
 # Create a Single Layered File with Object Heights Dependent on Colour Order
 # provided in the Process Colour Order list
-Create_Towered_File = False
 
 # Needed for SVG File Creation.
 # --- Phase 2c: SVG constants + render state now live in png2obj.svg ---
 from png2obj.svg import (
     SVG_HEADER, SVG_COLOUR_SETS,
     LIGHT_BLOCK_INDEX, DARK_BLOCK_INDEX, LIGHT_PIXEL_INDEX, DARK_PIXEL_INDEX,
-    SvgState,
 )
-SVG = SvgState()
 
 # Contains SVG Data
 
@@ -259,11 +228,11 @@ def draw_diagonals_in_array(width :int, height: int):
     """
 
     size = max(width, height)
-    SVG.illusion_array = create_array(size)
+    runtime.SVG.illusion_array = create_array(size)
 
     max_range = width + height + 1
-    max_y = len(SVG.illusion_array)
-    max_x = len(SVG.illusion_array[0])
+    max_y = len(runtime.SVG.illusion_array)
+    max_x = len(runtime.SVG.illusion_array[0])
 
     line_streak = none_line_streak = 0
 
@@ -290,7 +259,7 @@ def draw_diagonals_in_array(width :int, height: int):
                 # Check if we're in range of the grid.
                 if xpos <= width and start_y <= height:
                     if 0 <= xpos < max_x and 0 <= start_y < max_y:
-                        SVG.illusion_array[start_y][xpos] = '*'
+                        runtime.SVG.illusion_array[start_y][xpos] = '*'
                                 
                 start_y += 1
 
@@ -325,23 +294,23 @@ def svg_savefile(savename):
 
         with output_path.open('w', encoding="utf-8") as fp:
             fp.write(SVG_HEADER)
-            fp.write(f'<svg width="{SVG.canvas_width:.2f}mm" height="{SVG.canvas_height:.2f}mm" xmlns="http://www.w3.org/2000/svg">\n')
-            fp.write(''.join(SVG.data_list))
+            fp.write(f'<svg width="{runtime.SVG.canvas_width:.2f}mm" height="{runtime.SVG.canvas_height:.2f}mm" xmlns="http://www.w3.org/2000/svg">\n')
+            fp.write(''.join(runtime.SVG.data_list))
             fp.write('</svg>\n')
 
         print(f"\n✅ Written file: {output_path}")
 
     except PermissionError as error:
         print(f"❌ Permission denied when writing to {savename}. Is it open in another application?")
-        if DEBUG:
+        if runtime.DEBUG:
             print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
     except IOError as error:
         print(f"❌ File I/O error: {error}")
-        if DEBUG:
+        if runtime.DEBUG:
             print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
     except Exception as error:
         print(f"❌ Unexpected error: {error}")
-        if DEBUG:
+        if runtime.DEBUG:
             print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
 
 
@@ -369,11 +338,11 @@ def update_svg_canvas_dimensions(width, height):
         SVG.canvas_height (float): Current maximum canvas height.
     """
 
-    if width > SVG.canvas_width:
-        SVG.canvas_width = width
+    if width > runtime.SVG.canvas_width:
+        runtime.SVG.canvas_width = width
 
-    if height > SVG.canvas_height:
-        SVG.canvas_height = height
+    if height > runtime.SVG.canvas_height:
+        runtime.SVG.canvas_height = height
 
 #
 # Create an SVG File sized for the Range 400mm Frames
@@ -421,8 +390,8 @@ def create_svg_frame400(Outline_Only = True,
     outerFrame  = 405.00
 
     # Get the number of Pixels plus border of 2
-    if IMAGE.real_width > 0:
-        multiplier = int(max (IMAGE.real_width + 4, IMAGE.real_height + 4))
+    if runtime.IMAGE.real_width > 0:
+        multiplier = int(max (runtime.IMAGE.real_width + 4, runtime.IMAGE.real_height + 4))
         if multiplier < 20: 
             multiplier = 20
         rect_width = useableArea / multiplier
@@ -455,13 +424,13 @@ def create_svg_frame400(Outline_Only = True,
 
     # Add Maped Cutter Marks
     CutGuides.append(add_svg_rectangle("TopLeftGuide",0.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
-    CutGuides.append(add_svg_rectangle("TopRightGuide",SVG.canvas_width - 60.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
-    CutGuides.append(add_svg_rectangle("BottonLeftGuide",0.0, SVG.canvas_height - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
-    CutGuides.append(add_svg_rectangle("BottomRightGuide",SVG.canvas_width - 60.0, SVG.canvas_height - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
+    CutGuides.append(add_svg_rectangle("TopRightGuide",runtime.SVG.canvas_width - 60.0, 0.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
+    CutGuides.append(add_svg_rectangle("BottonLeftGuide",0.0, runtime.SVG.canvas_height - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
+    CutGuides.append(add_svg_rectangle("BottomRightGuide",runtime.SVG.canvas_width - 60.0, runtime.SVG.canvas_height - 60.0, 60.0, 60.0, 0.0, 0.0, "#FFFFFF", 0.0, 1, "#000000"))
 
     CutGuides.append(f'\t</g>\n')
 
-    SVG.data_list.append(''.join(CutGuides))
+    runtime.SVG.data_list.append(''.join(CutGuides))
 
 
 
@@ -527,7 +496,7 @@ def create_svg(width, height,
 
 
     # Create Illusion Data
-    if SVG.illusion_type_circle:
+    if runtime.SVG.illusion_type_circle:
         fill_group, light_group, dark_group = create_svg_illusion_data_circular(outline_only,
                                                                                 width, height,
                                                                                 rect_width, rect_height,
@@ -541,20 +510,20 @@ def create_svg(width, height,
                                                                                  startX, startY)
 
     if not outline_only:
-        SVG.data_list.append(''.join(fill_group))
+        runtime.SVG.data_list.append(''.join(fill_group))
 
-    SVG.data_list.append(''.join(dark_group))
-    SVG.data_list.append(''.join(light_group))
+    runtime.SVG.data_list.append(''.join(dark_group))
+    runtime.SVG.data_list.append(''.join(light_group))
 
     if add_PNG:
-        offsetX = math.ceil((width - IMAGE.real_width) / 2)
-        offsetY = math.ceil((height - IMAGE.real_height) / 2)
+        offsetX = math.ceil((width - runtime.IMAGE.real_width) / 2)
+        offsetY = math.ceil((height - runtime.IMAGE.real_height) / 2)
         sprite_Data = create_svg_data_for_loaded_PNG(outline_only, use_real_colours,
                                                      offsetX, offsetY,
                                                      rect_width , rect_height,
                                                      rect_radius_x, rect_radius_y,
                                                      startX, startY)
-        SVG.data_list.append(''.join(sprite_Data))
+        runtime.SVG.data_list.append(''.join(sprite_Data))
 
 #
 # Create SVG Data for the Optical Illusion
@@ -626,7 +595,7 @@ def create_svg_rect_Grid(outline_only = False,
                 newObj = add_svg_rectangle("",current_x, current_y, rect_width, rect_height, rect_radius_x, rect_radius_y, fill_color, 0, 0.25)
             
             group.append(newObj)
-            SVG.grid_count += 1
+            runtime.SVG.grid_count += 1
 
     dark_group.append("\t</g>\n")
     light_group.append("\t</g>\n")
@@ -670,15 +639,15 @@ def ClipDimensions(rect_x, rect_y, rect_width, rect_height, offsetX, offsetY):
         rect_x = offsetX
         req_width = rect_width - offsetX
 
-    if rect_x + req_width > SVG.canvas_width - offsetX:
-        req_width = SVG.canvas_width - offsetX - rect_x
+    if rect_x + req_width > runtime.SVG.canvas_width - offsetX:
+        req_width = runtime.SVG.canvas_width - offsetX - rect_x
 
     if rect_y < offsetY:
         rect_y = offsetY
         req_height= rect_height - offsetY
 
-    if rect_y + req_height > SVG.canvas_height - offsetY:
-        req_height = SVG.canvas_height - offsetY - rect_y
+    if rect_y + req_height > runtime.SVG.canvas_height - offsetY:
+        req_height = runtime.SVG.canvas_height - offsetY - rect_y
 
     return rect_x, rect_y, req_width, req_height
 
@@ -725,7 +694,7 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
     height = int(height)
 
     size = max(width, height)
-    SVG.illusion_array = create_array(size)
+    runtime.SVG.illusion_array = create_array(size)
 
     # Centre Point of Array
     cx = width / 2
@@ -755,32 +724,32 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
 
         if rand > 3:
             circle_streak, none_circle_streak = circle_streak + 1, 0
-            draw_circles = circle_streak < SVG.illusion_max_streak
+            draw_circles = circle_streak < runtime.SVG.illusion_max_streak
             if not draw_circles:
                 circle_streak = 0
                 none_circle_streak = 1
         else:
             none_circle_streak, circle_streak = none_circle_streak + 1, 0
-            draw_circles = none_circle_streak > SVG.illusion_max_streak
+            draw_circles = none_circle_streak > runtime.SVG.illusion_max_streak
             if draw_circles:
                 circle_streak = 1
                 none_circle_streak = 0
 
         if draw_circles:
-            draw_circle(SVG.illusion_array, cx, cy, radius)
+            draw_circle(runtime.SVG.illusion_array, cx, cy, radius)
 
-    print_array(SVG.illusion_array)
+    print_array(runtime.SVG.illusion_array)
 
     fill_group = [f'\t<g id="OpticalIllusionCirclesAll">\n']
     for y in range (height):
         for x in range(width):
-            sample = SVG.illusion_array[y][x]
+            sample = runtime.SVG.illusion_array[y][x]
             if sample != " ":
                 fillColour = "#000000"
-                SVG.dark_count += 1
+                runtime.SVG.dark_count += 1
             else:
                 fillColour = "#ffffff"
-                SVG.light_count += 1
+                runtime.SVG.light_count += 1
                     
             rect_x = x * rect_width - half_rect_width + offsetX
             rect_y = y * rect_height - half_rect_height + offsetY
@@ -800,8 +769,8 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
                                                    rect_width, rect_height,
                                                    rect_radius_x, rect_radius_y,
                                                    offsetX, offsetY,
-                                                   SVG.illusion_colour_table[DARK_BLOCK_INDEX],
-                                                   SVG.illusion_colour_table[LIGHT_BLOCK_INDEX])
+                                                   runtime.SVG.illusion_colour_table[DARK_BLOCK_INDEX],
+                                                   runtime.SVG.illusion_colour_table[LIGHT_BLOCK_INDEX])
  
     return fill_group, light_group, dark_group
 
@@ -864,8 +833,8 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
                                                    width, height, rect_width, rect_height,
                                                    rect_radius_x, rect_radius_y,
                                                    offsetX, offsetY,
-                                                   SVG.illusion_colour_table[DARK_BLOCK_INDEX],
-                                                   SVG.illusion_colour_table[LIGHT_BLOCK_INDEX])
+                                                   runtime.SVG.illusion_colour_table[DARK_BLOCK_INDEX],
+                                                   runtime.SVG.illusion_colour_table[LIGHT_BLOCK_INDEX])
 
     if outline_only:
         return [], light_group, dark_group
@@ -897,14 +866,14 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
         # Try Black if greater than five and less than streak
         if rand > 5:
             line_streak, none_line_streak = line_streak + 1, 0
-            draw_line = line_streak <= SVG.illusion_max_streak
+            draw_line = line_streak <= runtime.SVG.illusion_max_streak
             if not draw_line:
                 line_streak = 0
                 none_line_streak = 1
                 #draw_line = True
         else:
             none_line_streak, line_streak = none_line_streak + 1, 0
-            draw_line = none_line_streak > SVG.illusion_max_streak
+            draw_line = none_line_streak > runtime.SVG.illusion_max_streak
             if draw_line:
                 line_streak = 1
                 none_line_streak = 0
@@ -928,9 +897,9 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
                 
 
                 if draw_line:
-                    SVG.dark_count += 1
+                    runtime.SVG.dark_count += 1
                 else:
-                    SVG.light_count += 1
+                    runtime.SVG.light_count += 1
 
                 if not outline_only:
                     newObj = '\t'+add_svg_rectangle("",rect_x, rect_y,
@@ -987,8 +956,8 @@ def create_svg_from_PNG(outlineOnly, use_real_colours,
         - Parameterise input pattern image instead of assuming current global
     """
 
-    width = IMAGE.real_width
-    height = IMAGE.real_height
+    width = runtime.IMAGE.real_width
+    height = runtime.IMAGE.real_height
 
     totalWidth = rect_width * width + abs(startX)
     totalHeight = rect_height * height + abs(startY)
@@ -1001,7 +970,7 @@ def create_svg_from_PNG(outlineOnly, use_real_colours,
                                                   rect_width, rect_height,
                                                   rect_radius_x, rect_radius_y)
 
-    SVG.data_list.append(''.join(sprite_group))
+    runtime.SVG.data_list.append(''.join(sprite_group))
 
 #
 # Create SVG Data for currently Loaded PNG In memory.
@@ -1048,8 +1017,8 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
         - Add opacity toggle or pixel thresholding
     """
     
-    width = IMAGE.real_width
-    height = IMAGE.real_height
+    width = runtime.IMAGE.real_width
+    height = runtime.IMAGE.real_height
 
     half_w = rect_width / 2
     half_h = rect_height / 2
@@ -1069,20 +1038,20 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
     
     # Loop Across the Object
     for y in range(height):
-        row = IMAGE.pattern[int((y+IMAGE.min_y) % IMAGE.height)]
+        row = runtime.IMAGE.pattern[int((y+runtime.IMAGE.min_y) % runtime.IMAGE.height)]
         for x in range(width):
-            pixel, index, fill_color = getPixelFromRow(x + IMAGE.min_x,row,IMAGE.channels, IMAGE.width )
+            pixel, index, fill_color = getPixelFromRow(x + runtime.IMAGE.min_x,row,runtime.IMAGE.channels, runtime.IMAGE.width )
             # Only Add Pixel if in the Allowed Colour List
             if pixel >=0:
                 if not use_real_colours:
                     #fill_color = "#2f0040" if (x % 2) == (y % 2) else "#FF7f80"
-                    fill_color = SVG.illusion_colour_table[DARK_PIXEL_INDEX] if ((x+offset_X) % 2) == ((y+offset_Y) % 2) else SVG.illusion_colour_table[LIGHT_PIXEL_INDEX]
+                    fill_color = runtime.SVG.illusion_colour_table[DARK_PIXEL_INDEX] if ((x+offset_X) % 2) == ((y+offset_Y) % 2) else runtime.SVG.illusion_colour_table[LIGHT_PIXEL_INDEX]
                     group = dark_group if (x % 2) == (y % 2) else light_group
 
                 rect_x = (x + offset_X) * rect_width + start_X
                 rect_y = (y + offset_Y) * rect_height + start_Y
 
-                SVG.png_pixel_count += 1
+                runtime.SVG.png_pixel_count += 1
                 if not outline_only:
                     newObj = add_svg_rectangle("",rect_x, rect_y, rect_width, rect_height, rect_radius_x, rect_radius_y, fill_color)
                 else:
@@ -1153,10 +1122,6 @@ def create_primitive(primitive_x, primitive_y,
         - Replace raw string formatting with f-string block builders for clarity
         - Split into helper functions for face block, normal block, and vertex block
     """
-    global Current_Face
-    global Current_Opposite_Face
-    global CurrentZOffset
-    global Primitive_Multipler
 
   #  if not jointFlag:
   #      return ""
@@ -1169,10 +1134,10 @@ def create_primitive(primitive_x, primitive_y,
     vert_len = len(primitive_vert)
     face_len = len(primitive_face)
 
-    rx = primitive_x * CUBE_X * Primitive_Multipler
-    ry = primitive_y * CUBE_Y * Primitive_Multipler
-    rx2 = rx + (CUBE_X * width * Primitive_Multipler)
-    ry2 = ry + (CUBE_Y * height * Primitive_Multipler)
+    rx = primitive_x * runtime.CUBE_X * runtime.Primitive_Multipler
+    ry = primitive_y * runtime.CUBE_Y * runtime.Primitive_Multipler
+    rx2 = rx + (runtime.CUBE_X * width * runtime.Primitive_Multipler)
+    ry2 = ry + (runtime.CUBE_Y * height * runtime.Primitive_Multipler)
 
     myFormatter = "{0:.6f}"
 
@@ -1180,15 +1145,15 @@ def create_primitive(primitive_x, primitive_y,
     # Generate the Basic Primitive for the Model
     #
     for index in range(vert_len):
-        v1 = primitive_vert[index][0] * Primitive_Multipler
-        v2 = primitive_vert[index][1] * Primitive_Multipler
-        v3 = primitive_vert[index][2] * (Primitive_Layer_Depth/10) #* Primitive_Multipler
+        v1 = primitive_vert[index][0] * runtime.Primitive_Multipler
+        v2 = primitive_vert[index][1] * runtime.Primitive_Multipler
+        v3 = primitive_vert[index][2] * (runtime.Primitive_Layer_Depth/10) #* Primitive_Multipler
 
         if v3 != 0.0 and primitive_y_multiplier != 1.0:
             v4 = primitive_y_multiplier * v3
-            v3 = v4 + CurrentZOffset
+            v3 = v4 + runtime.CurrentZOffset
         else:
-            v3 += CurrentZOffset
+            v3 += runtime.CurrentZOffset
 
         # Yeah, quick and dirty, I need to think this through
         if not jointFlag:
@@ -1198,7 +1163,7 @@ def create_primitive(primitive_x, primitive_y,
 
         else:
             # Invert Jointer Piece Depending on Direction set
-            v1 = (jointFlag * v1) + rx + (CUBE_X * Primitive_Multipler)
+            v1 = (jointFlag * v1) + rx + (runtime.CUBE_X * runtime.Primitive_Multipler)
             v2 = v2 + ry
 
         strVertices = strVertices + "v " + str(myFormatter.format(v1)) + " " + \
@@ -1219,8 +1184,8 @@ def create_primitive(primitive_x, primitive_y,
     #strFaces = "# "+str(vert_len)+f" Vertices\ng Pixel_{primitive_x}_{primitive_y}_F\n"
     mtl_string=""
 
-    if CREATE_MTL_FILE:
-        mtl_string = "mtllib "+os.path.basename(mtl_filename) + "\n" + \
+    if runtime.CREATE_MTL_FILE:
+        mtl_string = "mtllib "+os.path.basename(runtime.mtl_filename) + "\n" + \
             f"usemtl {material_index}\n"
 
     strFaces=f"g ACIS Pixel_{primitive_x}_{primitive_y}_F\n"
@@ -1234,8 +1199,8 @@ def create_primitive(primitive_x, primitive_y,
 
         for faceIndex in range(len(primitive_face[index])):
             
-            faceID = primitive_face[index][faceIndex] + Current_Face
-            faceIDOpposite = Current_Opposite_Face+faceID
+            faceID = primitive_face[index][faceIndex] + runtime.Current_Face
+            faceIDOpposite = runtime.Current_Opposite_Face+faceID
             if jointFlag:
                 strFaces = strFaces + f"{faceID}//{faceIDOpposite} "
             else:
@@ -1259,166 +1224,9 @@ def create_primitive(primitive_x, primitive_y,
     # update face Index Counter to next set 
     #Current_Face += (face_len * 2)
     #Current_Face += 8
-    Current_Face += len(primitive_vert)
-    Current_Opposite_Face += (len(primitive_normals))
+    runtime.Current_Face += len(primitive_vert)
+    runtime.Current_Opposite_Face += (len(primitive_normals))
     return Primitive_String
-
-#
-# Define Material Colour
-#
-
-#
-# Add material colour to Material File
-#
-
-#
-# Convert Colour To Pixel - Can extend this to exclude colour ranges in future updates.
-#
-def getPixelFromRow(x, row, channels, rowWidth):
-    """
-    Extract a pixel's RGB(A) data from a given row of image data and determine material index.
-
-    This function interprets raw pixel data (indexed or RGB/RGBA), evaluates transparency,
-    and registers a colour as a material if valid. It returns the pixel intensity,
-    the assigned material index, and the hex colour code.
-
-    Args:
-        x (int): Horizontal pixel index within the row.
-        row (list[int]): Flattened image row data (byte list).
-        channels (int): Number of channels per pixel (1=Indexed, 3=RGB, 4=RGBA).
-        rowWidth (int): Total number of pixels in the row.
-
-    Returns:
-        tuple:
-            - int: Pixel value (0-255) or -1 for transparent/invalid
-            - int: Index of material in material dictionary, or -1 if invalid
-            - str: Hex colour code (e.g. "#ffcc00") or default "#000000"
-
-    Globals:
-        ALPHACUTOFF (int): Threshold below which alpha is considered transparent.
-        MATERIALS.colours (dict): Maps colour hex codes to usage count.
-        MATERIALS.index (int): Material creation tracker.
-        Create_Towered_File (bool): Affects towered output behaviour.
-
-    TODO:
-        - Refactor RGB/Alpha logic into a reusable pixel parser
-        - Expose ALPHACUTOFF and Create_Towered_File as arguments or config
-        - Add support for 16-bit PNGs or grayscale+alpha channels
-    """
-    # Calculate the offset into the ROW for pixel information
-    offset_x = (x * channels) % (rowWidth * channels)
-    pixel = 0
-    ColourCode = "#000000"
-
-    # Need the current Index of Colour or do we? Could use dict len?
-    global Create_Towered_File
-
-    TowerMultiplier = 1.0
-
-    # If Indexed PNG, we're only interested in the index value
-    if channels == 1:
-        pixel = row[x]
-
-    else:
-        # Get the RGB Values from the offset
-        r, g, b = row[offset_x:offset_x + 3]
-
-        # Crude but effective as we're only interested in whether colour data
-        # is prsent or not to determine whether to add a primitive or not
-        pixel = r|g|b
-
-    if channels == 4:
-        #Check Alpha
-        a = row[offset_x+3]
-        # If below the cutoff we set the pixel to 0 (No Colour Data)
-        if a <= ALPHACUTOFF:
-            pixel = -1
-            r = 0
-            g = 0
-            b = 0
-
-    valid, ColourCode = MATERIALS.register(r, g, b, pixel)
-
-    if not valid:
-        pixel =-1
-
-
-    material_index = -1
-    
-    # Retrieve the index of the Colour Code from the Dictionary
-    if ColourCode in MATERIALS.colours and pixel > -1:
-        material_index = list(MATERIALS.colours).index(ColourCode)
-        MATERIALS.colours[ColourCode] += 1
-
-    return pixel, material_index, ColourCode
-
-#
-# Process a simple set of rules to determine if a Jointer Block is required.
-# That is missing diagonal pixes.  It's crude and needs refinement.
-#
-def CheckJointRequired(x ,y ,row, nextRow, channels, pattern_w):
-    """
-    Check if a pixel joint is needed to strengthen corner-only diagonal connections in the print.
-
-    This is used to detect weak diagonals where two pixels only touch at the corner,
-    with adjacent spaces in between. Such configurations (e.g. XO/OX or OX/XO)
-    result in fragile prints, especially on flat or thin-layered models.
-
-    The function inspects a 2x2 pixel area and identifies situations where a
-    small strengthening joint should be added between opposing corners.
-
-    Args:
-        x (int): Pixel's X-coordinate in the current row.
-        y (int): Pixel's Y-coordinate in the image.
-        row (list[int]): Flattened list of pixel data for the current row.
-        nextRow (list[int]): Flattened list of pixel data for the next row.
-        channels (int): Number of channels in the image data (e.g. 3 = RGB).
-        pattern_w (int): Width of the pixel row.
-
-    Returns:
-        int:
-            - 0 = No joint needed
-            - 1 = Add joint (↘ diagonal from top-left to bottom-right)
-            - -1 = Add joint (↙ diagonal from top-right to bottom-left)
-
-    Globals:
-        Pixel_W (int): Width of a sprite frame (used to avoid placing joints at sprite edges).
-        Pixel_H (int): Height of a sprite frame.
-
-    Note:
-        This logic is used regardless of print mode (flat, layered, or towered) to ensure print
-        strength and prevent brittle isolated pixels with corner-only contact.
-
-    TODO:
-        - Make `Pixel_W` and `Pixel_H` configurable or passed in
-        - Consider returning a label/enum for joint type instead of int
-        - Add optional debug visual output to preview joints pre-print
-    """
-    isJointRequired = 0
-
-    # Check if we've Reached the boundary of the Sprite Sheet Sprite
-    if y > 0 and not (y+1) % Pixel_H:
-        return 0
-    
-    if x>0 and not (x+1) % Pixel_W:
-        return 0
-
-    # Not Checking last pixel as this is covered 
-    if x >= (pattern_w-1): 
-        return isJointRequired
-
-    a, mi, mm = getPixelFromRow(x,   row,     channels, pattern_w)
-    b, mi, mm = getPixelFromRow(x+1, row,     channels, pattern_w)
-    c, mi, mm = getPixelFromRow(x,   nextRow, channels, pattern_w)
-    d, mi, mm = getPixelFromRow(x+1, nextRow, channels, pattern_w)
-
-    if (a > 0 and d > 0 and b <= 0 and c <= 0):
-        isJointRequired = 1
-
-    if (b > 0 and c > 0 and a <= 0 and d <= 0):
-        isJointRequired = -1
-
-    return isJointRequired
 
 #
 # And this is where all that magic happens.
@@ -1456,30 +1264,22 @@ def main(noframeRequired):
         - Refactor background flat layer creation into `write_background_layer()`
         - Separate print output from logic for clean testing
     """
-    global WORKING_FILENAME
-    global Debug_Txt_File
-    global Sort_Colours_Flag
-    global Sort_Direction
-    global FILE_COUNTER
-    global Primitive_Multiplier_Background
-    global Primitive_Multiplier_Layers
-    global CurrentZOffset
 
     # Create the Background Object File 
     # Flat Structure width and height of PNG Image.
-    obj_file = os.path.join(PATTERNS, "{}.obj".format(WORKING_FILENAME))
+    obj_file = os.path.join(runtime.PATTERNS, "{}.obj".format(runtime.WORKING_FILENAME))
 
     if not noframeRequired:
         try:
             # TODO: Add some error checking here, rather than rely on TRY/CATCH Scenarios.
             with open(obj_file,'w') as fp_obj:
-                    fp_obj.write(create_primitive(0, 0, IMAGE.width, IMAGE.height, cube_vertices, cube_faces, cube_normals, 0, 0, Primitive_Multiplier_Background))
+                    fp_obj.write(create_primitive(0, 0, runtime.IMAGE.width, runtime.IMAGE.height, cube_vertices, cube_faces, cube_normals, 0, 0, runtime.Primitive_Multiplier_Background))
                     fp_obj.flush()
                     fp_obj.close()
                     # Update Current Offset with multiplier requested
                     #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background)) # Shift Vertices Up a Layer...
                     #CurrentZOffset += (abs(CUBE_Y*Primitive_Multiplier_Background*Primitive_Multipler)) # Shift Vertices Up a Layer...
-                    CurrentZOffset += Primitive_Layer_Depth*Primitive_Multiplier_Background # Shift Vertices Up a Layer...
+                    runtime.CurrentZOffset += runtime.Primitive_Layer_Depth*runtime.Primitive_Multiplier_Background # Shift Vertices Up a Layer...
                 
         except Exception as error:
         # Bad Practice I know...
@@ -1489,29 +1289,29 @@ def main(noframeRequired):
 
     ToSort = {}
 
-    if len(MATERIALS.process_only) > 0:
-        SortedColours = list(MATERIALS.process_only)
-        for x in range(0,len(MATERIALS.process_only)):
-            ToSort[MATERIALS.process_only[x]] = x
+    if len(runtime.MATERIALS.process_only) > 0:
+        SortedColours = list(runtime.MATERIALS.process_only)
+        for x in range(0,len(runtime.MATERIALS.process_only)):
+            ToSort[runtime.MATERIALS.process_only[x]] = x
     else:
         # Set the Sorted Colours Dictionary to Default
         # Remove any layes that have no pixels
         # Colour layers that are all below the Alpha Threshold will have a count of 0
-        for key in MATERIALS.colours:
-            if MATERIALS.colours[key] > 0:
-                ToSort[key] = MATERIALS.colours[key]
+        for key in runtime.MATERIALS.colours:
+            if runtime.MATERIALS.colours[key] > 0:
+                ToSort[key] = runtime.MATERIALS.colours[key]
             else:
                 print(f"Removing Colour: {key} from processing, pixel count of Zero Detected (Check Alpha Threshold If Required)")
 
     # Check if we want to sort by Highest Colour Count First
-    if Sort_Colours_Flag:
+    if runtime.Sort_Colours_Flag:
         #SortedColours = {key: val for key, val in sorted(MATERIALS.colours.items(), key = lambda ele: ele[1], reverse=Sort_Direction)}
-        SortedColours = {key: val for key, val in sorted(ToSort.items(), key = lambda ele: ele[1], reverse=Sort_Direction)}
+        SortedColours = {key: val for key, val in sorted(ToSort.items(), key = lambda ele: ele[1], reverse=runtime.Sort_Direction)}
     else:
         SortedColours = dict(ToSort)
 
     # Remove Colours from Excluded List 
-    for excluded in MATERIALS.exclusion:
+    for excluded in runtime.MATERIALS.exclusion:
         if excluded in SortedColours:
             del SortedColours[excluded]
 
@@ -1519,21 +1319,21 @@ def main(noframeRequired):
     for nextLayer in SortedColours:
         print(f"{nextLayer}")
 
-    print(f"       Found : {len(MATERIALS.colours)} Colours")
+    print(f"       Found : {len(runtime.MATERIALS.colours)} Colours")
     print(f"Working with : {len(SortedColours)} Colours\n")
 
-    FILE_COUNTER +=1
+    runtime.FILE_COUNTER +=1
 
-    if Create_Layered_File:
+    if runtime.Create_Layered_File:
         while len(SortedColours) > 0:
             nextLayer = list(SortedColours.keys())[0]
-            log(f"Processing Colour: {nextLayer}")
+            runtime.log(f"Processing Colour: {nextLayer}")
 
-            if nextLayer in MATERIALS.colours:
-                if ColoursOnSingleLayerHeight:
-                    resp = processFile(nextLayer, nextLayer, MATERIALS.exclusion, Primitive_Multiplier_Layers)
+            if nextLayer in runtime.MATERIALS.colours:
+                if runtime.ColoursOnSingleLayerHeight:
+                    resp = processFile(nextLayer, nextLayer, runtime.MATERIALS.exclusion, runtime.Primitive_Multiplier_Layers)
                 else:
-                    resp = processFile(nextLayer, SortedColours, MATERIALS.exclusion, Primitive_Multiplier_Layers)
+                    resp = processFile(nextLayer, SortedColours, runtime.MATERIALS.exclusion, runtime.Primitive_Multiplier_Layers)
                 
                 if resp == False:
                     print("Failed to process file:")
@@ -1541,128 +1341,10 @@ def main(noframeRequired):
             else:
                 print(f"Colour: {nextLayer} is not present, skipping...")
             # Add colour to excluded list to avoid repeat processing
-            MATERIALS.exclusion+=[nextLayer]
+            runtime.MATERIALS.exclusion+=[nextLayer]
             del SortedColours[nextLayer]
     else:
-        resp = processFile(list(SortedColours.keys())[0], SortedColours, MATERIALS.exclusion)
-
-#
-# Load PNG File to Memory and perform some initial processing
-#   Check number of Channels, is Alpha Available, discover all colours in image
-#
-def loadPNGToMemory(Filename):
-    """
-    Load a PNG file from disk into memory and validate its structure.
-
-    This function reads the image file, checks the bit depth, detects alpha channel presence,
-    and assigns global pattern data required for further processing. It also triggers
-    discovery of colour layers used for slicing or object generation.
-
-    Args:
-        Filename (str): Path to the PNG file to load.
-
-    Returns:
-        bool: True if file loaded and passed basic checks; False if unsupported or missing.
-
-    Globals:
-        pattern (list[list[int]]): Raw pixel data grid.
-        pattern_w (int): Width in pixels.
-        pattern_h (int): Height in pixels.
-        pattern_meta (dict): Metadata including planes and alpha presence.
-        channels (int): Number of channels (3 = RGB, 4 = RGBA).
-
-    TODO:
-        - Refactor to return pattern metadata instead of using globals
-        - Consider supporting more colour modes or bit depths
-        - Expand error reporting to include file format and image mode issues
-    """
-    # Load the PNG File, Check if Valid
-
-    IMAGE.pattern, IMAGE.width, IMAGE.height, IMAGE.meta = load_pattern(Filename)
-
-    # If File Wasn't Found Time to Quit
-    if IMAGE.pattern == None:
-        return False
-    
-    # Check we're dealing with 8 Bits per channel.
-    if IMAGE.meta['planes'] < 3:
-        log(f"PNG File Unsupported, convert to 8 Bits per Channel - 24 bit")
-        return False
-
-    # Check if We've loaded a Valid PNG File
-    if IMAGE.pattern is None:
-        log(f"File: {Filename} is not a valid PNG File")
-        return False
-
-    # Check to see if Alpha Byte Present and set number of channels accordingly
-    alpha = IMAGE.meta['alpha']
-    IMAGE.channels = 4 if alpha else 3
-
-    discoverPixelLayers()
-
-    return True
-
-# Work out the number of colours in the PNG
-# Also the True Width/Height taking out Pixels with Alpha Channels
-def discoverPixelLayers():
-    """
-    Analyse the loaded PNG pattern to find the bounding box of active pixels.
-
-    This function calculates the minimum and maximum X/Y coordinates of all visible
-    pixels (i.e., those above the alpha cutoff) and stores them in global variables.
-    These bounds define the real sprite dimensions used for layout and scaling.
-
-    Returns:
-        None. Updates global image metrics in-place.
-
-    Globals:
-        pattern (list[list[int]]): Loaded image data.
-        pattern_w (int): Width of the loaded PNG.
-        pattern_h (int): Height of the loaded PNG.
-        channels (int): Number of channels per pixel.
-        Image_MinX (int): Minimum X of visible area.
-        Image_MaxX (int): Maximum X of visible area.
-        Image_MinY (int): Minimum Y of visible area.
-        Image_MaxY (int): Maximum Y of visible area.
-        Image_Real_Width (int): Width of bounding box.
-        Image_Real_Height (int): Height of bounding box.
-
-    TODO:
-        - Support trimming transparent borders automatically
-        - Move pixel logic to a re-usable pixel scanner
-        - Consider returning a bounding box object
-    """
-    # Work our way through each row of the PNG File.
-    global Image_Total_Colours
-
-    minx = 999999999
-    maxx = 0
-    miny = 999999999
-    maxy = 0 
-    for y in range(IMAGE.height):
-        row = IMAGE.pattern[int(y % IMAGE.height)]
-
-        for x in range(IMAGE.width):
-            # Get Pixel from Row
-            pixel = getPixelFromRow(x, row, IMAGE.channels, IMAGE.width)[0]
-
-            # Pixel set to -1 for Transperent Pixel (Based on ALPHA Cutoff)
-            if pixel >= 0:
-                if x < minx:
-                    minx = x
-                if x > maxx:
-                    maxx = x
-                if y < miny:
-                    miny = y
-                if y > maxy:
-                    maxy = y
-
-    IMAGE.min_x = minx
-    IMAGE.max_x = maxx
-    IMAGE.min_y = miny
-    IMAGE.max_y = maxy
-    IMAGE.real_width = maxx - minx + 1
-    IMAGE.real_height = maxy - miny + 1
+        resp = processFile(list(SortedColours.keys())[0], SortedColours, runtime.MATERIALS.exclusion)
 
 def displayColourInformation():
     """
@@ -1682,7 +1364,7 @@ def displayColourInformation():
         - Allow filtering or sorting by hex code
         - Consider aligning this with layer preview generation
     """
-    SortedColours = {key: val for key, val in sorted(MATERIALS.colours.items(), key = lambda ele: ele[1], reverse=True)}
+    SortedColours = {key: val for key, val in sorted(runtime.MATERIALS.colours.items(), key = lambda ele: ele[1], reverse=True)}
     
     print("         Layer Order :")
     print("         -------------")
@@ -1692,7 +1374,7 @@ def displayColourInformation():
     for nextLayer in SortedColours:
         print(f"             {nextLayer} : {SortedColours[nextLayer]}")
 
-    print(f"\n               Found : {len(MATERIALS.colours)} Colours")
+    print(f"\n               Found : {len(runtime.MATERIALS.colours)} Colours")
 
     
 def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_multiplier=1.0):
@@ -1728,21 +1410,12 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
         - Use dataclass or config object for global state
         - Add verbose mode and structured logging
     """
-    global WORKING_FILENAME
-    global Debug_Txt_File
-    global CurrentZOffset
-    global Primitive_Multiplier_Layers
-    global Primitive_Layer_Depth
-    global Primitive_Initial_Layer_Depth
-    global Create_Towered_File
  
     # Used to define the Current Face Counter
     # Needed to ensure Vertices are correctly defined.
-    global Current_Face
-    global Current_Opposite_Face
     
-    Current_Face = 0
-    Current_Opposite_Face = 0
+    runtime.Current_Face = 0
+    runtime.Current_Opposite_Face = 0
 
     thisColour = 1
 
@@ -1752,10 +1425,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     # Define RGB Colours as 0
     r, g, b, a = 0, 0, 0, 255
 
-    global mtl_filename
-    global FILE_COUNTER
 
-    global lastPixelFound
 
     # Define output Filenames based on Input, creating
     #   an  OBJ file with 3D Mesh Details
@@ -1764,13 +1434,13 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     TowerMultiplier = 1.0
     LastTowerMultiplier = 1.0
 
-    if Create_Layered_File:
-        obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
+    if runtime.Create_Layered_File:
+        obj_file = os.path.join(runtime.PATTERNS, "{}_Y{}{}.obj".format(runtime.WORKING_FILENAME,runtime.FILE_COUNTER,str(colourMatch)))
     else:
-        obj_file = os.path.join(PATTERNS, "{}_Y{}.obj".format(WORKING_FILENAME,FILE_COUNTER))
+        obj_file = os.path.join(runtime.PATTERNS, "{}_Y{}.obj".format(runtime.WORKING_FILENAME,runtime.FILE_COUNTER))
 
-    if Debug_Txt_File:
-        txt_file = os.path.join(PATTERNS, "{}_Y{}{}.txt".format(WORKING_FILENAME,FILE_COUNTER,str(colourMatch)))
+    if runtime.Debug_Txt_File:
+        txt_file = os.path.join(runtime.PATTERNS, "{}_Y{}{}.txt".format(runtime.WORKING_FILENAME,runtime.FILE_COUNTER,str(colourMatch)))
 
     # If we're adding Jointer Blocks this will be required.
     LastRow = False
@@ -1778,9 +1448,9 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     # open files for Writing, Note we're not checking their presence as we're overwriting/creating
     #   from scratch each time.
     try:
-        if Debug_Txt_File:
+        if runtime.Debug_Txt_File:
            fp_txt=open(txt_file,'w')
-           log(f"Creating Debug File: {txt_file}")
+           runtime.log(f"Creating Debug File: {txt_file}")
     except Exception as error:
         print(f"Failed to Create Debug file: {txt_file}\n")
         sys.exit(1)
@@ -1788,12 +1458,12 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
     try:
         # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
         with open(obj_file,'w') as fp_obj:
-            log(f"Creating Object File: {obj_file}")
+            runtime.log(f"Creating Object File: {obj_file}")
                 # Create Header for OBJ File
             header = (
                 "# Created using PNG2OBJ.py - © Jason Brooks 2022-2025\n"
                 f"# Generated on: {datetime.now()}\n"
-                f"# Original File: {WORKING_FILENAME}.png, Width: {IMAGE.width}, Height: {IMAGE.height}\n"
+                f"# Original File: {runtime.WORKING_FILENAME}.png, Width: {runtime.IMAGE.width}, Height: {runtime.IMAGE.height}\n"
                 "# License: MIT-NC (Non-Commercial use only, attribution required)\n"
                 "# https://github.com/muckypaws/PNG2OBJ\n"
             )
@@ -1807,27 +1477,27 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
             # Work our way through each row of the PNG File.
             #for y in range(pattern_h):
-            for y in range(IMAGE.min_y, IMAGE.max_y + 1):
-                row = IMAGE.pattern[int(y % IMAGE.height)]
+            for y in range(runtime.IMAGE.min_y, runtime.IMAGE.max_y + 1):
+                row = runtime.IMAGE.pattern[int(y % runtime.IMAGE.height)]
                 
                 # Get Next Row for Jointer Block Processing.
                 # We're cheating by MOD by the PNG Height
                 # But will set the Last row flag so we don't 
                 # Process the rules for this. 
-                nextRow = IMAGE.pattern[int((y+1) % IMAGE.height)]
+                nextRow = runtime.IMAGE.pattern[int((y+1) % runtime.IMAGE.height)]
 
-                if Debug_Txt_File:
+                if runtime.Debug_Txt_File:
                     fp_txt.write('\n')
 
                 # Check If We're processing the last row of Pixels
-                if y == (IMAGE.height-1):
+                if y == (runtime.IMAGE.height-1):
                     LastRow = True
 
                 # If we're splitting models based on pixel width and height add and extra line
                 #   And ensure we start the next primitive further down to enforce a gap in the model
-                if y >0 and not(y % Pixel_H):
+                if y >0 and not(y % runtime.Pixel_H):
                     start_y = start_y + 1
-                    if Debug_Txt_File:
+                    if runtime.Debug_Txt_File:
                         fp_txt.write('\n')
                 
                 # Iterate through the data with
@@ -1836,23 +1506,23 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                 pixel_found_colour_index = 0
                 primitive_width = 0
                 primitive_x = 0
-                lastPixelFound = -1
+                runtime.lastPixelFound = -1
                 LastTowerMultiplier = 1.0
                 TowerMultiplier = 1.0
 
                 #for x in range(pattern_w):
-                for x in range(IMAGE.min_x,IMAGE.max_x + 1):
+                for x in range(runtime.IMAGE.min_x,runtime.IMAGE.max_x + 1):
                     # Check if We're Adding extra space between each sprite based
                     #   on fixed pixel width per sprite.
-                    if x > 0 and not(x % Pixel_W):
-                        if Debug_Txt_File:
+                    if x > 0 and not(x % runtime.Pixel_W):
+                        if runtime.Debug_Txt_File:
                             fp_txt.write("|")
 
                         # Close off this sprite.
                         if pixel_found:
                             thisColour = pixel_found_colour_index
-                            if Create_Layered_File:
-                                thisColour = list(MATERIALS.colours).index(colourMatch)
+                            if runtime.Create_Layered_File:
+                                thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
                             pixel_found = False
                             fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                             Total_Primitives += 1
@@ -1860,12 +1530,12 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                         start_x=start_x+1
                         primitive_width = 0
                         primitive_x = start_x
-                        lastPixelFound = -1
+                        runtime.lastPixelFound = -1
 
                     # Get Pixel from Row
-                    pixel,mi, mm = getPixelFromRow(x, row, IMAGE.channels, IMAGE.width)
+                    pixel,mi, mm = getPixelFromRow(x, row, runtime.IMAGE.channels, runtime.IMAGE.width)
 
-                    if Create_Towered_File:
+                    if runtime.Create_Towered_File:
                         LastTowerMultiplier = TowerMultiplier
                         if mm in allowedDictionary:
                             TowerMultiplier = list(allowedDictionary.keys()).index(mm) + 1.0
@@ -1879,7 +1549,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                     #if mm in allowedDictionary:
 
                     if checkProcessingRules(allowedDictionary, mm, excludedColours, pixel):
-                        if Debug_Txt_File:
+                        if runtime.Debug_Txt_File:
                             fp_txt.write("*")
 
                         if not pixel_found:
@@ -1892,8 +1562,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                             #if mm not in allowedDictionary:
                                 if not checkNextPixelProcessingRules(allowedDictionary, mm):
                                     thisColour = pixel_found_colour_index
-                                    if Create_Layered_File:
-                                        thisColour = list(MATERIALS.colours).index(colourMatch)
+                                    if runtime.Create_Layered_File:
+                                        thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
                                     #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                                     #fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , thisColour, primitive_y_multiplier, Primitive_Multiplier_Layers) )
                                     fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier))
@@ -1909,21 +1579,21 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
                         if pixel_found:
                             thisColour = pixel_found_colour_index
-                            if Create_Layered_File:
-                                thisColour = list(MATERIALS.colours).index(colourMatch)
+                            if runtime.Create_Layered_File:
+                                thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
                             #fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, False , pixel_found_colour_index) )
                             fp_obj.write(  create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False , thisColour, primitive_y_multiplier * LastTowerMultiplier) )
                             pixel_found = False
                             primitive_width = 0
                             Total_Primitives += 1
 
-                        if Debug_Txt_File:
+                        if runtime.Debug_Txt_File:
                             fp_txt.write(" ")
 
                     # Check if we're to add Jointer Blocks
-                    if JOINTS_REQUIRED and not LastRow:
+                    if runtime.JOINTS_REQUIRED and not LastRow:
                         # Check if Blocks meet the Jointer rule
-                        newJoint = CheckJointRequired(x, y, row, nextRow, IMAGE.channels, IMAGE.width)
+                        newJoint = CheckJointRequired(x, y, row, nextRow, runtime.IMAGE.channels, runtime.IMAGE.width)
 
                         if newJoint:
                             fp_obj.write(  create_primitive(start_x, start_y + 1, 1, 1, joint_verticies, joint_faces, joint_normals, newJoint, thisColour, primitive_y_multiplier * LastTowerMultiplier) )
@@ -1937,8 +1607,8 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
                 # Update to the next Y Postion and check if we have an unwritten primitive to complete
                 if pixel_found:
                     thisColour = pixel_found_colour_index
-                    if Create_Layered_File:
-                        thisColour = list(MATERIALS.colours).index(colourMatch)
+                    if runtime.Create_Layered_File:
+                        thisColour = list(runtime.MATERIALS.colours).index(colourMatch)
                     fp_obj.write( create_primitive(primitive_x, start_y, primitive_width, 1, cube_vertices, cube_faces, cube_normals, False, thisColour, primitive_y_multiplier * TowerMultiplier) )
                     pixel_found = False
                     primitive_width = 0
@@ -1954,7 +1624,7 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
             fp_obj.write(f"#\n# Total Primitives Created: {Total_Primitives}\n#\n")
 
-            log(f"Successfully Created Object File: {obj_file}\n")
+            runtime.log(f"Successfully Created Object File: {obj_file}\n")
 
     except Exception as error:
     # Bad Practice I know...
@@ -1965,17 +1635,17 @@ def processFile(colourMatch, allowedDictionary, excludedColours, primitive_y_mul
 
     # Update Current Offset with multiplier requested
 
-    if not ColoursOnSingleLayerHeight:
+    if not runtime.ColoursOnSingleLayerHeight:
         #CurrentZOffset += (abs(Primitive_Multipler*primitive_y_multiplier*CUBE_Y)) # Shift Vertices Up a Layer...
-        CurrentZOffset += Primitive_Layer_Depth * Primitive_Multiplier_Layers
+        runtime.CurrentZOffset += runtime.Primitive_Layer_Depth * runtime.Primitive_Multiplier_Layers
 
         # Bit of a bodge, but set the next layer height depth going forward.
-        if Primitive_Initial_Layer_Depth != 0.0:
-            Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
-            Primitive_Initial_Layer_Depth = 0.0
+        if runtime.Primitive_Initial_Layer_Depth != 0.0:
+            runtime.Primitive_Layer_Depth = runtime.Primitive_Initial_Layer_Depth
+            runtime.Primitive_Initial_Layer_Depth = 0.0
 
     # Write and Flush the TXT File
-    if Debug_Txt_File:
+    if runtime.Debug_Txt_File:
         fp_txt.write('\n')
         fp_txt.flush()
         fp_txt.close()
@@ -2013,15 +1683,14 @@ def checkProcessingRules(allowedColours, currentColour, excludedColours, pixel):
         - Consolidate logic with higher-level decision flow
         - Replace pixel < 0 check with named constant or utility
     """
-    global lastPixelFound
 
     if pixel <0:
         return False
     
     if len(allowedColours) > 0:        
-        if Create_Layered_File:
+        if runtime.Create_Layered_File:
             if currentColour in allowedColours and currentColour not in excludedColours:
-                lastPixelFound = currentColour
+                runtime.lastPixelFound = currentColour
                 return True
             return False
 
@@ -2058,62 +1727,18 @@ def checkNextPixelProcessingRules(allowedColours, currentColour):
         - Clarify distinction between first-pass and next-pass validation
         - Refactor to a more descriptive function name (e.g., `isColourRepeatAllowed`)
     """
-    global lastPixelFound
 
-    if Create_Layered_File:
+    if runtime.Create_Layered_File:
         if currentColour not in allowedColours:
             return False
         else:
             return True
     
-    if currentColour != lastPixelFound:
-        lastPixelFound = currentColour
+    if currentColour != runtime.lastPixelFound:
+        runtime.lastPixelFound = currentColour
         return False
     
     return True
-
-
-#
-# Load a PNG File
-#
-def load_pattern(pattern_name):
-    """
-    Load a pre-saved PNG pattern file from the local pattern directory.
-
-    This is used for frame overlays, template elements, or repeatable embedded
-    components. The function attempts to read the file, parse its PNG metadata,
-    and convert the result to a usable list.
-
-    Args:
-        pattern_name (str): Name of the pattern PNG file (without extension).
-
-    Returns:
-        tuple:
-            - pattern (list): Raw pixel data from PNG
-            - pattern_w (int): Width of the pattern
-            - pattern_h (int): Height of the pattern
-            - pattern_meta (dict): PNG metadata (e.g. bit depth, channels)
-
-    Globals:
-        PATTERNS (str): Path to the folder where pattern PNGs are stored.
-
-    TODO:
-        - Add error handling for non-PNG file types
-        - Allow extension override or auto-detect
-        - Cache last-read pattern for re-use
-    """
-    pattern_file = os.path.join(PATTERNS, "{}.png".format(Path(pattern_name).with_suffix('')))
-
-    log(f"Attempting to pre-process file: {pattern_file}")
-    if os.path.isfile(pattern_file):
-        r = png.Reader(file=open(pattern_file, 'rb'))
-        pattern_w, pattern_h, pattern, pattern_meta = r.read()
-        pattern = list(pattern)
-        log("Loaded PNG file: {}".format(pattern_file))
-        return pattern, pattern_w, pattern_h, pattern_meta
-    else:
-        log("Invalid PNG file: {}".format(pattern_file))
-        return None, 0, 0, None
 
 #
 # Write Cached Material Information to Material File if Required
@@ -2150,10 +1775,10 @@ def CreateMasterMaterialFileMaster(filename):
             fp_mtl.write("# See www.muckypaws.com and www.muckypawslabs.com\n")
             fp_mtl.write("# https://github.com/muckypaws/PNG2OBJ\n\n")
 
-            for _, line in enumerate(MATERIALS.materials):
+            for _, line in enumerate(runtime.MATERIALS.materials):
                 fp_mtl.write(f"{line}")
 
-            fp_mtl.write(f"#\n# Total Material Colours Created: {len(MATERIALS.materials)}\n#\n")
+            fp_mtl.write(f"#\n# Total Material Colours Created: {len(runtime.MATERIALS.materials)}\n#\n")
 
         print(f"✅ Material file written: {output_path}")
 
@@ -2162,7 +1787,7 @@ def CreateMasterMaterialFileMaster(filename):
     except Exception as error:
         print(f"❌ Failed to create Material File: {filename}")
         print(f"Error: {error}")
-        if DEBUG:
+        if runtime.DEBUG:
             import sys
             print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
         sys.exit(1)
@@ -2171,31 +1796,6 @@ def CreateMasterMaterialFileMaster(filename):
 #
 # Default Logging Code
 #
-def log(msg):
-    """
-    Print a timestamped message to standard output.
-
-    This utility logger writes the current datetime followed by the given message.
-    It bypasses `print()` to ensure clean, flushed, unbuffered output in terminal
-    or redirected logs.
-
-    Args:
-        msg (str): The message to log.
-
-    Returns:
-        None. Output is written to stdout.
-
-    TODO:
-        - Add optional log level (info/warn/error)
-        - Allow toggling or redirecting log to file
-        - Move to logging module for configurable verbosity
-    """
-    #sys.stdout.write("\n")
-    sys.stdout.write(str(datetime.now()))
-    sys.stdout.write(": ")
-    sys.stdout.write(msg)
-    sys.stdout.write("\n")
-    sys.stdout.flush()
 
 #
 # Position the Vertex Data based on Current X, Y Position on Grid
@@ -2227,8 +1827,8 @@ def PositionDesign(vertices,x,y):
     nextVertices = []
     for index, vertex in list(enumerate(vertices)):
         # Get vertices
-        v1 = vertex[0] + (x * CUBE_X)
-        v2 = vertex[1] + (y * CUBE_Y)
+        v1 = vertex[0] + (x * runtime.CUBE_X)
+        v2 = vertex[1] + (y * runtime.CUBE_Y)
         v3 = vertex[2]
 
         nextVertices.append([v1, v2, v3])
@@ -2520,26 +2120,26 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
         - Consider modularising sprite-spacing logic
     """
     start_y = offsetY
-    for y in range(IMAGE.min_y, IMAGE.max_y + 1):
-        row = IMAGE.pattern[int(y % IMAGE.height)]
+    for y in range(runtime.IMAGE.min_y, runtime.IMAGE.max_y + 1):
+        row = runtime.IMAGE.pattern[int(y % runtime.IMAGE.height)]
 
         # If we're splitting models based on pixel width and height add and extra line
         #   And ensure we start the next primitive further down to enforce a gap in the model
-        if y >0 and not(y % Pixel_H):
+        if y >0 and not(y % runtime.Pixel_H):
             start_y = start_y + 1
         
         # Iterate through the data with
         start_x = offsetX
 
 
-        for x in range(IMAGE.min_x,IMAGE.max_x + 1):
+        for x in range(runtime.IMAGE.min_x,runtime.IMAGE.max_x + 1):
             # Check if We're Adding extra space between each sprite based
             #   on fixed pixel width per sprite.
-            if x > 0 and not(x % Pixel_W):
+            if x > 0 and not(x % runtime.Pixel_W):
                 start_x += 1
 
             # Get Pixel from Row
-            pixel,mi, mm = getPixelFromRow(x, row, IMAGE.channels, IMAGE.width)
+            pixel,mi, mm = getPixelFromRow(x, row, runtime.IMAGE.channels, runtime.IMAGE.width)
 
             if checkProcessingRules(allowedDictionary, mm, excludedColours, pixel):
                 myKey = f"{(x+offsetX):04d}:{(y+offsetY):04d}"
@@ -2586,10 +2186,10 @@ def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, Last
         - Separate header formatting into its own reusable helper
     """
     try:
-        if Create_Layered_File:
-            obj_file = Path(PATTERNS) / f"{filename}_Y{FILE_COUNTER}{colourMatch}.obj"
+        if runtime.Create_Layered_File:
+            obj_file = Path(runtime.PATTERNS) / f"{filename}_Y{runtime.FILE_COUNTER}{colourMatch}.obj"
         else:
-            obj_file = Path(PATTERNS) / f"{filename}_Y{FILE_COUNTER}.obj"
+            obj_file = Path(runtime.PATTERNS) / f"{filename}_Y{runtime.FILE_COUNTER}.obj"
 
         obj_file = obj_file.resolve()
 
@@ -2597,7 +2197,7 @@ def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, Last
             header = (
                 "# Creator PNG2OBJ.py - © Jason Brooks 2022\n"
                 f"# {datetime.now()}\n"
-                f"# Original File: {WORKING_FILENAME}.png, Width: {IMAGE.width}, Height: {IMAGE.height}\n"
+                f"# Original File: {runtime.WORKING_FILENAME}.png, Width: {runtime.IMAGE.width}, Height: {runtime.IMAGE.height}\n"
             )
             fp_obj.write(header)
 
@@ -2622,7 +2222,7 @@ def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, Last
     except Exception as error:
         print(f"❌ Failed to write OBJ file: {obj_file}")
         print(f"Error: {error}")
-        if DEBUG:
+        if runtime.DEBUG:
             import sys
             print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
     return False
@@ -2656,21 +2256,21 @@ def addDefaultMaterialColours():
         - Add option to tag with use context (e.g., outline, highlight)
     """
     # Black
-    MATERIALS.register(0,0,0,0)
+    runtime.MATERIALS.register(0,0,0,0)
     # Red
-    MATERIALS.register(255,0,0,0)
+    runtime.MATERIALS.register(255,0,0,0)
     # Green
-    MATERIALS.register(0,255,0,0)
+    runtime.MATERIALS.register(0,255,0,0)
     # Blue
-    MATERIALS.register(0,0,255,0)
+    runtime.MATERIALS.register(0,0,255,0)
     # Yellow
-    MATERIALS.register(255,255,0,0)
+    runtime.MATERIALS.register(255,255,0,0)
     # Purple
-    MATERIALS.register(255,0,255,0)
+    runtime.MATERIALS.register(255,0,255,0)
     # Cyan
-    MATERIALS.register(0,255,255,0)
+    runtime.MATERIALS.register(0,255,255,0)
     # White
-    MATERIALS.register(255,255,255,0)
+    runtime.MATERIALS.register(255,255,255,0)
 
 #
 # Can we create a simple parametric set of shapes?
@@ -2706,13 +2306,11 @@ def ParametricTest(Filename):
         - Add preview/export toggle for colour overlay pass
         - Clean up old commented code paths for rotation variants
     """
-    global Primitive_Layer_Depth
-    global Primitive_Multipler
 
     LastTowerMultiplier = 1.0
     primitive_y_multiplier = 1.0
-    Primitive_Layer_Depth = 10.0
-    Primitive_Multipler = 1.0
+    runtime.Primitive_Layer_Depth = 10.0
+    runtime.Primitive_Multipler = 1.0
 
     # Test mod primitive
     new_vertices = ([ 0.000000,  0.000000, 0.000000],
@@ -2811,10 +2409,10 @@ def ParametricTest(Filename):
 
     # Apply PNG Process
     #ApplyPNGColoursToParametricObjects(VerticesDict,-2,-2, MATERIALS.process_only, MATERIALS.exclusion)
-    ApplyPNGColoursToParametricObjects(VerticesDict, 0, 0, MATERIALS.process_only, MATERIALS.exclusion)
+    ApplyPNGColoursToParametricObjects(VerticesDict, 0, 0, runtime.MATERIALS.process_only, runtime.MATERIALS.exclusion)
 
     CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier)
-    CreateMasterMaterialFileMaster(mtl_filename)
+    CreateMasterMaterialFileMaster(runtime.mtl_filename)
 
 #
 # Process SVG Options
@@ -2859,13 +2457,13 @@ def process_SVG_File(args):
     """
 
     if len(args.illusioncolourtable) == 4:
-        SVG.illusion_colour_table = args.illusioncolourtable
+        runtime.SVG.illusion_colour_table = args.illusioncolourtable
 
 
     if args.colourset > -1:
-        SVG.illusion_colour_table = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
+        runtime.SVG.illusion_colour_table = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
 
-    SVG.illusion_max_streak = args.maxstreak if args.maxstreak > 0 else SVG.illusion_max_streak
+    runtime.SVG.illusion_max_streak = args.maxstreak if args.maxstreak > 0 else runtime.SVG.illusion_max_streak
 
     if len(args.outfilename[0]) > 0:
         outfilename = os.path.join("{}.svg".format(Path(''.join(args.outfilename)).with_suffix('')))
@@ -2897,7 +2495,7 @@ def process_SVG_File(args):
             print(f"               Illusion Type : Diagonals")
         else:
             print(f"               Illusion Type : Circular")
-        print(f"     Maximum Illusion Streak : {SVG.illusion_max_streak}")
+        print(f"     Maximum Illusion Streak : {runtime.SVG.illusion_max_streak}")
         print(f"   Minimum Border to Add PNG : {args.minimumborder}")
         print(f"          Minimum Grid Width : {args.minimumgridwidth}")
         print(f"         Minimum Grid Height : {args.minimumgridheight}")
@@ -2908,7 +2506,7 @@ def process_SVG_File(args):
     print(f"             Output Filename : {outfilename}")
     print(f"Open SVG File after creation : {args.svgopen}\n")
 
-    SVG.illusion_type_circle = args.illusioncircle
+    runtime.SVG.illusion_type_circle = args.illusioncircle
 
     if args.frame400:
         # Create an SVG File for The Range Frames with 400mm internal size and 405mm external size.
@@ -2927,8 +2525,8 @@ def process_SVG_File(args):
         #   Draw Outlines Only
         #   Use the Real Colours of the PNG Image
         #   Add the PNG to the SVG File (False if you just want to create the illusion without the image.)
-        blocks_horizontal = max((args.minimumborder * 2) + IMAGE.real_width, args.minimumgridwidth)
-        blocks_vertical = max((args.minimumborder * 2) + IMAGE.real_height, args.minimumgridheight)
+        blocks_horizontal = max((args.minimumborder * 2) + runtime.IMAGE.real_width, args.minimumgridwidth)
+        blocks_vertical = max((args.minimumborder * 2) + runtime.IMAGE.real_height, args.minimumgridheight)
         create_svg(blocks_horizontal, blocks_vertical,
                     args.outlineOnly,
                     not args.usegridcolours,
@@ -2944,15 +2542,15 @@ def process_SVG_File(args):
                             args.svg_radius_percent_x, args.svg_radius_percent_y)
 
     # Report the Stats
-    print(f'     Total PNG Pixels : {SVG.png_pixel_count}')
-    if SVG.grid_count:
-        print(f'     Total Grid Count : {SVG.grid_count}')
-        if SVG.png_pixel_count:
-            print(f'  Total Grid less PNG : {SVG.grid_count - SVG.png_pixel_count}')
-    if SVG.light_count:
-        print(f'  Total Light Inserts : {SVG.light_count}')
-    if SVG.dark_count:
-        print(f'   Total Dark Inserts : {SVG.dark_count}')
+    print(f'     Total PNG Pixels : {runtime.SVG.png_pixel_count}')
+    if runtime.SVG.grid_count:
+        print(f'     Total Grid Count : {runtime.SVG.grid_count}')
+        if runtime.SVG.png_pixel_count:
+            print(f'  Total Grid less PNG : {runtime.SVG.grid_count - runtime.SVG.png_pixel_count}')
+    if runtime.SVG.light_count:
+        print(f'  Total Light Inserts : {runtime.SVG.light_count}')
+    if runtime.SVG.dark_count:
+        print(f'   Total Dark Inserts : {runtime.SVG.dark_count}')
 
     # Create the Final SVG File.
 
@@ -2973,7 +2571,7 @@ def process_SVG_File(args):
         except Exception as error:
             print(f"⚠️ Failed to open file: {outfilename}")
             print(f"Reason: {error}")
-            if DEBUG:
+            if runtime.DEBUG:
                 print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
 
 #
@@ -3016,8 +2614,8 @@ if __name__ == "__main__":
     parser.add_argument("-bgh","--backgroundheight",help="Height multiplier for the initial background.  Default = 1.0",type=float, default=1.0)
     parser.add_argument("-lm","--layermultiplier",help="The Layer Multiplier to use, default 1.0",type=float,default=1.0)
     parser.add_argument("-nl","--nextlayeronly",help="Process none background colours on next height only",action="store_true", default=False)
-    parser.add_argument("-sw","--spriteWidth",help="Width of Fixed Sprites in Sprite Sheet",type=int,default=DEFAULT_PIXEL_WIDTH)
-    parser.add_argument("-sh","--spriteHeight",help="Height of Fixed Sprites in a Sprite Sheet",type=int,default=DEFAULT_PIXEL_HEIGHT)
+    parser.add_argument("-sw","--spriteWidth",help="Width of Fixed Sprites in Sprite Sheet",type=int,default=runtime.DEFAULT_PIXEL_WIDTH)
+    parser.add_argument("-sh","--spriteHeight",help="Height of Fixed Sprites in a Sprite Sheet",type=int,default=runtime.DEFAULT_PIXEL_HEIGHT)
     parser.add_argument("-mw","--maxwidth",help="Maximum Width of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
     parser.add_argument("-mh","--maxheight",help="Maximum Height of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
     parser.add_argument("-md","--maxdepth",help="Maximum depth of OBJ in mm (Sets Multipliers)",type=float,default=0.0)
@@ -3079,36 +2677,36 @@ if __name__ == "__main__":
         addDefaultMaterialColours()
 
     # Check for Jointer Cubes required.
-    JOINTS_REQUIRED = args.joints
+    runtime.JOINTS_REQUIRED = args.joints
 
     # Check if We're creating the Material File.
 
-    CREATE_MTL_FILE = args.mtl
+    runtime.CREATE_MTL_FILE = args.mtl
 
-    Create_Layered_File = args.flat
-    Create_Layered_File = args.layered
-    Create_Towered_File = args.tower
+    runtime.Create_Layered_File = args.flat
+    runtime.Create_Layered_File = args.layered
+    runtime.Create_Towered_File = args.tower
 
-    ALPHACUTOFF = args.alphacutoff
+    runtime.ALPHACUTOFF = args.alphacutoff
 
-    Sort_Colours_Flag = args.sort
+    runtime.Sort_Colours_Flag = args.sort
 
-    Primitive_Multiplier_Background = args.backgroundheight
-    Primitive_Multiplier_Layers = args.layermultiplier
+    runtime.Primitive_Multiplier_Background = args.backgroundheight
+    runtime.Primitive_Multiplier_Layers = args.layermultiplier
 
     # Ensure we're sorting if only one of the sort flags provided.
     if args.reversesort:
-        Sort_Colours_Flag = True
-        Sort_Direction = True
+        runtime.Sort_Colours_Flag = True
+        runtime.Sort_Direction = True
 
     # Ensure the Working Filename Has No Extension.
     if len(args.outfilename[0]) > 0:
-        WORKING_FILENAME = Path(args.outfilename[0]).with_suffix('')
+        runtime.WORKING_FILENAME = Path(args.outfilename[0]).with_suffix('')
     else:
-        WORKING_FILENAME = Path(args.filename).with_suffix('')
+        runtime.WORKING_FILENAME = Path(args.filename).with_suffix('')
 
     # Set Material Filename
-    mtl_filename = os.path.join(PATTERNS, "{}.mtl".format(WORKING_FILENAME))
+    runtime.mtl_filename = os.path.join(runtime.PATTERNS, "{}.mtl".format(runtime.WORKING_FILENAME))
 
 
     # First Stage, Get Colours In Memory first and see if we have something
@@ -3117,34 +2715,34 @@ if __name__ == "__main__":
         print(f"Unable to open file: {args.filename}.png")
         sys.exit(1)
     
-    if IMAGE.real_height < 1 or IMAGE.real_width < 1:
+    if runtime.IMAGE.real_height < 1 or runtime.IMAGE.real_width < 1:
         print(f"No Image Data to Process, Quitting...")
         sys.exit(1)
 
     # Remove Excluded Colours from Process Colours List
     # If user provides both in both tables, we'll force exclusion!
-    totalColours = len(MATERIALS.colours)
-    for excluded in MATERIALS.exclusion:
-        if excluded in MATERIALS.colours:
+    totalColours = len(runtime.MATERIALS.colours)
+    for excluded in runtime.MATERIALS.exclusion:
+        if excluded in runtime.MATERIALS.colours:
             totalColours -= 1
 
     if args.excludelist and not args.listColours:
         print(f"Excluding the following colours: {args.excludelist}\n")
-        MATERIALS.exclusion = args.excludelist
+        runtime.MATERIALS.exclusion = args.excludelist
 
     if args.processcolours:
         print(f"Only Processing the following colours: {args.processcolours}")
-        MATERIALS.process_only = args.processcolours
+        runtime.MATERIALS.process_only = args.processcolours
 
-    Debug_Txt_File = args.debug
+    runtime.Debug_Txt_File = args.debug
 
-    Pixel_W = args.spriteWidth
-    Pixel_H = args.spriteHeight
+    runtime.Pixel_W = args.spriteWidth
+    runtime.Pixel_H = args.spriteHeight
 
     widthMultiplier = 0.01
     heightMultiplier = 0.01
 
-    ColoursOnSingleLayerHeight = args.nextlayeronly
+    runtime.ColoursOnSingleLayerHeight = args.nextlayeronly
 
 
 
@@ -3152,26 +2750,26 @@ if __name__ == "__main__":
     print(f"    Image Information :")
     print("    -------------------\n")
     print(f"           Image File : {args.filename}")
-    print(f"       PNG Image Size : {IMAGE.width}px (width), {IMAGE.height}px (height)")
-    print(f"   Number of Channels : {IMAGE.channels}")
+    print(f"       PNG Image Size : {runtime.IMAGE.width}px (width), {runtime.IMAGE.height}px (height)")
+    print(f"   Number of Channels : {runtime.IMAGE.channels}")
     print("")
-    print(f"     Joints Requested : {JOINTS_REQUIRED}\n Create Material File : {CREATE_MTL_FILE}")
-    print(f" Reverse Sort Colours : {Sort_Colours_Flag}")
-    print(f"Create Flat File Only : {not Create_Layered_File}" )
-    print(f"         Alpha Cutoff : {ALPHACUTOFF}")
+    print(f"     Joints Requested : {runtime.JOINTS_REQUIRED}\n Create Material File : {runtime.CREATE_MTL_FILE}")
+    print(f" Reverse Sort Colours : {runtime.Sort_Colours_Flag}")
+    print(f"Create Flat File Only : {not runtime.Create_Layered_File}" )
+    print(f"         Alpha Cutoff : {runtime.ALPHACUTOFF}")
 
 
-    if Pixel_W != DEFAULT_PIXEL_WIDTH:
-        print(f"   Sprite Sheet Width : {Pixel_W}")
-    if Pixel_H != DEFAULT_PIXEL_HEIGHT:
-        print(f"  Sprite Sheet Height : {Pixel_H}")
+    if runtime.Pixel_W != runtime.DEFAULT_PIXEL_WIDTH:
+        print(f"   Sprite Sheet Width : {runtime.Pixel_W}")
+    if runtime.Pixel_H != runtime.DEFAULT_PIXEL_HEIGHT:
+        print(f"  Sprite Sheet Height : {runtime.Pixel_H}")
 
     # Process file parameters for 3D Waveform OBJ Format
     if not args.svg:
         if args.maxheight != 0.0 or args.maxwidth != 0.0:
             # Need to calculate the Multipliers...
-            widthMultiplier = args.maxwidth / IMAGE.real_width
-            heightMultiplier = args.maxheight / IMAGE.real_height
+            widthMultiplier = args.maxwidth / runtime.IMAGE.real_width
+            heightMultiplier = args.maxheight / runtime.IMAGE.real_height
 
             if widthMultiplier == 0.0:
                 widthMultiplier = heightMultiplier
@@ -3179,75 +2777,75 @@ if __name__ == "__main__":
             if heightMultiplier == 0.0:
                 heightMultiplier = widthMultiplier
 
-            Primitive_Multipler = min(widthMultiplier, heightMultiplier) / 10.0
+            runtime.Primitive_Multipler = min(widthMultiplier, heightMultiplier) / 10.0
 
         # Calculate Layer Depths.
         if args.maxdepth != 0.0:
             # Do we need a fixed First Layer Depth?
 
-            if not Create_Layered_File:
-                Primitive_Initial_Layer_Depth = args.maxdepth
-                Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
+            if not runtime.Create_Layered_File:
+                runtime.Primitive_Initial_Layer_Depth = args.maxdepth
+                runtime.Primitive_Layer_Depth = runtime.Primitive_Initial_Layer_Depth
             else:
                 # If we didn't pass an colours to process (So all except the exception list)
                 if args.initialLayerDepth != 0.0 and totalColours > 0 and len(args.processcolours) == 0:
                     # How many colours are we processing?
                     # If more than one, set layer heights accordingly.
                     if totalColours > 1:
-                        Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth)/(len(MATERIALS.colours)-1)
-                        Primitive_Layer_Depth = args.initialLayerDepth
+                        runtime.Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth)/(len(runtime.MATERIALS.colours)-1)
+                        runtime.Primitive_Layer_Depth = args.initialLayerDepth
                     else:
                         # Only one colour to process so has to be maximum height.
-                        Primitive_Initial_Layer_Depth = args.maxdepth
-                        Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
-                    CurrentZOffset = 0.0
+                        runtime.Primitive_Initial_Layer_Depth = args.maxdepth
+                        runtime.Primitive_Layer_Depth = runtime.Primitive_Initial_Layer_Depth
+                    runtime.CurrentZOffset = 0.0
 
-                if args.initialLayerDepth != 0.0 and len(MATERIALS.process_only) > 1 and len(args.processcolours) > 0:
+                if args.initialLayerDepth != 0.0 and len(runtime.MATERIALS.process_only) > 1 and len(args.processcolours) > 0:
                     # Set height of initial layer depth
-                    Primitive_Layer_Depth = args.initialLayerDepth
-                    Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(MATERIALS.process_only) - 1)
+                    runtime.Primitive_Layer_Depth = args.initialLayerDepth
+                    runtime.Primitive_Initial_Layer_Depth = (args.maxdepth - args.initialLayerDepth) / (len(runtime.MATERIALS.process_only) - 1)
                     #Primitive_Layer_Depth = Primitive_Initial_Layer_Depth
-                    CurrentZOffset = 0.0
+                    runtime.CurrentZOffset = 0.0
                 else:
                     #if len(MATERIALS.process_only) > 0:
-                    if Primitive_Layer_Depth == 0.0:
-                        if len(MATERIALS.process_only):
-                            Primitive_Layer_Depth = args.maxdepth / len(MATERIALS.process_only)
+                    if runtime.Primitive_Layer_Depth == 0.0:
+                        if len(runtime.MATERIALS.process_only):
+                            runtime.Primitive_Layer_Depth = args.maxdepth / len(runtime.MATERIALS.process_only)
                         else:
-                            Primitive_Layer_Depth = args.maxdepth / totalColours
+                            runtime.Primitive_Layer_Depth = args.maxdepth / totalColours
 
         else:
-            Primitive_Layer_Depth = abs(Primitive_Multipler*CUBE_Y)
+            runtime.Primitive_Layer_Depth = abs(runtime.Primitive_Multipler*runtime.CUBE_Y)
 
         if args.startZ != 0.0:
-            CurrentZOffset = args.startZ
+            runtime.CurrentZOffset = args.startZ
 
-        print(f"Background Multiplier : {Primitive_Multiplier_Background:.2f}")
-        print(f"     Layer Multiplier : {Primitive_Multiplier_Layers:.2f}")
+        print(f"Background Multiplier : {runtime.Primitive_Multiplier_Background:.2f}")
+        print(f"     Layer Multiplier : {runtime.Primitive_Multiplier_Layers:.2f}")
         print(f"       Object Start Z : {args.startZ:.2f}mm")
         print(f" Object Max Depth (Z) : {args.maxdepth:.2f}mm")
-        if Primitive_Initial_Layer_Depth != 0.0:
-            print(f"      First Layer Depth : {Primitive_Layer_Depth:.2f}mm")
-            print(f"      Next Layer Depths : {Primitive_Initial_Layer_Depth:.2f}mm")
+        if runtime.Primitive_Initial_Layer_Depth != 0.0:
+            print(f"      First Layer Depth : {runtime.Primitive_Layer_Depth:.2f}mm")
+            print(f"      Next Layer Depths : {runtime.Primitive_Initial_Layer_Depth:.2f}mm")
 
         else:
-            print(f"     Each Layer Depth : {Primitive_Layer_Depth:.2f}mm")
+            print(f"     Each Layer Depth : {runtime.Primitive_Layer_Depth:.2f}mm")
 
-        if len(MATERIALS.process_only) > 0:
-            print(f"     Requested Layers : {len(MATERIALS.process_only)}")
+        if len(runtime.MATERIALS.process_only) > 0:
+            print(f"     Requested Layers : {len(runtime.MATERIALS.process_only)}")
 
         print(f"     Background Frame : {not args.noframe}")
 
-        if ColoursOnSingleLayerHeight:
+        if runtime.ColoursOnSingleLayerHeight:
             print(f"\n **** Seperate Colours On Single Layer Selected ****")
 
 
-    if IMAGE.width != IMAGE.real_width or IMAGE.height != IMAGE.real_height:
-        print(f"\n   Actual Image Width : {IMAGE.real_width} Pixels")
-        print(f"  Actual Image Height : {IMAGE.real_height} Pixels")
-        print(f"        Image Start X : {IMAGE.min_x}")
-        print(f"        Image Start Y : {IMAGE.min_y}")
-        print(f"         Bounding Box : ({IMAGE.min_x},{IMAGE.min_y},{IMAGE.max_x},{IMAGE.max_y}) ")
+    if runtime.IMAGE.width != runtime.IMAGE.real_width or runtime.IMAGE.height != runtime.IMAGE.real_height:
+        print(f"\n   Actual Image Width : {runtime.IMAGE.real_width} Pixels")
+        print(f"  Actual Image Height : {runtime.IMAGE.real_height} Pixels")
+        print(f"        Image Start X : {runtime.IMAGE.min_x}")
+        print(f"        Image Start Y : {runtime.IMAGE.min_y}")
+        print(f"         Bounding Box : ({runtime.IMAGE.min_x},{runtime.IMAGE.min_y},{runtime.IMAGE.max_x},{runtime.IMAGE.max_y}) ")
 
     if ThreeD:
         print(f"\n  Pixel Width/Height : {widthMultiplier:.2f}mm x {heightMultiplier:.2f}mm")
@@ -3256,13 +2854,13 @@ if __name__ == "__main__":
         print(f"   Pixel Width/Height : {args.svg_pixel_width:.2f}mm x {args.svg_pixel_height:.2f}mm")
         print(f"          Rect Radius : {args.svg_radius_percent_x:.2f}% x {args.svg_radius_percent_y:.2f}%")
 
-    if Debug_Txt_File:
-        print(f"\n      Debug Text File : {Debug_Txt_File}\n")
+    if runtime.Debug_Txt_File:
+        print(f"\n      Debug Text File : {runtime.Debug_Txt_File}\n")
 
-    if len(MATERIALS.exclusion) > 0:
-        print(f"\nColour list to exclude: {MATERIALS.exclusion}")
-    if len(MATERIALS.process_only) > 0:
-        print(f"\n   Colours to process : {MATERIALS.process_only}")
+    if len(runtime.MATERIALS.exclusion) > 0:
+        print(f"\nColour list to exclude: {runtime.MATERIALS.exclusion}")
+    if len(runtime.MATERIALS.process_only) > 0:
+        print(f"\n   Colours to process : {runtime.MATERIALS.process_only}")
 
     print("\n")
 
@@ -3289,4 +2887,4 @@ if __name__ == "__main__":
     # Changed code to reduce IO to disk
     # Write the Material File at the end
     if args.mtl and not args.listColours:
-        CreateMasterMaterialFileMaster(mtl_filename)
+        CreateMasterMaterialFileMaster(runtime.mtl_filename)
