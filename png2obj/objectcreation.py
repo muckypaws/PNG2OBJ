@@ -1134,7 +1134,7 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
 #
 #
 #
-def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
+def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, LastTowerMultiplier, colourMatch=""):
     """
     Write a complete `.obj` file from a dictionary of vertex primitives.
 
@@ -1147,6 +1147,8 @@ def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, Last
         vertDict (dict): Dictionary of pixel keys (x:y) to lists of [verts, faces, normals, colour_index].
         primitive_y_multiplier (float): Multiplier for depth scaling of primitives.
         LastTowerMultiplier (float): Tower height multiplier for layered mode.
+        colourMatch (str): Name of current colour layer, appended to the output
+            filename in layered mode (default "" for a single combined file).
 
     Returns:
         bool: True on success, False on write error.
@@ -1322,8 +1324,6 @@ def ParametricTest(Filename):
     Radius = 5.0
     xSteps = Radius/5.0
 
-    alternate = False
-
     startstep = 0.0
     currentAngle = 0.0
     angleSteps = 90.0 / 40.0
@@ -1370,30 +1370,12 @@ def ParametricTest(Filename):
             interimDesign = ApplySineWaveToVertices(interimDesign, 40, 175.0,-50.0,75.0)
             nextDesign = ApplyHemiSphereToVertices(interimDesign, 300.0,1.0, 50.0,-60,-250)
 
-            if alternate:
-                if y % 2:
-                    if x % 2:
-                        print("*", end="")
-                        fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
-                                
-                    else:
-                        print(" ",end="")
-                else:
-                    if not x % 2:
-                        print("*", end="")
-                        fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
-                        
-                    else:
-                        print(" ",end="")
-                print("")
-            else:
-                key = f"{x:04d}:{y:04d}"
-                VerticesDict[key] = [nextDesign, new_faces, cube_normals, colourIndex]
-                #fp_obj.write( create_primitive(x, y, 1, 1, nextDesign, new_faces, cube_normals, False , 1, primitive_y_multiplier * LastTowerMultiplier, False))
+            key = f"{x:04d}:{y:04d}"
+            VerticesDict[key] = [nextDesign, new_faces, cube_normals, colourIndex]
 
     # Apply PNG Process
     #ApplyPNGColoursToParametricObjects(VerticesDict,-2,-2, MATERIALS.process_only, MATERIALS.exclusion)
     ApplyPNGColoursToParametricObjects(VerticesDict, 0, 0, runtime.MATERIALS.process_only, runtime.MATERIALS.exclusion)
 
-    CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier)
+    CreateOBJFileFromDictionary(Filename, VerticesDict, primitive_y_multiplier, LastTowerMultiplier, "")
     CreateMasterMaterialFileMaster(runtime.mtl_filename)

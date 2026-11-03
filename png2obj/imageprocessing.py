@@ -7,6 +7,7 @@ populated at load time; defaults match the original pre-load global values (0).
 """
 
 import os
+import sys
 import png
 from pathlib import Path
 
@@ -83,9 +84,31 @@ def getPixelFromRow(x, row, channels, rowWidth):
 
     TowerMultiplier = 1.0
 
-    # If Indexed PNG, we're only interested in the index value
+    # Alpha for this pixel, where the image carries one. ``None`` means fully
+    # opaque (no alpha channel / palette transparency), so the cutoff below is
+    # skipped entirely and RGB / RGBA behaviour is preserved exactly.
+    a = None
+
     if channels == 1:
-        pixel = row[x]
+        # Single value per pixel: either a palette index or a grey level.
+        meta = runtime.IMAGE.meta
+        palette = meta.get('palette') if isinstance(meta, dict) else None
+        if palette:
+            # Indexed / palette PNG: look the RGB(A) colour up by index.
+            entry = palette[row[x]]
+            r, g, b = entry[0], entry[1], entry[2]
+            if len(entry) > 3:
+                a = entry[3]
+        else:
+            # Greyscale PNG: one intensity maps to r == g == b.
+            r = g = b = row[x]
+        pixel = r | g | b
+
+    elif channels == 2:
+        # Greyscale + alpha: [grey, alpha] per pixel.
+        r = g = b = row[offset_x]
+        a = row[offset_x + 1]
+        pixel = r | g | b
 
     else:
         # Get the RGB Values from the offset
@@ -95,15 +118,18 @@ def getPixelFromRow(x, row, channels, rowWidth):
         # is prsent or not to determine whether to add a primitive or not
         pixel = r|g|b
 
-    if channels == 4:
-        #Check Alpha
-        a = row[offset_x+3]
-        # If below the cutoff we set the pixel to 0 (No Colour Data)
-        if a <= runtime.ALPHACUTOFF:
-            pixel = -1
-            r = 0
-            g = 0
-            b = 0
+        if channels == 4:
+            # Check Alpha
+            a = row[offset_x + 3]
+
+    # If an alpha value is present and below the cutoff we treat the pixel as
+    # having no colour data (transparent). Applied uniformly for RGBA,
+    # greyscale+alpha and palette transparency.
+    if a is not None and a <= runtime.ALPHACUTOFF:
+        pixel = -1
+        r = 0
+        g = 0
+        b = 0
 
     valid, ColourCode = runtime.MATERIALS.register(r, g, b, pixel)
 
@@ -225,15 +251,71 @@ def load_pattern(pattern_name):
     pattern_file = os.path.join(runtime.PATTERNS, "{}.png".format(Path(pattern_name).with_suffix('')))
 
     runtime.log(f"Attempting to pre-process file: {pattern_file}")
-    if os.path.isfile(pattern_file):
-        r = png.Reader(file=open(pattern_file, 'rb'))
-        pattern_w, pattern_h, pattern, pattern_meta = r.read()
-        pattern = list(pattern)
-        runtime.log("Loaded PNG file: {}".format(pattern_file))
-        return pattern, pattern_w, pattern_h, pattern_meta
-    else:
+    if not os.path.isfile(pattern_file):
         runtime.log("Invalid PNG file: {}".format(pattern_file))
         return None, 0, 0, None
+
+    # Scope B/D: read the PNG defensively. The file handle is managed by a
+    # context manager (closed even on error), the header is validated and the
+    # dimensions are size-checked BEFORE the decoded rows are allocated, and
+    # any decode failure (corrupt / truncated / non-PNG data) is reported as a
+    # clean message with a non-zero exit instead of a raw traceback.
+    try:
+        with open(pattern_file, 'rb') as fp_png:
+            reader = png.Reader(file=fp_png)
+            pattern_w, pattern_h, rows, pattern_meta = reader.read()
+
+            # Guard against dimension / decompression bombs before we
+            # materialise (and therefore allocate) the full pixel grid.
+            _check_image_size(pattern_file, pattern_w, pattern_h)
+
+            # Materialise the lazy row iterator while the file is still open.
+            # Matches the original `list(...)` behaviour exactly.
+            pattern = list(rows)
+    except SystemExit:
+        # _check_image_size / a nested guard already reported and is exiting.
+        raise
+    except Exception as error:
+        runtime.log(
+            f"Error: '{pattern_file}' could not be read as a valid PNG "
+            f"({type(error).__name__}: {error})"
+        )
+        sys.exit(1)
+
+    runtime.log("Loaded PNG file: {}".format(pattern_file))
+    return pattern, pattern_w, pattern_h, pattern_meta
+
+
+def _check_image_size(pattern_file, width, height):
+    """Reject oversized PNGs before their pixel data is allocated.
+
+    Enforces the ``runtime.MAX_IMAGE_DIMENSION`` per-axis cap and the
+    ``runtime.MAX_IMAGE_PIXELS`` total-pixel cap as a defence against crafted
+    dimension / decompression-bomb images. On violation it logs a clear
+    message and exits non-zero (sys.exit(1)); normal images pass untouched.
+    """
+    if width <= 0 or height <= 0:
+        runtime.log(
+            f"Error: '{pattern_file}' has invalid dimensions "
+            f"({width}x{height})"
+        )
+        sys.exit(1)
+
+    if width > runtime.MAX_IMAGE_DIMENSION or height > runtime.MAX_IMAGE_DIMENSION:
+        runtime.log(
+            f"Error: '{pattern_file}' dimensions {width}x{height} exceed the "
+            f"maximum allowed dimension of {runtime.MAX_IMAGE_DIMENSION}px per "
+            f"side; refusing to load."
+        )
+        sys.exit(1)
+
+    if width * height > runtime.MAX_IMAGE_PIXELS:
+        runtime.log(
+            f"Error: '{pattern_file}' has {width * height} pixels "
+            f"({width}x{height}), exceeding the maximum of "
+            f"{runtime.MAX_IMAGE_PIXELS}; refusing to load."
+        )
+        sys.exit(1)
 
 
 
@@ -272,22 +354,23 @@ def loadPNGToMemory(Filename):
     runtime.IMAGE.pattern, runtime.IMAGE.width, runtime.IMAGE.height, runtime.IMAGE.meta = load_pattern(Filename)
 
     # If File Wasn't Found Time to Quit
-    if runtime.IMAGE.pattern == None:
-        return False
-    
-    # Check we're dealing with 8 Bits per channel.
-    if runtime.IMAGE.meta['planes'] < 3:
-        runtime.log(f"PNG File Unsupported, convert to 8 Bits per Channel - 24 bit")
-        return False
-
-    # Check if We've loaded a Valid PNG File
     if runtime.IMAGE.pattern is None:
-        runtime.log(f"File: {Filename} is not a valid PNG File")
         return False
 
-    # Check to see if Alpha Byte Present and set number of channels accordingly
+    # Determine the number of values per pixel in the decoded rows. For RGB /
+    # RGBA the historical behaviour is preserved exactly (3, or 4 when an alpha
+    # channel is present). Greyscale (1 plane), greyscale+alpha (2 planes) and
+    # palette/indexed PNGs (1 plane, with a palette) are now also supported;
+    # getPixelFromRow converts each to RGB(A) so the rest of the pipeline is
+    # unchanged.
+    planes = runtime.IMAGE.meta['planes']
     alpha = runtime.IMAGE.meta['alpha']
-    runtime.IMAGE.channels = 4 if alpha else 3
+
+    if planes >= 3:
+        runtime.IMAGE.channels = 4 if alpha else 3
+    else:
+        # 1 = greyscale or palette/indexed, 2 = greyscale + alpha.
+        runtime.IMAGE.channels = planes
 
     discoverPixelLayers()
 

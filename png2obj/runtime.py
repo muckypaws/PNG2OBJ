@@ -43,6 +43,15 @@ CUBE_Y = -10
 # Alpha threshold: pixels with alpha <= this are treated as transparent.
 ALPHACUTOFF = 128
 
+# --- PNG decompression-bomb guards ---
+# Reject images whose total pixel count (width*height) exceeds this cap, and
+# any image whose single dimension exceeds MAX_IMAGE_DIMENSION, before the
+# decoded rows are allocated or scanned. The defaults are generous: every
+# bundled test image is orders of magnitude smaller, so normal use is
+# unaffected. These exist to stop a crafted/corrupt PNG from exhausting memory.
+MAX_IMAGE_PIXELS = 100_000_000      # 100 megapixels (e.g. 10000 x 10000)
+MAX_IMAGE_DIMENSION = 100_000       # cap on width or height individually
+
 # Add jointer cubes between corner-only diagonal pixels (for printing).
 JOINTS_REQUIRED = False
 
