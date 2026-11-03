@@ -135,147 +135,6 @@ Primitive_Multiplier_Layers = 1.0
 #
 ColoursOnSingleLayerHeight = False
 
-# Basic Definition of cube with 8 Vertices (4 Sets of Co-Ords per face)
-
-'''
-cube_vertices = (   [ 0.000000 , 10.000000,  0.000000],
-                    [ 10.000000, 10.000000, 10.000000],
-                    [ 10.000000, 10.000000,  0.000000],
-                    [ 10.000000,  0.000000,  0.000000],
-                    [ 0.000000 ,  0.000000, 10.000000],
-                    [ 0.000000 , 10.000000, 10.000000],
-                    [ 10.000000,  0.000000, 10.000000],
-                    [ 0.000000 ,  0.000000,  0.000000]
-)
-
-cube_normals = (    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000])
-
-# Basic Definition of a Primitives connecting faces 
-
-cube_faces = (  [ 6, 2, 1],
-                [ 1, 2, 3],
-                [ 2, 7, 3],
-                [ 3, 7, 4],
-                [ 7, 5, 4],
-                [ 4, 5, 8],
-                [ 5, 6, 8],
-                [ 8, 6, 1],
-                [ 2, 6, 7],
-                [ 7, 6, 5],
-                [ 1, 3, 8],
-                [ 8, 3, 4]
-              )
-'''
-
-# Fixed 15/8/2024
-'''
-cube_vertices = (   [ 0.000000,	 0.000000,  10.000000],
-                    [10.000000,	 0.000000,  10.000000],
-                    [10.000000,	 0.000000,   0.000000],
-                    [ 0.000000,	 0.000000,   0.000000],
-
-                    [10.000000,	 0.000000,  10.000000],
-                    [10.000000,  10.000000, 10.000000],
-                    [10.000000, 10.000000,	 0.000000],
-                    [10.000000,	  0.000000,	 0.000000],
-
-                    [10.000000,	10.000000, 10.000000],
-                    [ 0.000000,	10.000000, 10.000000],
-                    [ 0.000000,	10.000000,	 0.000000],
-                    [10.000000,	10.000000,	 0.000000],
-
-                    [ 0.000000,	10.000000, 10.000000],
-                    [ 0.000000,	   0.000000,10.000000],
-                    [ 0.000000,	   0.000000, 0.000000],
-                    [ 0.000000,	 10.000000, 0.000000],
-
-                    [10.000000,	 0.000000,  10.000000],
-                    [ 0.000000,	 0.000000,  10.000000],
-                    [ 0.000000, 10.000000, 10.000000],
-                    [10.000000, 10.000000, 10.000000],
-
-                    [ 0.000000, 10.000000,	 0.000000],
-                    [ 0.000000,	 0.000000,	 0.000000],
-                    [10.000000,	 0.000000,	 0.000000],
-                    [10.000000, 10.000000,	 0.000000]
-)
-
-cube_normals = (    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  0.000000,  1.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  1.000000,  0.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [  0.000000, -1.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [ -1.000000,  0.000000,  0.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000,  1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000],
-                    [  0.000000,  0.000000, -1.000000]
-)
-
-cube_faces = (  [ 1,  2,  4],
-                [ 4,  2,  3],
-                [ 5,  6,  8],
-                [ 8,  6,  7],
-                [ 9, 10, 12],
-                [12, 10, 11],
-                [13, 14, 16],
-                [16, 14, 15],
-                [17, 18, 20],
-                [20, 18, 19],
-                [22, 23, 21],
-                [21, 23, 24]
-)
-'''
-
 #
 # Define the Colour Material Dictionary
 #
@@ -510,8 +369,6 @@ def update_svg_canvas_dimensions(width, height):
         SVG.canvas_height (float): Current maximum canvas height.
     """
 
-    if width > 405:
-        print
     if width > SVG.canvas_width:
         SVG.canvas_width = width
 
@@ -1362,8 +1219,6 @@ def create_primitive(primitive_x, primitive_y,
     #strFaces = "# "+str(vert_len)+f" Vertices\ng Pixel_{primitive_x}_{primitive_y}_F\n"
     mtl_string=""
 
-    if material_index > 1:
-        print
     if CREATE_MTL_FILE:
         mtl_string = "mtllib "+os.path.basename(mtl_filename) + "\n" + \
             f"usemtl {material_index}\n"
@@ -2687,8 +2542,6 @@ def ApplyPNGColoursToParametricObjects(vertDict, offsetX, offsetY, allowedDictio
             pixel,mi, mm = getPixelFromRow(x, row, IMAGE.channels, IMAGE.width)
 
             if checkProcessingRules(allowedDictionary, mm, excludedColours, pixel):
-                if pixel > 0:
-                    print
                 myKey = f"{(x+offsetX):04d}:{(y+offsetY):04d}"
                 if myKey in vertDict:
                     VertexData = vertDict[myKey]
@@ -2773,67 +2626,6 @@ def CreateOBJFileFromDictionary(filename, vertDict, primitive_y_multiplier, Last
             import sys
             print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(error).__name__, error)
     return False
-
-def CreateOBJFileFromDictionary_old(Filename, vertDict, primitive_y_multiplier, LastTowerMultiplier):
-    """
-    Write an OBJ file from a dictionary of vertex primitives using legacy filename logic.
-
-    This is an older version of the OBJ output generator that includes optional
-    filename tagging for layered output modes. It writes geometry generated from
-    stored vertex, face, and normal lists and adds metadata headers.
-
-    Args:
-        Filename (str): Base name (without extension) for the output OBJ file.
-        vertDict (dict): Dictionary of pixel keys (e.g., "12:42") to vertex/face data.
-        primitive_y_multiplier (float): Multiplier for Z-depth scaling.
-        LastTowerMultiplier (float): Stacking multiplier for layered or towered prints.
-
-    Returns:
-        bool: True on success, False if writing fails.
-
-    Globals:
-        Create_Layered_File (bool): If True, alters filename to include colourMatch.
-        PATTERNS (str): Output directory.
-        FILE_COUNTER (int): Index used to distinguish file variants.
-        colourMatch (str): Active colour layer (used in naming).
-        WORKING_FILENAME (str): Base input image name.
-        pattern_w (int): Width of source image in pixels.
-        pattern_h (int): Height of source image in pixels.
-
-    TODO:
-        - Remove redundant copy once new `CreateOBJFileFromDictionary()` is stable
-        - Refactor header builder into helper
-        - Add write confirmation logging
-    """
-    if Create_Layered_File:
-        obj_file = os.path.join(PATTERNS, "{}_Y{}{}.obj".format(Filename,FILE_COUNTER,str(colourMatch)))
-    else:
-        obj_file = os.path.join(PATTERNS, "{}_Y{}.obj".format(Filename,FILE_COUNTER))
-
-    try:
-        # TODO: Add some error checking here, rather than relay on TRY/CATCH Scenarios.
-        with open(obj_file,'w') as fp_obj:
-        # Create Header for OBJ File
-            header = "# Creator PNG2OBJ.py - © Jason Brooks 2022\n# " + str(datetime.now()) + "\n"
-            header = header + f"# Original File: {WORKING_FILENAME}.png, Width: {IMAGE.width}, Height: {IMAGE.height}\n"
-            fp_obj.write( header )
-
-            for index, (key,value) in enumerate(vertDict.items()):
-                coords = key.split(":")
-                x = int(coords[0])
-                y = int(coords[1])
-                colourIndex = value[3]
-
-                fp_obj.write( create_primitive(x, y, 1, 1, value[0], value[1], value[2], False , colourIndex, primitive_y_multiplier * LastTowerMultiplier, False))
-
-            fp_obj.flush()
-            fp_obj.close()
-
-    except Exception as error:
-        # Bad Practice I know...
-        print(f"Failed to write file: {obj_file}",obj_file)
-        print(f"Exception: {error}")
-        return False
 
 #
 # Add default Materials to MTL File
@@ -3069,8 +2861,6 @@ def process_SVG_File(args):
     if len(args.illusioncolourtable) == 4:
         SVG.illusion_colour_table = args.illusioncolourtable
 
-    if len(args.illusioncolourtable) == 4:
-        SVG.illusion_colour_table = args.illusioncolourtable
 
     if args.colourset > -1:
         SVG.illusion_colour_table = SVG_COLOUR_SETS[args.colourset % len(SVG_COLOUR_SETS)]
