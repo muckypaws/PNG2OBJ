@@ -80,9 +80,6 @@ MACOS_FLAGS=(
     "--macos-app-name=${APP_NAME}"
     "--macos-app-version=3.0.0"
     "--output-dir=${BUILD_DIR}"
-    # Build a universal binary when the toolchain/Python support it. Comment
-    # out for a single-arch (host) build if your Python is not universal2.
-    --macos-target-arch=universal
     # ---------------------------------------------------------------------
     # FUTURE GUI EXTENSION POINT (macOS):
     #   A CLI tool is a "background" app. When the GUI arrives, drop the
@@ -92,6 +89,14 @@ MACOS_FLAGS=(
     # ---------------------------------------------------------------------
     --macos-app-mode=background
 )
+
+# Target architecture. Default: build for the host arch (works with any
+# CPython). Set MACOS_ARCH=universal for a universal2 binary — this REQUIRES a
+# universal2 CPython (e.g. the python.org installer); the arch-specific builds
+# from actions/setup-python cannot produce it.
+if [[ -n "${MACOS_ARCH:-}" ]]; then
+    MACOS_FLAGS+=("--macos-target-arch=${MACOS_ARCH}")
+fi
 
 # Attach an icon only if one has been added to packaging/assets/.
 if [[ -f "${ICON_FILE}" ]]; then
