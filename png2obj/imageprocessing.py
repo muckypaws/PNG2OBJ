@@ -83,9 +83,12 @@ def getPixelFromRow(x, row, channels, rowWidth):
 
     TowerMultiplier = 1.0
 
-    # If Indexed PNG, we're only interested in the index value
+    # If Indexed/greyscale PNG, we're only interested in the single value.
+    # Seed r,g,b from the value so later material registration never sees an
+    # unbound name (full palette/greyscale handling lives below / in load).
     if channels == 1:
         pixel = row[x]
+        r = g = b = pixel
 
     else:
         # Get the RGB Values from the offset
