@@ -84,12 +84,31 @@ def getPixelFromRow(x, row, channels, rowWidth):
 
     TowerMultiplier = 1.0
 
-    # If Indexed/greyscale PNG, we're only interested in the single value.
-    # Seed r,g,b from the value so later material registration never sees an
-    # unbound name (full palette/greyscale handling lives below / in load).
+    # Alpha for this pixel, where the image carries one. ``None`` means fully
+    # opaque (no alpha channel / palette transparency), so the cutoff below is
+    # skipped entirely and RGB / RGBA behaviour is preserved exactly.
+    a = None
+
     if channels == 1:
-        pixel = row[x]
-        r = g = b = pixel
+        # Single value per pixel: either a palette index or a grey level.
+        meta = runtime.IMAGE.meta
+        palette = meta.get('palette') if isinstance(meta, dict) else None
+        if palette:
+            # Indexed / palette PNG: look the RGB(A) colour up by index.
+            entry = palette[row[x]]
+            r, g, b = entry[0], entry[1], entry[2]
+            if len(entry) > 3:
+                a = entry[3]
+        else:
+            # Greyscale PNG: one intensity maps to r == g == b.
+            r = g = b = row[x]
+        pixel = r | g | b
+
+    elif channels == 2:
+        # Greyscale + alpha: [grey, alpha] per pixel.
+        r = g = b = row[offset_x]
+        a = row[offset_x + 1]
+        pixel = r | g | b
 
     else:
         # Get the RGB Values from the offset
@@ -99,15 +118,18 @@ def getPixelFromRow(x, row, channels, rowWidth):
         # is prsent or not to determine whether to add a primitive or not
         pixel = r|g|b
 
-    if channels == 4:
-        #Check Alpha
-        a = row[offset_x+3]
-        # If below the cutoff we set the pixel to 0 (No Colour Data)
-        if a <= runtime.ALPHACUTOFF:
-            pixel = -1
-            r = 0
-            g = 0
-            b = 0
+        if channels == 4:
+            # Check Alpha
+            a = row[offset_x + 3]
+
+    # If an alpha value is present and below the cutoff we treat the pixel as
+    # having no colour data (transparent). Applied uniformly for RGBA,
+    # greyscale+alpha and palette transparency.
+    if a is not None and a <= runtime.ALPHACUTOFF:
+        pixel = -1
+        r = 0
+        g = 0
+        b = 0
 
     valid, ColourCode = runtime.MATERIALS.register(r, g, b, pixel)
 
@@ -332,22 +354,23 @@ def loadPNGToMemory(Filename):
     runtime.IMAGE.pattern, runtime.IMAGE.width, runtime.IMAGE.height, runtime.IMAGE.meta = load_pattern(Filename)
 
     # If File Wasn't Found Time to Quit
-    if runtime.IMAGE.pattern == None:
-        return False
-    
-    # Check we're dealing with 8 Bits per channel.
-    if runtime.IMAGE.meta['planes'] < 3:
-        runtime.log(f"PNG File Unsupported, convert to 8 Bits per Channel - 24 bit")
-        return False
-
-    # Check if We've loaded a Valid PNG File
     if runtime.IMAGE.pattern is None:
-        runtime.log(f"File: {Filename} is not a valid PNG File")
         return False
 
-    # Check to see if Alpha Byte Present and set number of channels accordingly
+    # Determine the number of values per pixel in the decoded rows. For RGB /
+    # RGBA the historical behaviour is preserved exactly (3, or 4 when an alpha
+    # channel is present). Greyscale (1 plane), greyscale+alpha (2 planes) and
+    # palette/indexed PNGs (1 plane, with a palette) are now also supported;
+    # getPixelFromRow converts each to RGB(A) so the rest of the pipeline is
+    # unchanged.
+    planes = runtime.IMAGE.meta['planes']
     alpha = runtime.IMAGE.meta['alpha']
-    runtime.IMAGE.channels = 4 if alpha else 3
+
+    if planes >= 3:
+        runtime.IMAGE.channels = 4 if alpha else 3
+    else:
+        # 1 = greyscale or palette/indexed, 2 = greyscale + alpha.
+        runtime.IMAGE.channels = planes
 
     discoverPixelLayers()
 

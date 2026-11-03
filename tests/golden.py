@@ -37,6 +37,11 @@ RUNNER = REPO / "tests" / "_runner.py"
 GOLDEN_DIR = Path(os.environ.get("GOLDEN_DIR", REPO / "tests" / "_golden"))
 SEED = os.environ.get("GOLDEN_SEED", "1234")
 
+# Generated fixtures for the indexed/greyscale feature (scope E). These are
+# written deterministically by _ensure_fixtures() because *.png is gitignored;
+# the pixel data is fixed so the derived output is reproducible run to run.
+FIXTURE_DIR = REPO / "tests" / "fixtures"
+
 # Test images shipped in the repo (see testimages.zip / README).
 IMAGES = {
     "stride": REPO / "JSWStride.png",
@@ -45,7 +50,52 @@ IMAGES = {
     "phil": REPO / "Phil.png",
     "willy": REPO / "PlatformWilly.png",
     "sheet": REPO / "SpriteSheet.png",
+    # scope E fixtures (generated on demand, not shipped).
+    "grey": FIXTURE_DIR / "grey8.png",
+    "palette": FIXTURE_DIR / "palette_alpha.png",
 }
+
+
+def _ensure_fixtures():
+    """Write the greyscale and palette (with transparency) fixtures.
+
+    Used by the indexed/greyscale support cases (scope E). The bytes are fully
+    deterministic so the converter output is reproducible. Regenerated every
+    run because the files are gitignored (``*.png``) and never committed.
+    """
+    import png  # pypng; already required by the converter.
+
+    FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # --- 8-bit greyscale, 8x6: a mix of grey levels incl. pure black/white. ---
+    grey_rows = [
+        [0, 32, 64, 96, 128, 160, 192, 255],
+        [255, 192, 160, 128, 96, 64, 32, 0],
+        [0, 0, 128, 128, 255, 255, 0, 0],
+        [64, 64, 64, 64, 64, 64, 64, 64],
+        [0, 255, 0, 255, 0, 255, 0, 255],
+        [200, 200, 10, 10, 200, 200, 10, 10],
+    ]
+    with open(IMAGES["grey"], "wb") as fp:
+        png.Writer(width=8, height=6, greyscale=True, bitdepth=8).write(fp, grey_rows)
+
+    # --- 8-bit palette/indexed, 8x6, index 0 fully transparent (alpha 0). ---
+    palette = [
+        (0, 0, 0, 0),        # 0: transparent background
+        (237, 28, 36, 255),  # 1: red
+        (34, 177, 76, 255),  # 2: green
+        (63, 72, 204, 255),  # 3: blue
+    ]
+    pal_rows = [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 2, 2, 3, 3, 0],
+        [0, 1, 2, 3, 1, 2, 3, 0],
+        [0, 2, 2, 1, 1, 3, 3, 0],
+        [0, 3, 1, 2, 3, 1, 2, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+    ]
+    with open(IMAGES["palette"], "wb") as fp:
+        png.Writer(width=8, height=6, palette=palette, bitdepth=8).write(fp, pal_rows)
 
 # (case_name, image_key, extra_args). Every case passes -outfile so output
 # lands in the per-case dir and nothing leaks into the repo root.
@@ -92,6 +142,12 @@ CASES = [
     ("svg_illusion_circle", "stride", ["-svg", "-el", "#000000", "-illusion", "-ilc"]),
     ("svg_illusion_streak", "stride", ["-svg", "-el", "#000000", "-illusion", "-stmax", "8"]),
     ("svg_illusion_cset", "stride", ["-svg", "-el", "#000000", "-illusion", "-cset", "2"]),
+
+    # --- scope E: greyscale + palette/indexed PNG support ---
+    ("grey_obj", "grey", ["--mtl"]),
+    ("grey_svg", "grey", ["-svg"]),
+    ("palette_obj", "palette", ["--mtl"]),
+    ("palette_svg", "palette", ["-svg"]),
 ]
 
 # ISO timestamp like 2026-11-03 12:44:36.863969
@@ -144,6 +200,7 @@ def run_case(name, image_key, extra, work_root):
 
 
 def run_all():
+    _ensure_fixtures()
     work_root = GOLDEN_DIR / "work"
     if work_root.exists():
         shutil.rmtree(work_root)
