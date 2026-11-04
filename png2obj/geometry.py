@@ -1,5 +1,29 @@
-"""Primitive geometry: cube / joint vertex, normal and face tables, plus the
-vertex-selection helper. Extracted verbatim from PNG2ObjV3.py (Phase 1)."""
+"""Primitive geometry tables and the vertex-selection helper.
+
+Holds the immutable vertex, surface-normal and face-index tables for the two
+solid primitives the converter extrudes pixels into — the standard cube and the
+small corner "jointer" cube — along with the default Wavefront material
+parameters and the :func:`update_vert` sign helper. The tables were extracted
+verbatim from the original single-file ``PNG2ObjV3.py`` (Phase 1), so the
+emitted geometry stays byte-for-byte identical to the monolith.
+
+All coordinates are in the converter's internal units (a pixel is a 10x10x10
+cube); faces use 1-based vertex indices to match the Wavefront ``.obj`` format.
+
+Attributes:
+    cube_vertices (tuple[list[float]]): the 8 corner coordinates of one cube.
+    cube_normals (tuple[list[float]]): per-vertex surface normals for the cube.
+        (See the note below on the manifold-vs-smooth-shading trade-off.)
+    cube_faces (tuple[list[int]]): the 12 triangles closing the cube, grouped
+        in commented pairs as bottom / right / top / left / rear / front.
+    joint_verticies (tuple[list[float]]): the 10 vertices of the corner-joint
+        cube, used to bridge pixels that touch only at a corner so a printed
+        model does not fall apart.
+    joint_normals (tuple[list[float]]): per-vertex normals for the joint cube.
+    joint_faces (tuple[list[int]]): the 16 triangles of the joint cube.
+    default_mtl_params (str): the shared ``newmtl`` suffix (Ks/Tf/illum/d/Ns/
+        sharpness/Ni) appended to every generated material block.
+"""
 
 
 #

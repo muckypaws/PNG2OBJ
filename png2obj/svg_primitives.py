@@ -1,8 +1,19 @@
 """Low-level SVG element builders and raster helpers (circles, arrays).
 
 These functions are pure: they take all inputs as arguments and return strings
-or mutate a passed-in array, with no module-global state. Extracted verbatim
-from PNG2ObjV3.py (Phase 1)."""
+or mutate a passed-in array, with no module-global state, which makes them easy
+to unit-test in isolation. They were extracted verbatim from the original
+single-file ``PNG2ObjV3.py`` (Phase 1).
+
+The module provides two kinds of helper:
+
+* **Raster helpers** (:func:`create_array`, :func:`plot_circle_points`,
+  :func:`draw_circle`, :func:`print_array`) build and fill a 2D character grid,
+  used by the optical-illusion generators in :mod:`png2obj.svg`.
+* **SVG element builders** (:func:`add_svg_centeredText`,
+  :func:`add_svg_centeredCircle`, :func:`add_svg_rectangle`) return ready-to-
+  write SVG tag strings with millimetre units.
+"""
 
 
 

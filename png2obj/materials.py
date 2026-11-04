@@ -22,6 +22,15 @@ class MaterialRegistry:
     """
 
     def __init__(self, exclusion=None, process_only=None):
+        """Initialise an empty registry with optional colour filters.
+
+        Args:
+            exclusion (list[str] | None): hex colour codes (``"#rrggbb"``) to
+                skip entirely. ``None`` is treated as an empty list.
+            process_only (list[str] | None): if non-empty, the only hex colour
+                codes that may be registered; every other colour is rejected.
+                ``None`` is treated as an empty list (no allowlist).
+        """
         self.colours = {}
         self.materials = []
         self.index = 0
@@ -29,10 +38,23 @@ class MaterialRegistry:
         self.process_only = process_only if process_only is not None else []
 
     def material_string(self, r, g, b):
-        """Render an MTL block for an RGB colour (0-255) and store it.
+        """Render an MTL material block for an RGB colour and store it.
 
-        Returns the material string. Does not advance ``index`` itself (the
-        caller does, matching the original two-step behaviour).
+        Builds a Wavefront ``newmtl``/``Kd`` block for the colour, naming the
+        material after the current ``index`` and normalising each channel to the
+        0.0-1.0 range, then appends it to ``materials``.
+
+        Args:
+            r (int): red channel, 0-255.
+            g (int): green channel, 0-255.
+            b (int): blue channel, 0-255.
+
+        Returns:
+            str: the rendered material block (also appended to ``materials``).
+
+        Note:
+            This does not advance ``index`` itself; the caller does, matching
+            the original two-step ``MaterialColourAsString`` behaviour.
         """
         mult = 1.0 / 255.0
 
@@ -46,12 +68,26 @@ class MaterialRegistry:
         return Material
 
     def register(self, r, g, b, pixel=-1):
-        """Register an RGB colour if allowed by the filter lists.
+        """Register an RGB colour if the filter lists allow it.
 
-        Returns (valid, hex_code). ``valid`` is False when the colour is
-        excluded or not in the process-only allowlist. A material block is
-        created (and ``index`` advanced) the first time a colour is seen with
-        a real pixel (pixel >= 0).
+        Applies the ``exclusion`` and ``process_only`` filters, records the
+        colour in ``colours`` the first time it is seen, and — when called for
+        a real pixel (``pixel >= 0``) — emits its material block and advances
+        ``index``.
+
+        Args:
+            r (int): red channel, 0-255.
+            g (int): green channel, 0-255.
+            b (int): blue channel, 0-255.
+            pixel (int): the source pixel offset, or ``-1`` when merely probing
+                whether the colour is allowed. A material block is only created
+                for ``pixel >= 0``.
+
+        Returns:
+            tuple[bool, str]: ``(valid, hex_code)`` where ``hex_code`` is the
+            ``"#rrggbb"`` form of the colour and ``valid`` is ``False`` when the
+            colour is excluded or missing from a non-empty process-only
+            allowlist, ``True`` otherwise.
         """
         # Check to see if we already have this material.
         ColourCode = f"#{r:02x}{g:02x}{b:02x}"

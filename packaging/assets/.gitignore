@@ -1,0 +1,3 @@
+# The project root .gitignore excludes *.png, but these packaging icons are
+# source assets that must be versioned.
+!png2obj.png

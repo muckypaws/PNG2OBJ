@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=PNG2OBJ
+GenericName=PNG to OBJ/SVG Converter
+Comment=Convert pixel PNG images into 3D OBJ or 2D SVG files
+# PNG2OBJ is a command-line tool, so launch it inside a terminal.
+Exec=png2obj %f
+Icon=png2obj
+Terminal=true
+Categories=Graphics;3DGraphics;Utility;
+Keywords=png;obj;svg;3d;voxel;pixel;convert;
+# GUI EXTENSION POINT: when the PySide6 GUI ships, set Terminal=false and point
+# Exec at the GUI entry point (and add StartupNotify=true).

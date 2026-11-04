@@ -1,0 +1,4 @@
+# Final packaged artifacts (executables, .app, .dmg, .msi, AppImage).
+# All generated; keep the directory, ignore its contents.
+*
+!.gitignore

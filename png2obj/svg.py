@@ -60,6 +60,13 @@ class SvgState:
     """
 
     def __init__(self):
+        """Initialise an empty render state with the original global defaults.
+
+        Every attribute starts at the value the corresponding loose ``SVG_*`` /
+        ``ILLUSION_*`` module global held in the monolith: empty buffers, zeroed
+        canvas size and counters, a maximum toggle streak of 3, the default
+        blue/red illusion palette, and diagonal (not circular) illusions.
+        """
         self.data_list = []
         self.illusion_array = []
         self.canvas_width = 0.0
@@ -100,7 +107,6 @@ def draw_diagonals_in_array(width :int, height: int):
     Returns:
         None. Modifies global SVG.illusion_array in-place.
     """
-
     size = max(width, height)
     runtime.SVG.illusion_array = create_array(size)
 
@@ -164,7 +170,6 @@ def svg_savefile(savename):
         SVG_HEADER (str): XML + DOCTYPE declaration.
         DEBUG (bool): Controls detailed error output.
     """
-
     try:
         output_path = Path(savename).resolve()
 
@@ -215,7 +220,6 @@ def update_svg_canvas_dimensions(width, height):
         SVG.canvas_width (float): Current maximum canvas width.
         SVG.canvas_height (float): Current maximum canvas height.
     """
-
     if width > runtime.SVG.canvas_width:
         runtime.SVG.canvas_width = width
 
@@ -264,7 +268,6 @@ def create_svg_frame400(Outline_Only = True,
         - Accept frame model name or dimensions as input
         - Consider separating visual elements and guide logic
     """
-
     # Useable Area of the Frame
     useableArea = 397.00
     outerFrame  = 405.00
@@ -369,7 +372,6 @@ def create_svg(width, height,
         - Add validation for grid/offset sizes
         - Split fill/light/dark logic into helper functions
     """
-
     totalWidth = rect_width * width + abs(startX * 2)
     totalHeight = rect_height * height + abs(startY * 2)
 
@@ -577,7 +579,6 @@ def create_svg_illusion_data_circular(outline_only = False, width = 20, height =
         - Move ClipDimensions() and rectangle calc into reusable helper
         - Refactor to separate illusion generation from rendering loop
     """
-
     width = int(width)
     height = int(height)
 
@@ -701,7 +702,6 @@ def create_svg_illusion_data_diagonals(outline_only = False, width = 20, height 
         - Refactor inner loop and draw decision logic into helper
         - Consider exposing fill/stroke style per-diagonal group
     """
-
     width = int(width)
     height = int(height)
 
@@ -847,7 +847,6 @@ def create_svg_from_PNG(outlineOnly, use_real_colours,
         - Consider returning the generated SVG group instead of appending globally
         - Parameterise input pattern image instead of assuming current global
     """
-
     width = runtime.IMAGE.real_width
     height = runtime.IMAGE.real_height
 
@@ -910,7 +909,6 @@ def create_svg_data_for_loaded_PNG(outline_only = False,
         - Consider merging sprite draw logic into generalised SVG pixel engine
         - Add opacity toggle or pixel thresholding
     """
-    
     width = runtime.IMAGE.real_width
     height = runtime.IMAGE.real_height
 
@@ -1009,7 +1007,6 @@ def process_SVG_File(args):
         - Support output of runtime parameters as JSON/LOG for automated batch tooling
         - Allow skipping visual preview with silent mode flag
     """
-
     if len(args.illusioncolourtable) == 4:
         runtime.SVG.illusion_colour_table = args.illusioncolourtable
 
